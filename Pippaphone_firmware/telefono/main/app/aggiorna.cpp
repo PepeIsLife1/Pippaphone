@@ -76,7 +76,7 @@ esp_err_t postUpdate(httpd_req_t* req) {
         g_st.done = true;
     } else {
         if (ok) esp_ota_abort(h);
-        httpd_resp_send(req, "Errore: il file non e' un firmware valido.", HTTPD_RESP_USE_STRLEN);
+        httpd_resp_send(req, "Errore: il file non è un firmware valido.", HTTPD_RESP_USE_STRLEN);
         std::lock_guard<std::mutex> l(g_mu);
         g_st.error = "file non valido";
     }

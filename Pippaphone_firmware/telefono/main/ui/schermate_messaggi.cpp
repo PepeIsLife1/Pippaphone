@@ -77,7 +77,7 @@ public:
             List::text(row2, &font_22b, BIANCO(), c.name, true);
             List::text(row2, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
-        if (contacts_.empty()) label(list_.obj(), &font_20, GRIGIO2(), "  La rubrica e' vuota");
+        if (contacts_.empty()) label(list_.obj(), &font_20, GRIGIO2(), "  La rubrica è vuota");
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return false;
@@ -276,20 +276,24 @@ public:
         lv_obj_scroll_to_y(msgsBox_, LV_COORD_MAX, LV_ANIM_OFF);
     }
 
+    // Riga larga quanto la chat: la nuvoletta va a destra (mia), a sinistra o al centro.
+    lv_obj_t* line(lv_flex_align_t where) {
+        lv_obj_t* r = row(msgsBox_, 0);
+        lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+        lv_obj_set_flex_align(r, where, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+        return r;
+    }
+
     lv_obj_t* bubble(const app::Message& m) {
-        if (m.kind == app::MsgKind::INFO) {
-            lv_obj_t* l = label(msgsBox_, &font_16, GRIGIO2(), (m.text + "  " + whenShort(m.time)).c_str());
-            lv_obj_set_style_align(l, LV_ALIGN_CENTER, 0);
-            return l;
-        }
+        if (m.kind == app::MsgKind::INFO)
+            return label(line(LV_FLEX_ALIGN_CENTER), &font_16, GRIGIO2(), (m.text + "  " + whenShort(m.time)).c_str());
         const bool sos = m.kind == app::MsgKind::SOS;
-        lv_obj_t* b = column(msgsBox_, 2);
+        lv_obj_t* b = column(line(m.out ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START), 2);
         lv_obj_set_size(b, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
         lv_obj_set_style_max_width(b, 340, 0);
         pad(b, 8, 12, 6, 12);
         fill(b, sos ? ROSSO_SCURO() : (m.out ? AMBRA_SCURO() : GRIGIO1()));
         lv_obj_set_style_radius(b, 14, 0);
-        lv_obj_set_style_align(b, m.out ? LV_ALIGN_RIGHT_MID : LV_ALIGN_LEFT_MID, 0);
         lv_obj_set_style_border_color(b, AMBRA(), 0);
         if (!m.out && id_.kind != app::ChatKind::DIRECT)
             label(b, &font_16, AMBRA(), app::dati().nameOf(m.from).c_str());
@@ -321,7 +325,6 @@ public:
         lv_obj_set_style_max_width(body, 316, 0);
         lv_obj_t* meta = row(b, 4);
         lv_obj_set_size(meta, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_set_style_align(meta, LV_ALIGN_RIGHT_MID, 0);
         label(meta, &mono_16, m.out ? BIANCO() : GRIGIO3(), whenShort(m.time).c_str());
         if (m.out && id_.kind == app::ChatKind::DIRECT) statusIcon(meta, m.status);
         if (m.out && m.status == pn::Delivery::UNREACHABLE)
@@ -374,8 +377,11 @@ public:
             menu();
             return true;
         }
-        if (k == Key::BACK && in_.symOpen()) return in_.key(k, pressed), true;
-        if (k == Key::BACK) return false;
+        if ((k == Key::BACK || k == Key::END) && in_.symOpen()) return in_.key(k, pressed), true;
+        // Tasti che non riguardano il testo: li gestisce l'interfaccia (indietro, home, volume).
+        if (k == Key::BACK || k == Key::END || k == Key::VOLUP || k == Key::VOLDN || k == Key::CALL ||
+            k == Key::PTT || k == Key::PWR)
+            return false;
         const TextInput::Result r = in_.key(k, pressed);
         if (r == TextInput::SUBMIT || (k == Key::OK && sel_ < 0)) {
             send();
@@ -385,7 +391,7 @@ public:
             draft_ = in_.text();
             if (sel_ >= 0) select(-1);
         }
-        return r != TextInput::NONE || k != Key::CALL;
+        return true;  // gli altri tasti sono del campo di testo
     }
 
     void send() {
@@ -453,7 +459,7 @@ public:
 
     std::vector<Hint> hints() override {
         if (in_.symOpen()) return {{"NAV", "scegli"}, {"OK", "inserisci"}, {"BACK", "chiudi"}};
-        if (sel_ >= 0) return {{"OK", "apri"}, {"GIU'", "scrivi"}, {"MENU", "opzioni"}};
+        if (sel_ >= 0) return {{"OK", "apri"}, {"GIÙ", "scrivi"}, {"MENU", "opzioni"}};
         if (id_.kind == app::ChatKind::DIRECT) return {{"ENTER", "invia"}, {"SYM", "accenti"}, {"PTT", "vocale"}};
         return {{"ENTER", "invia"}, {"SYM", "accenti"}, {"MENU", "opzioni"}};
     }

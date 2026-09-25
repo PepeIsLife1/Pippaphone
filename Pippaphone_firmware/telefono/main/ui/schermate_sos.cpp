@@ -66,8 +66,8 @@ public:
             lv_obj_center(label(c, &font_32b, BIANCO(), "SOS"));
             wrapped(col, &font_22, BIANCO(),
                     "Manda un allarme con la tua posizione a tutti i contatti della rubrica (" +
-                        std::to_string(nContacts) + "). Si ripete ogni 2 minuti finche' non lo annulli.");
-            if (!nContacts) wrapped(col, &font_20, ROSSO(), "La rubrica e' vuota: nessuno ricevera' l'allarme!");
+                        std::to_string(nContacts) + "). Si ripete ogni 2 minuti finché non lo annulli.");
+            if (!nContacts) wrapped(col, &font_20, ROSSO(), "La rubrica è vuota: nessuno riceverà l'allarme!");
             wrapped(col, &font_22b, AMBRA(), "Tieni premuto OK per 3 secondi");
             bar_ = holdBar(col);
             wrapped(col, &font_16, GRIGIO2(), "Scorciatoia da qualsiasi schermata: VOL+ e VOL- insieme per 3 secondi");

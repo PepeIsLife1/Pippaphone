@@ -115,7 +115,7 @@ public:
         add(RING, IC_VOLUME, "Suoneria");
         add(VOLUME, IC_VOLUME, "Volume");
         add(VIBRA, IC_TELEFONO, "Vibrazione");
-        add(BRIGHT, IC_INFO, "Luminosita'");
+        add(BRIGHT, IC_INFO, "Luminosità");
         add(SCREEN, IC_OROLOGIO, "Spegni lo schermo dopo");
         add(KEYLIGHT, IC_INFO, "Luce della tastiera");
         add(PIN, IC_LUCCHETTO, "Blocco con PIN");
@@ -141,10 +141,10 @@ public:
         switch (r) {
             case RING: return s.ringtone == 0 ? "silenziosa" : s.ringtone == 1 ? "classica" : "breve";
             case VOLUME: return std::to_string(s.volume) + "/10";
-            case VIBRA: return s.vibration ? "si'" : "no";
+            case VIBRA: return s.vibration ? "sì" : "no";
             case BRIGHT: return std::to_string(s.brightness) + "%";
             case SCREEN: return s.screenOffS < 60 ? std::to_string(s.screenOffS) + " s" : std::to_string(s.screenOffS / 60) + " min";
-            case KEYLIGHT: return s.keyLight ? "si'" : "no";
+            case KEYLIGHT: return s.keyLight ? "sì" : "no";
             case PIN: return s.pin.empty() ? "no" : "attivo";
             case POWER:
                 return s.txPower ? std::to_string(s.txPower) + " dBm"
@@ -230,7 +230,7 @@ public:
                 if (dir) return;
                 ask("Ripristino di fabbrica?",
                     "Si cancellano rubrica, messaggi, gruppi, impostazioni e il numero di questo telefono. Dopo "
-                    "servira' un nuovo numero dall'amministratore.",
+                    "servirà un nuovo numero dall'amministratore.",
                     {"Annulla", "Cancella tutto"}, [](int i) {
                         if (i != 1) return;
                         app::eraseAll();
@@ -245,13 +245,14 @@ public:
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
         char b[400];
         const uint8_t pc = scheda::batteria().percent();
-        char air[16];
+        char air[16], volts[16];
         snprintf(air, sizeof(air), "%.1f", double(app::rete().airtimeMs()) / 1000.0);
+        snprintf(volts, sizeof(volts), "%.2f", double(scheda::batteria().volts()));
         snprintf(b, sizeof(b),
-                 "Firmware %s\nNumero %u%s\nBatteria %s (%.2f V)\nTrasmissione totale %s s\nAcceso da %lu min\n"
+                 "Firmware %s\nNumero %u%s\nBatteria %s (%s V)\nTrasmissione totale %s s\nAcceso da %lu min\n"
                  "Memoria libera %u kB (PSRAM %u kB)\nMAC %02X:%02X:%02X:%02X:%02X:%02X",
                  app::firmwareVersion(), unsigned(app::rete().number()), app::rete().isAdmin() ? " (amministratore)" : "",
-                 pc <= 100 ? (std::to_string(pc) + "%").c_str() : "?", double(scheda::batteria().volts()),
+                 pc <= 100 ? (std::to_string(pc) + "%").c_str() : "?", comma(volts).c_str(),
                  comma(air).c_str(),
                  (unsigned long)(esp_timer_get_time() / 60000000), unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                  unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024), mac[0], mac[1], mac[2], mac[3], mac[4],
@@ -461,7 +462,7 @@ public:
         lv_obj_set_size(top, 480, 96);
         pad(top, 8, 20, 8, 20);
         underline(top);
-        label(top, &font_16, GRIGIO3(), "Codice dell'amministratore (il telefono nuovo deve mostrare lo stesso)");
+        label(top, &font_16, GRIGIO3(), "Il tuo codice (il telefono nuovo mostra lo stesso)");
         label(top, &mono_28, AMBRA(), app::rete().myCode().c_str());
         label(top, &font_16, GRIGIO2(), "Telefoni nuovi qui vicino, che chiedono un numero:");
         list_.create(col, 480, 412 - 48 - 96);
@@ -475,7 +476,7 @@ public:
         if (items_.empty()) {
             lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
                                 "Nessuno. Accendi il telefono nuovo vicino a questo: sul suo schermo compare il "
-                                "suo codice, che comparira' anche qui.");
+                                "suo codice, che comparirà anche qui.");
             lv_obj_set_width(t, 440);
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
             pad(t, 16, 20, 0, 20);
@@ -494,7 +495,7 @@ public:
             const std::string code = items_[sel_].code;
             push(makePickContact("Numero da assegnare", [id, code](uint16_t n) {
                 if (n == app::rete().number()) {
-                    toast("Numero non valido", "E' il numero dell'amministratore", ROSSO());
+                    toast("Numero non valido", "È il numero dell'amministratore", ROSSO());
                     return;
                 }
                 if (app::rete().assign(id, n))

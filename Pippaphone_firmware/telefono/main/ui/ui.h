@@ -66,9 +66,9 @@ void wake();
 bool screenOn();
 
 // Formattazione.
-std::string timeHM(uint32_t unix);          // "14:32"
-std::string dateLong(uint32_t unix);        // "giovedi' 25 settembre"
-std::string whenShort(uint32_t unix);       // "14:32" oggi, "ieri", "23/09"
+std::string timeHM(uint32_t unixSec);          // "14:32"
+std::string dateLong(uint32_t unixSec);        // "giovedi' 25 settembre"
+std::string whenShort(uint32_t unixSec);       // "14:32" oggi, "ieri", "23/09"
 std::string durationMS(uint32_t ms);        // "0:07"
 
 // Fabbrica della schermata principale (definita in schermate).

@@ -238,13 +238,13 @@ public:
             return;
         }
         if (n == app::rete().number()) {
-            lv_label_set_text(msg_, "E' il tuo numero");
+            lv_label_set_text(msg_, "È il tuo numero");
             focus(1);
             return;
         }
         app::Contact other;
         if (n != orig_ && app::dati().contact(uint16_t(n), other)) {
-            lv_label_set_text(msg_, ("Numero gia' in rubrica: " + other.name).c_str());
+            lv_label_set_text(msg_, ("Numero già in rubrica: " + other.name).c_str());
             focus(1);
             return;
         }
@@ -256,7 +256,7 @@ public:
     }
     std::vector<Hint> hints() override {
         if (name_.symOpen() || num_.symOpen()) return {{"NAV", "scegli"}, {"OK", "inserisci"}};
-        return {{"SU/GIU'", "campo"}, {"CALL", "salva"}, {"BACK", "annulla"}};
+        return {{"SU/GIÙ", "campo"}, {"CALL", "salva"}, {"BACK", "annulla"}};
     }
     bool capturesEnd() const override { return false; }
 
@@ -305,7 +305,7 @@ public:
         }
         if (items_.empty()) {
             lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
-                                "Nessun gruppo. Chiunque puo' creare un gruppo fino a 16 persone.");
+                                "Nessun gruppo. Chiunque può creare un gruppo fino a 16 persone.");
             lv_obj_set_width(t, 440);
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
             pad(t, 16, 20, 0, 20);
@@ -466,7 +466,7 @@ public:
         replace(makeChat({app::ChatKind::GROUP, g.id}));
     }
     std::vector<Hint> hints() override {
-        if (inName_) return {{"GIU'", "membri"}, {"CALL", "crea"}};
+        if (inName_) return {{"GIÙ", "membri"}, {"CALL", "crea"}};
         return {{"OK", "aggiungi/togli"}, {"CALL", "crea"}};
     }
 

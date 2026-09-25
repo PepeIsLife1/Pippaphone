@@ -150,12 +150,12 @@ public:
                         break;
                     case pn::VoiceSendState::PARTIAL:
                         t = "Consegnato in parte";
-                        s = "qualche pezzo si e' perso per strada";
+                        s = "qualche pezzo si è perso per strada";
                         ring = AMBRA();
                         break;
                     case pn::VoiceSendState::BUSY:
                         t = "Occupato";
-                        s = name_ + " sta gia' ricevendo un altro vocale: riprova tra poco";
+                        s = name_ + " sta già ricevendo un altro vocale: riprova tra poco";
                         ring = ROSSO();
                         break;
                     case pn::VoiceSendState::UNREACHABLE:
@@ -205,7 +205,7 @@ public:
         if (!sentId_) {
             state_ = IDLE;
             show();
-            toast("Vocale non inviato", "C'e' gia' un vocale in invio: aspetta che finisca", ROSSO());
+            toast("Vocale non inviato", "C'è già un vocale in invio: aspetta che finisca", ROSSO());
             return;
         }
         scheda::vibrate(40);
@@ -360,7 +360,7 @@ public:
         label(r, &mono_20, GRIGIO3(), durationMS(ms_).c_str());
         if (lost_)
             label(mid, &font_18, AMBRA(),
-                  ("Qualche pezzo si e' perso (" + std::to_string(lost_) + "): li senti come silenzio").c_str());
+                  ("Qualche pezzo si è perso (" + std::to_string(lost_) + "): li senti come silenzio").c_str());
         if (!ms_) label(mid, &font_18, ROSSO(), "File del vocale non trovato");
         if (autoplay_ && ms_) {
             autoplay_ = false;

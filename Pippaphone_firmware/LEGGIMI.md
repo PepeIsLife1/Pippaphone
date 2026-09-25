@@ -142,7 +142,10 @@ PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
   posizione con conferma, SOS ripetuto ai contatti, vocali sul canale voce con pezzi mancanti
   richiesti di nuovo, beacon ogni 5 minuti, assegnazione del numero via radio. I 20 test
   passano con 40 semi diversi (reti con pacchetti persi e nodi nascosti);
-- telefono e ripetitore compilano con ESP-IDF 5.5 senza avvisi nel nostro codice.
+- telefono e ripetitore compilano con ESP-IDF 5.5 senza avvisi nel nostro codice;
+- l'interfaccia è stata provata sul PC con una scheda e una rete finte (LVGL con
+  AddressSanitizer): tutte le schermate si aprono e si usano con i tasti senza errori di
+  memoria.
 
 **Da provare sull'hardware** (scritto dai datasheet e dallo schema, ma non ancora acceso su
 una PCB vera):

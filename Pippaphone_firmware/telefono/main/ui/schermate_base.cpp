@@ -232,7 +232,7 @@ public:
         in_.setFocused(true);
         msg_ = label(col, &font_20, ROSSO(), "");
         const uint16_t u = app::dati().unreadTotal();
-        if (u) label(col, &font_20, AMBRA(), (std::to_string(u) + " messaggi non letti").c_str());
+        if (u) label(col, &font_20, AMBRA(), u == 1 ? "1 messaggio non letto" : (std::to_string(u) + " messaggi non letti").c_str());
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return true;
@@ -284,7 +284,9 @@ public:
             fill(b, GRIGIO1());
             radius(b, 10);
             pad(b, 10, 14, 12, 14);
-            label(b, &font_16, GRIGIO3(), "Codice dell'amministratore: deve essere uguale al suo schermo");
+            lv_obj_t* hint = label(b, &font_16, GRIGIO3(), "Codice dell'amministratore: deve essere uguale a quello sul suo schermo");
+            lv_obj_set_width(hint, 408);
+            lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
             label(b, &mono_28, BIANCO(), admin.c_str());
             offer_ = true;
             return;
@@ -295,7 +297,7 @@ public:
         lv_obj_set_width(t, 436);
         lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
         const char* steps[] = {"avvicina il suo telefono a questo",
-                               "lui sceglie Impostazioni → Amministrazione",
+                               "lui sceglie Impostazioni > Amministrazione",
                                "controllate che il codice sia uguale"};
         for (int i = 0; i < 3; i++) {
             lv_obj_t* r = row(col, 10);
@@ -328,8 +330,8 @@ public:
         if (k == Key::MENU) {
             // Il primo telefono della rete diventa l'amministratore.
             ask("Creare una rete nuova?",
-                "Questo telefono diventa l'amministratore: sara' lui ad assegnare i numeri agli altri.",
-                {"Si', crea la rete", "Annulla"}, [this](int i) {
+                "Questo telefono diventa l'amministratore: sarà lui ad assegnare i numeri agli altri.",
+                {"Sì, crea la rete", "Annulla"}, [this](int i) {
                     if (i == 0) chooseNumber();
                 });
             return true;
@@ -340,7 +342,7 @@ public:
         push(makePickContact("Il tuo numero", [](uint16_t n) {
             if (n && app::rete().createNetwork(n)) {
                 goHome();
-                toast("Rete creata", "Sei l'amministratore. Il tuo numero e' " + std::to_string(n), VERDE());
+                toast("Rete creata", "Sei l'amministratore. Il tuo numero è " + std::to_string(n), VERDE());
             }
         }));
     }

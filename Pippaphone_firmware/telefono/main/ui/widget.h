@@ -38,6 +38,10 @@ private:
 class TextInput {
 public:
     enum Result { NONE, CHANGED, SUBMIT };
+    TextInput() = default;
+    TextInput(const TextInput&) = delete;
+    TextInput& operator=(const TextInput&) = delete;
+    ~TextInput() { closeSym(); }
     void create(lv_obj_t* parent, int w, int h, bool multiline, size_t maxChars, const char* placeholder);
     Result key(Key k, bool pressed);
     std::string text() const;

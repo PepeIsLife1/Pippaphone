@@ -146,7 +146,7 @@ public:
             label(card_, &font_18, GRIGIO3(), b);
         } else {
             lv_obj_t* l = label(card_, &font_18, GRIGIO3(),
-                                "Stai all'aperto con il cielo libero: la prima posizione puo' richiedere un minuto.");
+                                "Stai all'aperto con il cielo libero: la prima posizione può richiedere un minuto.");
             lv_obj_set_width(l, 440);
             lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
         }
@@ -227,9 +227,10 @@ public:
         lv_label_set_long_mode(q, LV_LABEL_LONG_WRAP);
         if (waiting_) {
             status_ = label(col, &font_22b, AMBRA(), "Cerco il GPS...");
-            lv_obj_set_style_align(status_, LV_ALIGN_CENTER, 0);
-            lv_obj_t* l = label(col, &font_18, GRIGIO3(), "La mando appena c'e' una posizione (al massimo 90 secondi).");
-            lv_obj_set_width(l, 440);
+            lv_obj_set_width(status_, 480);
+            lv_obj_set_style_text_align(status_, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_t* l = label(col, &font_18, GRIGIO3(), "La mando appena c'è una posizione (al massimo 90 secondi).");
+            lv_obj_set_width(l, 480);
             lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
             lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
             return;
@@ -388,7 +389,7 @@ public:
         if (!p.valid) return;
         if (!me.valid) {
             lv_label_set_text(dist_, "? km");
-            lv_label_set_text(dir_, "la tua posizione non e' nota");
+            lv_label_set_text(dir_, "la tua posizione non è nota");
             lv_obj_add_flag(line_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(dot_, LV_OBJ_FLAG_HIDDEN);
             return;

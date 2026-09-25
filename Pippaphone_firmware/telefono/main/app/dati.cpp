@@ -247,8 +247,12 @@ void Dati::setStatus(const ChatId& id, uint32_t msgId, pn::Delivery d) {
     Chat& c = chatRef(id);
     for (auto& m : c.msgs)
         if (m.out && m.id == msgId) {
-            // Lo stato puo' solo migliorare (tranne "non raggiungibile").
-            if (d == pn::Delivery::UNREACHABLE ? m.status < pn::Delivery::DELIVERED : d > m.status) {
+            // Lo stato puo' solo migliorare. "Non raggiungibile" vale solo se non era ancora
+            // consegnato, e una conferma arrivata in ritardo lo corregge.
+            const bool better = d == pn::Delivery::UNREACHABLE
+                                    ? m.status < pn::Delivery::DELIVERED
+                                    : (d > m.status || m.status == pn::Delivery::UNREACHABLE);
+            if (better) {
                 m.status = d;
                 saveChat(c);
             }

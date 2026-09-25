@@ -249,6 +249,10 @@ void handleEvent(const app::Event& e) {
             wake();
             if (e.a) {
                 if (sosShouldAlert(e.from)) {
+                    if (g_toast) {  // niente avvisi vecchi sopra l'allarme
+                        lv_obj_delete(g_toast);
+                        g_toast = nullptr;
+                    }
                     scheda::audio().play(scheda::suoni::SOS, true);
                     scheda::vibratePattern(6, 400, 200);
                     scheda::ledBlink(80, 0, 0, 300, 300, 0);
@@ -309,7 +313,7 @@ void uiTask(void*) {
             g_pwrLongDone = true;
             g_pwrDownAt = 0;
             wake();
-            ask("Spegnere il telefono?", "Non riceverai messaggi finche' non lo riaccendi (tieni premuto PWR).",
+            ask("Spegnere il telefono?", "Non riceverai messaggi finché non lo riaccendi (tieni premuto PWR).",
                 {"Spegni", "Annulla"}, [](int i) {
                     if (i == 0) scheda::powerOff();
                 });
@@ -358,6 +362,8 @@ void Screen::rebuild() {
 
 void showTop() {
     Screen* s = top();
+    // Una domanda aperta riguarda la schermata di prima: si chiude senza risposta.
+    closeAsk();
     lv_obj_clean(g_content);
     if (!s) return;
     const bool full = s->fullscreen();
@@ -397,6 +403,9 @@ void init() {
     lv_obj_set_style_text_font(scr, &font_22, 0);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(scr, LV_FLEX_FLOW_COLUMN);
+    // Il tema mette spazi tra i figli dello schermo: le tre fasce devono stare attaccate.
+    lv_obj_set_style_pad_all(scr, 0, 0);
+    lv_obj_set_style_pad_row(scr, 0, 0);
     buildStatusBar(scr);
     g_content = box(scr);
     lv_obj_set_size(g_content, W, H - BAR_TOP - BAR_BOTTOM);
@@ -528,35 +537,35 @@ bool screenOn() { return g_on; }
 
 // ---------------------------------------------------------------- formattazione
 
-static std::tm local(uint32_t unix) {
-    time_t t = time_t(unix);
+static std::tm local(uint32_t unixSec) {
+    time_t t = time_t(unixSec);
     std::tm tm{};
     localtime_r(&t, &tm);
     return tm;
 }
 
-std::string timeHM(uint32_t unix) {
-    if (!unix) return "--:--";
-    std::tm tm = local(unix);
+std::string timeHM(uint32_t unixSec) {
+    if (!unixSec) return "--:--";
+    std::tm tm = local(unixSec);
     char b[16];
     snprintf(b, sizeof(b), "%02d:%02d", tm.tm_hour, tm.tm_min);
     return b;
 }
 
-std::string dateLong(uint32_t unix) {
-    if (!unix) return "ora non ancora sincronizzata";
+std::string dateLong(uint32_t unixSec) {
+    if (!unixSec) return "ora non ancora sincronizzata";
     static const char* days[] = {"domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"};
     static const char* months[] = {"gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
                                    "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"};
-    std::tm tm = local(unix);
+    std::tm tm = local(unixSec);
     return std::string(days[tm.tm_wday]) + " " + std::to_string(tm.tm_mday) + " " + months[tm.tm_mon];
 }
 
-std::string whenShort(uint32_t unix) {
-    if (!unix) return "";
+std::string whenShort(uint32_t unixSec) {
+    if (!unixSec) return "";
     const uint32_t now = app::rete().unixTime();
-    std::tm a = local(unix), b = local(now ? now : unix);
-    if (a.tm_year == b.tm_year && a.tm_yday == b.tm_yday) return timeHM(unix);
+    std::tm a = local(unixSec), b = local(now ? now : unixSec);
+    if (a.tm_year == b.tm_year && a.tm_yday == b.tm_yday) return timeHM(unixSec);
     if (a.tm_year == b.tm_year && a.tm_yday + 1 == b.tm_yday) return "ieri";
     char s[16];
     snprintf(s, sizeof(s), "%02d/%02d", a.tm_mday, a.tm_mon + 1);

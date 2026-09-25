@@ -58,6 +58,17 @@ lv_obj_t* List::addRow(int height) {
 lv_obj_t* List::text(lv_obj_t* r, const lv_font_t* font, lv_color_t color, const std::string& s, bool expand) {
     lv_obj_t* l = label(r, font, color, s.c_str());
     lv_obj_set_style_text_color(l, NERO(), LV_STATE_CHECKED);
+    // Riga gia' selezionata (la prima): il testo nuovo deve essere nero da subito.
+    for (lv_obj_t* p = r; p; p = lv_obj_get_parent(p))
+        if (lv_obj_has_state(p, LV_STATE_CHECKED)) {
+            lv_obj_add_state(l, LV_STATE_CHECKED);
+            break;
+        }
+    // Icone tutte della stessa larghezza, cosi' i testi accanto sono allineati.
+    if (font == &icone_18 || font == &icone_22 || font == &icone_28) {
+        lv_obj_set_width(l, font == &icone_28 ? 36 : 28);
+        lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    }
     if (expand) {
         grow(l);
         lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
@@ -89,6 +100,7 @@ bool List::key(Key k) {
 // ---------------------------------------------------------------- TextInput
 
 void TextInput::create(lv_obj_t* parent, int w, int h, bool multiline, size_t maxChars, const char* placeholder) {
+    closeSym();
     max_ = maxChars;
     wrap_ = row(parent, 8);
     lv_obj_set_size(wrap_, w, h);
@@ -240,7 +252,7 @@ TextInput::Result TextInput::key(Key k, bool pressed) {
                     const bool sentence = t.empty() || (t.size() >= 2 && t.back() == ' ' &&
                                                          (t[t.size() - 2] == '.' || t[t.size() - 2] == '!' ||
                                                           t[t.size() - 2] == '?'));
-                    const bool upper = caps_ || shift_ || (sentence && max_ >= 40);
+                    const bool upper = caps_ || shift_ || sentence;
                     ch = uint32_t(upper ? c - 32 : c);
                 }
             }
@@ -260,9 +272,22 @@ TextInput::Result TextInput::key(Key k, bool pressed) {
 }
 
 void TextInput::openSym() {
-    sym_ = column(lv_layer_top(), 8);
+    // Figlio dell'area della schermata (non del livello in cima): se la schermata viene
+    // coperta o chiusa, il riquadro sparisce con lei.
+    lv_obj_t* area = wrap_;
+    while (lv_obj_get_parent(area) && lv_obj_get_parent(lv_obj_get_parent(area))) area = lv_obj_get_parent(area);
+    sym_ = column(area, 8);
+    lv_obj_add_flag(sym_, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_size(sym_, 452, LV_SIZE_CONTENT);
-    lv_obj_align(sym_, LV_ALIGN_BOTTOM_MID, 0, -110);
+    lv_obj_align(sym_, LV_ALIGN_BOTTOM_MID, 0, -78);
+    lv_obj_add_event_cb(
+        sym_,
+        [](lv_event_t* e) {
+            auto* self = static_cast<TextInput*>(lv_event_get_user_data(e));
+            self->sym_ = nullptr;
+            self->symCells_.clear();
+        },
+        LV_EVENT_DELETE, this);
     fill(sym_, GRIGIO1());
     radius(sym_, 12);
     pad(sym_, 10, 12, 12, 12);
@@ -299,7 +324,7 @@ void TextInput::symFocus() {
 }
 
 void TextInput::closeSym() {
-    if (sym_) lv_obj_delete(sym_);
+    if (sym_) lv_obj_delete(sym_);  // l'evento DELETE azzera sym_ e symCells_
     sym_ = nullptr;
     symCells_.clear();
 }
