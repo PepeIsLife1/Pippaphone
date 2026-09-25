@@ -264,7 +264,7 @@ def front_shell():
         add(cyl_p(kx(hx_), ky(hy_), P["boss_d"], P["plate"] - 0.01, d["fz_pcb2f"]))
         cut(cyl_p(kx(hx_), ky(hy_), P["insert_d"], d["fz_pcb2f"] + 0.05, d["fz_pcb2f"] - P["insert_len"]))
     # logo sul mento
-    ops.append(("text", dict(txt="Q·MESH", u=X(35), v=Y(125.6), size=2.0, depth=0.3, face="front", z=T)))
+    ops.append(("text", dict(txt="Pippaphone", u=X(35), v=Y(125.6), size=2.2, depth=0.3, face="front", z=T)))
     return dict(name="Frontale", color=(0.12, 0.13, 0.15), ops=ops)
 
 
@@ -320,7 +320,7 @@ def back_cover():
                                 pitch=P["tex_pitch"], w=P["tex_w"], depth=P["tex_d"],
                                 badge=(X(35), Y(75.15), 26.0, 7.0, 3.5))))
     cut(ring("z", X(35), Y((panel[1] + panel[3]) / 2), 64.8, 90.8, 5.4, 64.0, 90.0, 5.0, -1, 0.3))
-    ops.append(("text", dict(txt="Q·MESH", u=X(35), v=Y(75.15), size=2.6, depth=0.3, face="back", z=0)))
+    ops.append(("text", dict(txt="Pippaphone", u=X(35), v=Y(75.15), size=2.6, depth=0.3, face="back", z=0)))
     return dict(name="Retro", color=(0.17, 0.18, 0.20), ops=ops)
 
 
