@@ -1,0 +1,211 @@
+(kicad_sch
+  (version 20230121)
+  (generator eeschema)
+  (uuid "20870c95-9363-45d8-8640-cca61952289a")
+  (paper "A3")
+  (title_block
+    (title "Q-Mesh · PCB 1 main")
+    (date "2026-09-23")
+    (rev "0 (bozza)")
+    (company "Q-Mesh")
+    (comment 1 "Generato da script - verificare prima della produzione"))
+  (lib_symbols)
+  (text "Q-Mesh — telefono LoRa 868 MHz in stile BlackBerry. Rev. 1 generata da script: vedi note su ogni foglio."
+    (at 30 30 0)
+    (effects
+      (font
+        (size 2.5 2.5))
+      (justify left bottom))
+    (uuid "783c5c17-23f3-425f-9168-89b6f2918059"))
+  (text "Rev. 1: piedinature di IPD, switch RF, SAW e display controllate sui datasheet (vedi note sui fogli)."
+    (at 30 36 0)
+    (effects
+      (font
+        (size 2 2))
+      (justify left bottom))
+    (uuid "22d341fe-d711-4f55-9c7c-f3efdfcff684"))
+  (sheet
+    (at 30 60)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "502094c4-e98e-4721-bc2d-00796faeda0a")
+    (property "Sheetname" "Alimentazione"
+      (at 30 59.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "power.kicad_sch"
+      (at 30 105.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "2")))))
+  (sheet
+    (at 150 60)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "61725992-953a-4847-a7d2-2d059dec6dfd")
+    (property "Sheetname" "ESP32-S3R8"
+      (at 150 59.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "mcu.kicad_sch"
+      (at 150 105.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "3")))))
+  (sheet
+    (at 270 60)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "36edc776-e815-492b-a35d-26ebe4129170")
+    (property "Sheetname" "LoRa SX1262 868 MHz"
+      (at 270 59.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "lora.kicad_sch"
+      (at 270 105.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "4")))))
+  (sheet
+    (at 30 130)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "035376b1-2f38-46d7-aad5-17a54662107a")
+    (property "Sheetname" "GNSS AT6558R"
+      (at 30 129.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "gnss.kicad_sch"
+      (at 30 175.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "5")))))
+  (sheet
+    (at 150 130)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "d4d5d33f-1766-4781-aea2-324422e9a0d6")
+    (property "Sheetname" "Audio e vibrazione"
+      (at 150 129.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "audio.kicad_sch"
+      (at 150 175.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "6")))))
+  (sheet
+    (at 270 130)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "21fbdcf4-5add-4926-ab35-7a7a133520d3")
+    (property "Sheetname" "Display 3,4\" RGB"
+      (at 270 129.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "display.kicad_sch"
+      (at 270 175.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "7")))))
+  (sheet
+    (at 30 200)
+    (size 90 45)
+    (fields_autoplaced)
+    (stroke
+      (width 0.1524)
+      (type solid))
+    (fill
+      (color 0 0 0 0))
+    (uuid "b072de76-305b-4d90-8907-fb788c999bbd")
+    (property "Sheetname" "Espansione, tasti, microSD, tastiera"
+      (at 30 199.3 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left bottom)))
+    (property "Sheetfile" "io.kicad_sch"
+      (at 30 245.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left top)))
+    (instances
+      (project "qmesh-main"
+        (path "/20870c95-9363-45d8-8640-cca61952289a"
+          (page "8")))))
+  (sheet_instances
+    (path "/"
+      (page "1"))))

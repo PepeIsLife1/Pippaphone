@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "qmesh")(type "KiCad")(uri "${KIPRJMOD}/lib/qmesh.pretty")(options "")(descr "Q-Mesh"))
+)

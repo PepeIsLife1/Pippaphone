@@ -1,0 +1,18 @@
+** Drc report for /home/claude/qmesh-kicad/qmesh-kbd/qmesh-kbd.kicad_pcb **
+** Created on 2026-09-25 09:12:19 **
+
+** Found 2 DRC violations **
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(50.5000 mm, 40.0000 mm): Line on Edge.Cuts
+    @(59.3500 mm, 40.8400 mm): Line on B.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; Severity: warning
+    @(50.5000 mm, 40.0000 mm): Line on Edge.Cuts
+    @(68.6500 mm, 39.1000 mm): Line on B.Silkscreen
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** End of Report **

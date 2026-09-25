@@ -1,0 +1,3 @@
+(version 1)
+(rule "raggi termici singoli ammessi"
+  (constraint min_resolved_spokes 1))
