@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"Q-Mesh",
+	"description":	{
+		"":	"Q-Mesh: scocca apribile stile BlackBerry Classic (frontale, retro, tasti, supporto, lente)"
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

@@ -1,0 +1,1238 @@
+[
+{
+"ref": "R7",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 67.65,
+"y": 6.66,
+"rot": 0.0,
+"bb": [
+66.72,
+6.19,
+68.58,
+7.13
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "SW8",
+"val": "I",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 52.26,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+49.46,
+11.7,
+55.06,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW40",
+"val": "NAV 5 vie",
+"fp": "qmesh:Alps_SKRHA_5way",
+"side": "F",
+"x": 34.8,
+"y": 4.75,
+"rot": 90.0,
+"bb": [
+29.6,
+0.25,
+40.0,
+9.25
+],
+"models": []
+},
+{
+"ref": "SW19",
+"val": "L",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 59.25,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+56.45,
+19.6,
+62.05,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW29",
+"val": "DOLLAR",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 59.25,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+56.45,
+27.5,
+62.05,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW5",
+"val": "T",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 31.31,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+28.51,
+11.7,
+34.11,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW33",
+"val": "SPACE",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 34.05,
+"y": 36.55,
+"rot": 0.0,
+"bb": [
+31.25,
+34.75,
+36.85,
+38.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW38",
+"val": "BACK",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 48.75,
+"y": 4.55,
+"rot": 0.0,
+"bb": [
+45.95,
+2.75,
+51.55,
+6.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW28",
+"val": "M",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 52.26,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+49.46,
+27.5,
+55.06,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "R8",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 3.95,
+"y": 16.66,
+"rot": 0.0,
+"bb": [
+3.02,
+16.19,
+4.88,
+17.13
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R13",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 60.55,
+"y": 32.46,
+"rot": 0.0,
+"bb": [
+59.62,
+31.99,
+61.48,
+32.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R6",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 1.95,
+"y": 6.66,
+"rot": 0.0,
+"bb": [
+1.02,
+6.19,
+2.88,
+7.13
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "SW1",
+"val": "Q",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 3.37,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+0.57,
+11.7,
+6.17,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D1",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 1.45,
+"y": 9.45,
+"rot": 90.0,
+"bb": [
+0.72,
+7.97,
+2.18,
+10.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "D7",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 6.55,
+"y": 33.25,
+"rot": 90.0,
+"bb": [
+5.82,
+31.77,
+7.28,
+34.73
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW13",
+"val": "D",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 17.34,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+14.54,
+19.6,
+20.14,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "R10",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 3.95,
+"y": 24.56,
+"rot": 0.0,
+"bb": [
+3.02,
+24.09,
+4.88,
+25.03
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "D3",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 1.45,
+"y": 17.45,
+"rot": 90.0,
+"bb": [
+0.72,
+15.97,
+2.18,
+18.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW36",
+"val": "CALL",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 7.75,
+"y": 4.55,
+"rot": 0.0,
+"bb": [
+4.95,
+2.75,
+10.55,
+6.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW27",
+"val": "N",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 45.28,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+42.48,
+27.5,
+48.08,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW23",
+"val": "X",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 17.34,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+14.54,
+27.5,
+20.14,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW14",
+"val": "F",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 24.32,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+21.52,
+19.6,
+27.12,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW18",
+"val": "K",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 52.26,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+49.46,
+19.6,
+55.06,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW21",
+"val": "ALT",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 3.37,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+0.57,
+27.5,
+6.17,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW32",
+"val": "ZERO_MIC",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 18.6,
+"y": 36.55,
+"rot": 0.0,
+"bb": [
+15.8,
+34.75,
+21.4,
+38.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW24",
+"val": "C",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 24.32,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+21.52,
+27.5,
+27.12,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D6",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 68.15,
+"y": 25.35,
+"rot": 90.0,
+"bb": [
+67.42,
+23.87,
+68.88,
+26.83
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW15",
+"val": "G",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 31.31,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+28.51,
+19.6,
+34.11,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D5",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 1.45,
+"y": 25.35,
+"rot": 90.0,
+"bb": [
+0.72,
+23.87,
+2.18,
+26.83
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW16",
+"val": "H",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 38.29,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+35.49,
+19.6,
+41.09,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW11",
+"val": "A",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 3.37,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+0.57,
+19.6,
+6.17,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW10",
+"val": "P",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 66.23,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+63.43,
+11.7,
+69.03,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW7",
+"val": "U",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 45.28,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+42.48,
+11.7,
+48.08,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW25",
+"val": "V",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 31.31,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+28.51,
+27.5,
+34.11,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW35",
+"val": "RSHIFT",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 57.1,
+"y": 36.55,
+"rot": 0.0,
+"bb": [
+54.3,
+34.75,
+59.9,
+38.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "H1",
+"val": "M2",
+"fp": "MountingHole:MountingHole_2.2mm_M2",
+"side": "F",
+"x": 3.05,
+"y": 36.05,
+"rot": 0.0,
+"bb": [
+0.59,
+33.6,
+5.5,
+38.5
+],
+"models": []
+},
+{
+"ref": "SW34",
+"val": "SYM",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 49.5,
+"y": 36.55,
+"rot": 0.0,
+"bb": [
+46.7,
+34.75,
+52.3,
+38.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "R9",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 65.65,
+"y": 16.66,
+"rot": 0.0,
+"bb": [
+64.72,
+16.19,
+66.58,
+17.13
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "SW37",
+"val": "MENU",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 20.95,
+"y": 4.55,
+"rot": 0.0,
+"bb": [
+18.15,
+2.75,
+23.75,
+6.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "R12",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 4.05,
+"y": 32.46,
+"rot": 0.0,
+"bb": [
+3.12,
+31.99,
+4.98,
+32.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "SW17",
+"val": "J",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 45.28,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+42.48,
+19.6,
+48.08,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW6",
+"val": "Y",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 38.29,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+35.49,
+11.7,
+41.09,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW3",
+"val": "E",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 17.34,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+14.54,
+11.7,
+20.14,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D2",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 68.15,
+"y": 9.45,
+"rot": 90.0,
+"bb": [
+67.42,
+7.97,
+68.88,
+10.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW12",
+"val": "S",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 10.35,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+7.55,
+19.6,
+13.15,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "R11",
+"val": "330R",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "F",
+"x": 65.65,
+"y": 24.56,
+"rot": 0.0,
+"bb": [
+64.72,
+24.09,
+66.58,
+25.03
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "H2",
+"val": "M2",
+"fp": "MountingHole:MountingHole_2.2mm_M2",
+"side": "F",
+"x": 66.55,
+"y": 36.05,
+"rot": 0.0,
+"bb": [
+64.09,
+33.6,
+69.0,
+38.5
+],
+"models": []
+},
+{
+"ref": "SW31",
+"val": "LSHIFT",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 11.0,
+"y": 36.55,
+"rot": 0.0,
+"bb": [
+8.2,
+34.75,
+13.8,
+38.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW2",
+"val": "W",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 10.35,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+7.55,
+11.7,
+13.15,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW26",
+"val": "B",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 38.29,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+35.49,
+27.5,
+41.09,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW22",
+"val": "Z",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 10.35,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+7.55,
+27.5,
+13.15,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW39",
+"val": "END",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 62.25,
+"y": 4.55,
+"rot": 0.0,
+"bb": [
+59.45,
+2.75,
+65.05,
+6.35
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW9",
+"val": "O",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 59.25,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+56.45,
+11.7,
+62.05,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D4",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 68.15,
+"y": 17.45,
+"rot": 90.0,
+"bb": [
+67.42,
+15.97,
+68.88,
+18.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW30",
+"val": "ENTER",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 66.23,
+"y": 29.3,
+"rot": 0.0,
+"bb": [
+63.43,
+27.5,
+69.03,
+31.1
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "D8",
+"val": "LED bianco",
+"fp": "LED_SMD:LED_0603_1608Metric",
+"side": "F",
+"x": 63.05,
+"y": 33.25,
+"rot": 90.0,
+"bb": [
+62.32,
+31.77,
+63.78,
+34.73
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "SW20",
+"val": "BKSP",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 66.23,
+"y": 21.4,
+"rot": 0.0,
+"bb": [
+63.43,
+19.6,
+69.03,
+23.2
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "SW4",
+"val": "R",
+"fp": "Button_Switch_SMD:SW_Push_1P1T_NO_CK_KMR2",
+"side": "F",
+"x": 24.32,
+"y": 13.5,
+"rot": 0.0,
+"bb": [
+21.52,
+11.7,
+27.12,
+15.3
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_NO_CK_KMR2.wrl"
+]
+},
+{
+"ref": "C2",
+"val": "1uF",
+"fp": "Capacitor_SMD:C_0402_1005Metric",
+"side": "B",
+"x": 24.05,
+"y": 16.61,
+"rot": 180.0,
+"bb": [
+23.14,
+16.15,
+24.96,
+17.07
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "J1",
+"val": "FFC verso PCB 1",
+"fp": "Connector_FFC-FPC:Hirose_FH12-12S-0.5SH_1x12-1MP_P0.50mm_Horizontal",
+"side": "B",
+"x": 14.05,
+"y": 3.65,
+"rot": 0.0,
+"bb": [
+8.0,
+-1.25,
+20.1,
+6.65
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Connector_FFC-FPC.3dshapes/Hirose_FH12-12S-0.5SH_1x12-1MP_P0.50mm_Horizontal.wrl"
+]
+},
+{
+"ref": "C3",
+"val": "100nF",
+"fp": "Capacitor_SMD:C_0402_1005Metric",
+"side": "B",
+"x": 26.05,
+"y": 15.11,
+"rot": 180.0,
+"bb": [
+25.14,
+14.65,
+26.96,
+15.57
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "U1",
+"val": "TCA8418RTWR",
+"fp": "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm",
+"side": "B",
+"x": 26.8,
+"y": 20.05,
+"rot": 180.0,
+"bb": [
+24.2,
+17.45,
+29.4,
+22.65
+],
+"models": [
+"${KICAD7_3DMODEL_DIR}/Package_DFN_QFN.3dshapes/QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm.wrl"
+]
+},
+{
+"ref": "R5",
+"val": "100k",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "B",
+"x": 23.71,
+"y": 14.96,
+"rot": 180.0,
+"bb": [
+22.78,
+14.49,
+24.64,
+15.43
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R3",
+"val": "100k",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "B",
+"x": 22.71,
+"y": 18.96,
+"rot": 180.0,
+"bb": [
+21.78,
+18.49,
+23.64,
+19.43
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R2",
+"val": "100k",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "B",
+"x": 31.14,
+"y": 18.46,
+"rot": 180.0,
+"bb": [
+30.21,
+17.99,
+32.07,
+18.93
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R4",
+"val": "100k",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "B",
+"x": 22.71,
+"y": 20.71,
+"rot": 180.0,
+"bb": [
+21.78,
+20.24,
+23.64,
+21.18
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "R1",
+"val": "10k",
+"fp": "Resistor_SMD:R_0402_1005Metric",
+"side": "B",
+"x": 28.8,
+"y": 16.61,
+"rot": 180.0,
+"bb": [
+27.87,
+16.14,
+29.73,
+17.08
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0402_1005Metric.wrl"
+]
+},
+{
+"ref": "C4",
+"val": "10uF",
+"fp": "Capacitor_SMD:C_0603_1608Metric",
+"side": "B",
+"x": 12.05,
+"y": 8.0,
+"rot": 180.0,
+"bb": [
+10.57,
+7.27,
+13.53,
+8.73
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0603_1608Metric.wrl"
+]
+},
+{
+"ref": "C1",
+"val": "100nF",
+"fp": "Capacitor_SMD:C_0402_1005Metric",
+"side": "B",
+"x": 26.55,
+"y": 16.61,
+"rot": 180.0,
+"bb": [
+25.64,
+16.15,
+27.46,
+17.07
+],
+"models": [
+"${KICAD6_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0402_1005Metric.wrl"
+]
+}
+]
