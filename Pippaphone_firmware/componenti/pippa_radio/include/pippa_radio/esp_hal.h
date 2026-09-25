@@ -1,0 +1,42 @@
+// Collegamento di RadioLib all'hardware dell'ESP32-S3 con i driver di ESP-IDF.
+#pragma once
+
+#include <RadioLib.h>
+
+#include "driver/gpio.h"
+#include "driver/spi_master.h"
+
+namespace pippa {
+
+class EspHal : public RadioLibHal {
+public:
+    // initBus = false se il bus SPI e' gia' stato inizializzato da altri (es. microSD).
+    EspHal(spi_host_device_t host, int sck, int miso, int mosi, bool initBus, int clockHz = 8000000);
+
+    void init() override;
+    void term() override;
+    void pinMode(uint32_t pin, uint32_t mode) override;
+    void digitalWrite(uint32_t pin, uint32_t value) override;
+    uint32_t digitalRead(uint32_t pin) override;
+    void attachInterrupt(uint32_t interruptNum, void (*interruptCb)(void), uint32_t mode) override;
+    void detachInterrupt(uint32_t interruptNum) override;
+    void delay(RadioLibTime_t ms) override;
+    void delayMicroseconds(RadioLibTime_t us) override;
+    RadioLibTime_t millis() override;
+    RadioLibTime_t micros() override;
+    long pulseIn(uint32_t pin, uint32_t state, RadioLibTime_t timeout) override;
+    void spiBegin() override {}
+    void spiBeginTransaction() override;
+    void spiTransfer(uint8_t* out, size_t len, uint8_t* in) override;
+    void spiEndTransaction() override;
+    void spiEnd() override {}
+
+private:
+    spi_host_device_t host_;
+    int sck_, miso_, mosi_;
+    bool initBus_;
+    int clockHz_;
+    spi_device_handle_t dev_ = nullptr;
+};
+
+}  // namespace pippa
