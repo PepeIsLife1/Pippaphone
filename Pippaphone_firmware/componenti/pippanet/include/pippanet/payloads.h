@@ -129,5 +129,7 @@ bool decodeVoiceEnd(const uint8_t* in, size_t len, VoiceEnd& p);
 // intestazione del pezzo (4).
 constexpr size_t VOICE_DATA_MAX = MAX_PAYLOAD - TAG_SIZE - 4 - 4;
 constexpr size_t MAX_VOICE_PACKETS = 32;
+// Byte di un pezzo di vocale: multiplo di 4 (un frame di Codec2 700C = 4 byte).
+constexpr size_t VOICE_CHUNK = (VOICE_DATA_MAX / 4) * 4;
 
 }  // namespace pn

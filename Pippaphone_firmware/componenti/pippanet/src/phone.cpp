@@ -9,7 +9,6 @@ constexpr int MAX_ATTEMPTS = 4;
 constexpr Millis CERT_RETRY_MS = 60000;  // andata e ritorno di un certificato su 4 salti, con ritrasmissioni
 constexpr Millis CERT_ANSWER_MIN_MS = 30000;
 constexpr Millis VOICE_GUARD_MS = 400;      // attesa perche' i ripetitori passino al canale voce
-constexpr size_t VOICE_CHUNK = (VOICE_DATA_MAX / 4) * 4;  // multiplo di 4 byte (frame Codec2)
 constexpr size_t PAIR_OVERHEAD = 4 + TAG_SIZE;          // msgId + tag
 
 uint16_t randomId() {

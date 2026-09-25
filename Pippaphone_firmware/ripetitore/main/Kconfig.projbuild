@@ -1,0 +1,23 @@
+menu "Pippaphone ripetitore"
+
+    choice RIPETITORE_SCHEDA
+        prompt "Scheda"
+        default RIPETITORE_SCHEDA_TELEFONO
+        help
+            Su quale hardware gira il ripetitore.
+
+        config RIPETITORE_SCHEDA_TELEFONO
+            bool "PCB del telefono Pippaphone (per provare la rete)"
+        config RIPETITORE_SCHEDA_E22
+            bool "Scheda ripetitore: ESP32-S3 + Ebyte E22-900M30S (vedi HARDWARE.md)"
+    endchoice
+
+    config RIPETITORE_POTENZA_MAX
+        int "Potenza massima dell'SX1262 (dBm)"
+        range -9 22
+        default 22
+        help
+            Con il modulo E22-900M30S l'SX1262 pilota un amplificatore da 1 W: a 22 dBm
+            in ingresso il modulo esce a circa 30 dBm.
+
+endmenu

@@ -109,6 +109,12 @@ void Node::clearQueue(Channel ch) {
                  queue_.end());
 }
 
+bool Node::hasTx(Millis now, Channel ch) const {
+    for (const auto& t : queue_)
+        if (t.ch == ch && t.notBefore <= now && mayTransmit(t.frame, now)) return true;
+    return false;
+}
+
 bool Node::popTx(Millis now, Channel ch, Frame& out) {
     int best = -1;
     for (size_t i = 0; i < queue_.size(); i++) {

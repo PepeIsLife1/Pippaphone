@@ -59,6 +59,8 @@ public:
     virtual void tick(Millis now);
     // Prossimo pacchetto da trasmettere sul canale ch, se ce n'e' uno pronto.
     bool popTx(Millis now, Channel ch, Frame& out);
+    // true se popTx restituirebbe qualcosa (per ascoltare il canale prima di togliere il pacchetto).
+    bool hasTx(Millis now, Channel ch) const;
     // Canale su cui stare in ricezione (e trasmettere) adesso.
     virtual Channel activeChannel(Millis now) const { (void)now; return Channel::MAIN; }
     // La piattaforma avvisa quando un pacchetto e' uscito davvero.
