@@ -59,7 +59,7 @@
         "connection_width": "warning",
         "copper_edge_clearance": "error",
         "copper_sliver": "warning",
-        "courtyards_overlap": "warning",
+        "courtyards_overlap": "error",
         "diff_pair_gap_out_of_range": "error",
         "diff_pair_uncoupled_length_too_long": "error",
         "drill_out_of_range": "error",
@@ -74,8 +74,8 @@
         "item_on_disabled_layer": "error",
         "items_not_allowed": "error",
         "length_out_of_range": "error",
-        "lib_footprint_issues": "ignore",
-        "lib_footprint_mismatch": "ignore",
+        "lib_footprint_issues": "warning",
+        "lib_footprint_mismatch": "warning",
         "malformed_courtyard": "error",
         "microvia_drill_out_of_range": "error",
         "missing_courtyard": "ignore",
@@ -224,11 +224,6 @@
     "legacy_lib_dir": "",
     "legacy_lib_list": []
   },
-  "sheets": [
-    [
-      "42c98027-dc3a-4d5c-a42f-5eb7ba195e51",
-      "Root"
-    ]
-  ],
+  "sheets": [],
   "text_variables": {}
 }

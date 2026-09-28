@@ -1,0 +1,42 @@
+== qmesh-main ==
+BOM: 75 righe, CPL: 163 componenti, gerber/forature: 16 file
+DRC: connessioni mancanti 0, errori 0
+  courtyards_overlap       warning  35   (27 nella sezione GNSS: tra i corpi >= 0,2 mm, tra pad di reti diverse >= 0,21 mm)
+  silk_edge_clearance      warning  2
+  silk_over_copper         warning  4
+  track_dangling           warning  3
+  via_dangling             warning  26
+qmesh-main: 188 footprint, 0 differenze
+== qmesh-kbd ==
+BOM: 10 righe, CPL: 63 componenti, gerber/forature: 14 file
+DRC: connessioni mancanti 0
+  silk_edge_clearance      warning  2
+qmesh-kbd: 65 footprint, 0 differenze
+
+== Linee RF (PCB 1) ==
+CPWG W 0,30 / gap 0,20 su 0,2104 mm Er 4,4: Z0 = 49.0 ohm analitico (eps_eff 3.02), 51.6 ohm col risolutore di campo e la solder mask
+buchi nel piano In2 in mm2: 'sotto' = pista + gap (0,2 mm per lato), 'fascia' = 0,6 mm dall'asse (esclusa la zona senza rame sotto l'antenna Wi-Fi)
+rete         lungh.    largh.     strato gap GND  sotto   fascia
+LORA_ANT_M   3.93 mm   0.30       B.Cu   0.200    0.000    0.000
+LORA_ANT     6.61 mm   0.30       B.Cu   0.200    0.000    0.000
+WIFI_RF      3.36 mm   0.20/0.30  B.Cu   0.200    0.000    0.000
+WIFI_ANT     4.72 mm   0.30       B.Cu   0.200    0.000    0.000
+GN_ANT       1.47 mm   0.30       B.Cu   0.222    0.000    0.000
+GN_ANT_M     1.57 mm   0.20/0.30  B.Cu   0.200    0.000    0.000
+GN_SAW1_OUT  0.77 mm   0.20       B.Cu   0.201    0.000    0.000
+GN_LNA_M     0.73 mm   0.30       B.Cu   0.308    0.000    0.000
+GN_LNA_IN    0.57 mm   0.20       B.Cu   0.375    0.000    0.000
+GN_LNA_OUT   0.65 mm   0.20       B.Cu   0.216    0.000    0.000
+GN_SAW_OUT   0.65 mm   0.20       B.Cu   0.260    0.000    0.000
+GN_RF_M      0.84 mm   0.30       B.Cu   0.277    0.000    0.000
+GN_RF_IN     0.86 mm   0.20/0.30  B.Cu   0.200    0.000    0.000
+SX_RFO       3.12 mm   0.20       B.Cu   0.201    0.000    0.000
+SX_RFI_P     1.76 mm   0.20       B.Cu   0.200    0.000    0.000
+SX_RFI_N     1.76 mm   0.20       B.Cu   0.250    0.000    0.000
+IPD_SW_RFO   1.37 mm   0.20       B.Cu   0.200    0.000    0.000
+IPD_SW_RFI   1.37 mm   0.20       B.Cu   0.200    0.000    0.000
+RFSW_TX      1.14 mm   0.20       B.Cu   0.180    0.000    0.000
+RFSW_RX      1.14 mm   0.20       B.Cu   0.180    0.000    0.000
+RFSW_COM     0.80 mm   0.20       B.Cu   0.275    0.000    0.000
+note: RFSW_TX/RX 0,18 mm solo ai pad di U9 (passo 0,4); i tratti a 0,20 mm della catena GNSS sono lunghi meno di 1 mm (lambda/10 ~ 11 mm a 1575 MHz)
+ESITO: OK, nessuna eccezione

@@ -1,17 +1,50 @@
+Q-Mesh rev. 1.1 - verifiche del 28/9/2026 (KiCad 7.0.11)
+
 == qmesh-main ==
-BOM: 75 righe, CPL: 163 componenti, gerber/forature: 16 file
+BOM: 79 righe, CPL: 179 componenti, gerber/forature: 16 file
 DRC: connessioni mancanti 0, errori 0
-  courtyards_overlap       warning  35   (27 nella sezione GNSS: tra i corpi >= 0,2 mm, tra pad di reti diverse >= 0,21 mm)
-  silk_edge_clearance      warning  2
-  silk_over_copper         warning  4
-  track_dangling           warning  3
-  via_dangling             warning  26
-qmesh-main: 188 footprint, 0 differenze
+  courtyards_overlap       warning  53   (35 come nella rev. 1, 18 nuovi: tra i corpi >= 0,26 mm, tra pad di reti diverse >= 0,22 mm)
+  silk_over_copper         warning  3    (serigrafia di libreria tagliata dalla maschera)
+  track_dangling           0             (erano 3)
+  via_dangling             0             (erano 26)
+qmesh-main: 205 componenti nello schema, 205 sulla PCB, 0 differenze pad per pad; collegamenti schema-PCB (UUID) 0 differenze
+Colate di rame: riempite di nuovo prima dell'esportazione dei gerber
+
+Cortili sovrapposti nuovi rispetto alla rev. 1 (18):
+  coppia      pad-pad   corpi  lato
+  C16-R15     0,25      0,26   B    quarzo Y1: disaccoppiamento piedino 56 e resistenza in serie a XTAL_P
+  C16-U5      0,56      0,60   B
+  R15-U5      0,29      0,78   B
+  R15-Y1      0,22      0,57   B
+  C20-Y1      0,29      0,45   B    condensatori di carico ai capi del quarzo
+  C21-Y1      0,24      0,40   B
+  C18-C21     0,23      0,45   B
+  R48-Y2      0,23      0,38   B    resistenza in serie all'uscita del TCXO
+  C4-U3       0,32      0,50   B    TPS63001 compattato secondo le regole TI
+  C6-U3       0,85      0,30   B
+  C6-L1       0,48      0,47   B
+  L1-R5       0,36      0,31   B
+  C4-Q2       0,80      1,15   B    circuito di accensione
+  C4-R59      0,46      0,62   B
+  Q2-R59      0,65      0,33   B
+  D6-R37      0,86      0,33   B
+  D8-R52      0,40      0,78   F
+  D8-R60      0,86      0,33   F
+
 == qmesh-kbd ==
 BOM: 10 righe, CPL: 63 componenti, gerber/forature: 14 file
-DRC: connessioni mancanti 0
+DRC: connessioni mancanti 0, errori 0
   silk_edge_clearance      warning  2
-qmesh-kbd: 65 footprint, 0 differenze
+qmesh-kbd: 65 componenti, 0 differenze
+Navigatore SW40 (Alps SKRHABE010) confrontato col disegno Alps, catalogo SKRH p. 481:
+  6 pad 1,35 x 1,0 mm, colonne a +-3,575 mm, passo 1,425 mm (ingombro 3,85, luce interna 1,85)   uguale
+  linguette 2,0 x 1,8 mm a +-4,05 mm (6,3 / 9,9)                                             uguale, ora senza foro
+  fori guida ø0,75 (alto) e ø1,05 (basso), sull'asse, a 3,8 mm                                uguale
+  piedini 1-2-3 a sinistra, 4-5-6 a destra visti dal lato componenti, foro piccolo in alto     uguale
+  via di massa accanto a ogni linguetta (0,45 / 0,25 mm); forature PTH: 61 via, nessun pad forato
+Nota: nel report DRC della tastiera sono esclusi i controlli "libreria" (lib_footprint_issues/mismatch),
+come nel progetto della PCB 1: nell'ambiente di verifica le librerie standard KiCad non sono installate
+e il controllo darebbe 64 avvisi finti.
 
 == Linee RF (PCB 1) ==
 CPWG W 0,30 / gap 0,20 su 0,2104 mm Er 4,4: Z0 = 49.0 ohm analitico (eps_eff 3.02), 51.6 ohm col risolutore di campo e la solder mask
@@ -25,18 +58,47 @@ GN_ANT       1.47 mm   0.30       B.Cu   0.222    0.000    0.000
 GN_ANT_M     1.57 mm   0.20/0.30  B.Cu   0.200    0.000    0.000
 GN_SAW1_OUT  0.77 mm   0.20       B.Cu   0.201    0.000    0.000
 GN_LNA_M     0.73 mm   0.30       B.Cu   0.308    0.000    0.000
-GN_LNA_IN    0.57 mm   0.20       B.Cu   0.375    0.000    0.000
+GN_LNA_IN    0.57 mm   0.20       B.Cu   0.325    0.000    0.000
 GN_LNA_OUT   0.65 mm   0.20       B.Cu   0.216    0.000    0.000
 GN_SAW_OUT   0.65 mm   0.20       B.Cu   0.260    0.000    0.000
 GN_RF_M      0.84 mm   0.30       B.Cu   0.277    0.000    0.000
 GN_RF_IN     0.86 mm   0.20/0.30  B.Cu   0.200    0.000    0.000
 SX_RFO       3.12 mm   0.20       B.Cu   0.201    0.000    0.000
 SX_RFI_P     1.76 mm   0.20       B.Cu   0.200    0.000    0.000
-SX_RFI_N     1.76 mm   0.20       B.Cu   0.250    0.000    0.000
+SX_RFI_N     1.76 mm   0.20       B.Cu   0.200    0.000    0.000
 IPD_SW_RFO   1.37 mm   0.20       B.Cu   0.200    0.000    0.000
 IPD_SW_RFI   1.37 mm   0.20       B.Cu   0.200    0.000    0.000
 RFSW_TX      1.14 mm   0.20       B.Cu   0.180    0.000    0.000
 RFSW_RX      1.14 mm   0.20       B.Cu   0.180    0.000    0.000
 RFSW_COM     0.80 mm   0.20       B.Cu   0.275    0.000    0.000
 note: RFSW_TX/RX 0,18 mm solo ai pad di U9 (passo 0,4); i tratti a 0,20 mm della catena GNSS sono lunghi meno di 1 mm (lambda/10 ~ 11 mm a 1575 MHz)
-ESITO: OK, nessuna eccezione
+Geometria delle linee RF identica alla rev. 1.
+Rame di altre reti entro 1,2 mm dalle linee RF, rispetto alla rev. 1: nessun nuovo tratto sul lato B.
+  Unico nuovo: VSYS sul lato F sopra la rete di adattamento Wi-Fi (L3, C22, C23). Tra i due ci sono In1 e il piano GND
+  pieno In2, e VSYS e' continua: nessun effetto.
+ESITO: OK
+
+== Cadute di tensione su +3V3 (risolutore resistivo sul rame, caso peggiore) ==
+Caso: Wi-Fi in TX + LoRa in TX + resto acceso, 668 mA dal TPS63001 (U3)
+  carico                     corrente   caduta
+  U5 (ESP32-S3) VDD3P3        50 mA      88 mV
+  L2 (ESP32-S3, RF)          280 mA     104 mV   (era 169 mV nella rev. 1)
+  FB1 (SX1262)               118 mA      54 mV
+  U10 (AT6558R)                5 mA      77 mV
+  J6 (microSD)                50 mA       9 mV
+  M1 (motorino)               80 mA      11 mV
+Caduta massima 104 mV: all'ESP32 arrivano almeno 3,19 V (minimo del datasheet 3,0 V).
+Tronco +3V3 sul bordo sinistro allargato da 0,25 a 1,0 mm.
+
+== Oscillatori e nodi sensibili ==
+Quarzo Y1 (ESP32, 40 MHz), regole di layout Espressif:
+  distanza quarzo - piedini XTAL 2,05 mm (minimo 2,0)
+  XTAL_N 3,8 mm, XTAL_P + XTAL_P_X 4,3 mm, tutto sul lato B, nessuna via (rev. 1: 12 e 15 mm, 5 via, tratti su In1 e F)
+  R15 (serie su XTAL_P) accanto al chip, C20/C21 ai capi del quarzo, massa del lato B intorno, via di massa sui pad GND
+  sotto il quarzo: In2 piano GND pieno; su In1 nessuna pista sotto il quarzo (FL_D1 passa 0,05 mm fuori dal bordo, schermata da In2)
+  accoppiamento con altre piste sullo stesso strato o su quello vicino (< 0,5 mm): solo LCD_B5 (piedino accanto, 2 mm) e +3V3
+  distanza dal bordo dell'antenna Wi-Fi 0,95 mm
+SCK: la resistenza in serie R56 e' sul lato F sopra la pista SCK su In1, in una zona senza componenti (x 75,5, y 50,7).
+  Nessuna pista SCK sul lato B vicino al GNSS o a Y1.
+NTC (CHG_TS): nessuna pista di commutazione vicina; incrocia solo reti in continua.
+Tasto di accensione: l'AW9523B legge BTN_PWR_SENSE (P1_3) attraverso D8 con R60 100 k a +3V3; D8 e R60 sul lato F accanto alla via del tasto.

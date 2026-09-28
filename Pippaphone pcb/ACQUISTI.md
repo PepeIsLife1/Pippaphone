@@ -1,16 +1,16 @@
-# Q-Mesh rev. 1: cosa comprare
+# Q-Mesh rev. 1.1: cosa comprare
 
-I prezzi sono quelli visti il 24 settembre 2026, le disponibilità dei componenti JLCPCB/LCSC quelle del 27 settembre 2026: ricontrollale prima di ordinare.
+I prezzi sono quelli visti il 24 settembre 2026, le disponibilità dei componenti JLCPCB/LCSC quelle del 27 settembre 2026 (quelle delle tre parti nuove della rev. 1.1 il 28 settembre): ricontrollale prima di ordinare.
 
 ## 1. Montaggio a mano: PCB da JLCPCB, componenti da LCSC (2 telefoni)
 
-**PCB nude e stencil da JLCPCB.** Carica `qmesh-main-gerber.zip` e `qmesh-kbd-gerber.zip` con le impostazioni di `PRODUZIONE.md`, **senza** *PCB Assembly*, e aggiungi uno **stencil per lato** di ogni scheda (4 in tutto). Usa i gerber di questa versione: rispetto a prima è stata rifatta tutta la sezione GNSS (piedinatura dell'AT6558R, LNA U15, secondo SAW FL2).
+**PCB nude e stencil da JLCPCB.** Carica `qmesh-main-gerber.zip` e `qmesh-kbd-gerber.zip` con le impostazioni di `PRODUZIONE.md`, **senza** *PCB Assembly*, e aggiungi uno **stencil per lato** di ogni scheda (4 in tutto). Usa i gerber di questa versione (rev. 1.1) per **tutte e due** le schede: le modifiche sono elencate in `PRODUZIONE.md`.
 
 **Componenti da LCSC.** Nella cartella `ordine_LCSC_montaggio_a_mano/`:
 
 - `Q-Mesh-LCSC-BOM-2telefoni.xlsx` (o `.csv`): caricala nel **BOM Tool** di LCSC. La colonna `LCSC Part Number` fa prendere esattamente il pezzo giusto, senza abbinamenti automatici. Le quantità sono per 2 telefoni più le scorte (20% o almeno 5 pezzi per i passivi, un pezzo in più per integrati e connettori). LCSC le arrotonda al minimo d'ordine.
 - `Customer Part Number` elenca dove va ogni pezzo (`PCB1:` scheda principale, `PCB2:` tastiera): LCSC lo stampa sulle bustine.
-- 78 righe, con stock LCSC controllato il 27 settembre 2026. Unica riga senza stock: **C13594** (33 nF 0402, C70), esaurito su LCSC; va bene qualsiasi 33 nF 0402 X7R da 10 V in su, lo dice la colonna `Note`. In 4 righe il codice è diverso da quello della BOM JLCPCB perché su LCSC l'altro era esaurito; anche questo è nella colonna `Note`.
+- 81 righe, con stock LCSC controllato il 27 settembre 2026 (le tre righe nuove della rev. 1.1 il 28). Unica riga senza stock: **C13594** (33 nF 0402, C70), esaurito su LCSC; va bene qualsiasi 33 nF 0402 X7R da 10 V in su, lo dice la colonna `Note`. In 5 righe il codice è diverso da quello della BOM JLCPCB perché su LCSC l'altro era esaurito (l'ultima è R49: 150 Ω YAGEO C137918 al 5% al posto di C25082); anche questo è nella colonna `Note`.
 
 **Due pezzi fuori da LCSC** (`Q-Mesh-fuori-LCSC.csv`), da [Mouser](https://www.mouser.it) o [DigiKey](https://www.digikey.it):
 
@@ -50,6 +50,25 @@ Stessa impronta, prestazioni uguali o migliori:
 | Y2 | TG2520SMN 32M ECGNNM3 | Epson **X1G0054210205** (C7527388) | È ancora un TG2520SMN 32 MHz ±0,5 ppm, alimentabile da 1,7 a 3,63 V |
 | Y3 | Epson TG2520SMN 26M | Huaxin **2T026000VY** (C19725361) | TCXO 26 MHz 2520, piedinatura standard (1 NC, 2 GND, 3 uscita, 4 VCC). Il datasheet dà ±1,5 ppm (LCSC ±0,5): il GPS funziona, il primo fix a freddo può essere un po' più lento |
 | Y4 | quarzo 32 kHz generico | Seiko **SC-20S 9 pF** (C97603) | 32,768 kHz, 2012. Da 9 pF perché sull'AT6558R il quarzo va senza condensatori esterni (prima era un FC-12M da 12,5 pF) |
+
+### Parti nuove o cambiate nella rev. 1.1 (28/9/2026)
+
+| Rif. | Parte | Codice LCSC | Note |
+|---|---|---|---|
+| Q2 | Alpha & Omega **AO3401A** (P-MOSFET, SOT-23) | C15127 | Nuovo, circuito di accensione |
+| D6, D7, D8 | BAT54WS | come D1 | Nuovi, circuito di accensione (D8: lettura del tasto) |
+| R58, R59, R60 | 100 kΩ 0402 | C25741 | Nuovi, circuito di accensione |
+| R7 | Murata **NCP15XH103F03RC** (NTC 10 kΩ B3380, 0402) | C77131 | Era una 10 kΩ fissa: ora misura la temperatura vicino alla batteria |
+| R9 | – | – | Tolta |
+| R49 | 150 Ω 0402 | C25082 (JLCPCB) / C137918 (LCSC) | Nuova, LED rosso. C25082 esaurito su LCSC il 28/9 |
+| R50, R51 | 100 Ω 0402 | C25076 | Nuove, LED verde e blu |
+| R52 | 330 Ω 0402 | C25104 | Nuova, LED di carica |
+| R53–R57 | 47 Ω 0402 | C25118 | Nuove, in serie al bus SPI |
+| R48 | 220 Ω 0402 | C25091 | Nuova, uscita del TCXO LoRa |
+| R17 | 0 Ω 0402 | C17168 | Era 220 Ω |
+| C28 | 100 nF 0402 | C1525 | Era 10 nF |
+| JP3 | ponticello a stagno | – | Solo rame, non si compra |
+| PCB 2: R2–R9 | 220 Ω 0402 | C25091 | Erano 330 Ω |
 
 ### Sezione GNSS rifatta (27/9/2026)
 

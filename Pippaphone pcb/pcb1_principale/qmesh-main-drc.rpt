@@ -1,27 +1,16 @@
 ** Drc report for qmesh-main.kicad_pcb **
-** Created on 2026-09-27 20:46:23 **
+** Created on 2026-09-28 20:20:09 **
 
-** Found 70 DRC violations **
+** Found 56 DRC violations **
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; Severity: warning
-    @(93.9000 mm, 44.0900 mm): Circle on F.Silkscreen
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; Severity: warning
-    @(95.1000 mm, 44.0900 mm): Circle on F.Silkscreen
+    @(-1.6400 mm, 1.6100 mm): Polygon on B.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; Severity: warning
     @(-2.1100 mm, 2.1100 mm): Polygon on B.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; Severity: warning
     @(-3.6100 mm, 3.6100 mm): Polygon on B.Silkscreen
-[silk_edge_clearance]: Silkscreen clipped by board edge
-    Rule: board setup constraints silk; Severity: warning
-    @(114.0000 mm, 170.3000 mm): Line on Edge.Cuts
-    @(89.7000 mm, 168.6000 mm): Line on B.Silkscreen
-[silk_edge_clearance]: Silkscreen clipped by board edge
-    Rule: board setup constraints silk; Severity: warning
-    @(114.0000 mm, 170.3000 mm): Line on Edge.Cuts
-    @(80.3000 mm, 168.6000 mm): Line on B.Silkscreen
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
     @(94.5000 mm, 44.3500 mm): Footprint D5
@@ -30,6 +19,14 @@
     Rule: board setup constraints courtyard; Severity: warning
     @(94.5000 mm, 44.3500 mm): Footprint D5
     @(95.1000 mm, 43.0000 mm): Footprint D4
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(66.4000 mm, 145.3000 mm): Footprint R60
+    @(65.0000 mm, 144.6500 mm): Footprint D8
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(65.0000 mm, 144.6500 mm): Footprint D8
+    @(64.9000 mm, 146.7000 mm): Footprint R52
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
     @(84.1000 mm, 53.5500 mm): Footprint C38
@@ -72,6 +69,14 @@
     @(85.6000 mm, 50.0000 mm): Footprint U15
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(66.6000 mm, 154.6000 mm): Footprint Q2
+    @(68.7500 mm, 153.9500 mm): Footprint R59
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(66.6000 mm, 154.6000 mm): Footprint Q2
+    @(68.8000 mm, 152.3000 mm): Footprint C4
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(76.5000 mm, 60.8000 mm): Footprint C36
     @(78.3000 mm, 62.0000 mm): Footprint R46
 [courtyards_overlap]: Courtyards overlap
@@ -100,6 +105,10 @@
     @(85.6000 mm, 50.0000 mm): Footprint U15
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(102.3500 mm, 48.6000 mm): Footprint C20
+    @(100.3000 mm, 49.8000 mm): Footprint Y1
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(87.0000 mm, 51.6000 mm): Footprint C71
     @(85.6000 mm, 50.0000 mm): Footprint U15
 [courtyards_overlap]: Courtyards overlap
@@ -108,8 +117,20 @@
     @(88.3500 mm, 51.3000 mm): Footprint R44
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(68.7500 mm, 153.9500 mm): Footprint R59
+    @(68.8000 mm, 152.3000 mm): Footprint C4
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(85.6000 mm, 50.0000 mm): Footprint U15
     @(87.1500 mm, 49.6500 mm): Footprint L11
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(71.3000 mm, 147.3500 mm): Footprint C6
+    @(68.5000 mm, 149.8000 mm): Footprint U3
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(71.3000 mm, 147.3500 mm): Footprint C6
+    @(72.1000 mm, 149.8000 mm): Footprint L1
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
     @(83.0000 mm, 42.4000 mm): Footprint AE2
@@ -124,6 +145,14 @@
     @(84.4000 mm, 58.5500 mm): Footprint C45
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(100.3000 mm, 49.8000 mm): Footprint Y1
+    @(98.3000 mm, 50.9000 mm): Footprint C21
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(100.3000 mm, 49.8000 mm): Footprint Y1
+    @(101.8400 mm, 52.6000 mm): Footprint R15
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(57.7500 mm, 50.7700 mm): Footprint C35
     @(57.7500 mm, 52.2500 mm): Footprint U9
 [courtyards_overlap]: Courtyards overlap
@@ -136,8 +165,20 @@
     @(90.3800 mm, 47.2000 mm): Footprint C49
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(68.5000 mm, 149.8000 mm): Footprint U3
+    @(68.8000 mm, 152.3000 mm): Footprint C4
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(57.5000 mm, 61.0000 mm): Footprint U7
     @(59.9000 mm, 58.1000 mm): Footprint L5
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(100.0000 mm, 57.5000 mm): Footprint U5
+    @(102.7200 mm, 52.8000 mm): Footprint C16
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(100.0000 mm, 57.5000 mm): Footprint U5
+    @(101.8400 mm, 52.6000 mm): Footprint R15
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
     @(100.0000 mm, 57.5000 mm): Footprint U5
@@ -148,107 +189,40 @@
     @(89.9000 mm, 45.9500 mm): Footprint L9
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(72.1000 mm, 149.8000 mm): Footprint L1
+    @(72.2000 mm, 151.7300 mm): Footprint R5
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(85.2000 mm, 57.1000 mm): Footprint C39
     @(84.4000 mm, 58.5500 mm): Footprint C45
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(102.7200 mm, 52.8000 mm): Footprint C16
+    @(101.8400 mm, 52.6000 mm): Footprint R15
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
+    @(97.0000 mm, 50.7700 mm): Footprint C18
+    @(98.3000 mm, 50.9000 mm): Footprint C21
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
     @(88.8500 mm, 49.6500 mm): Footprint C50
     @(87.1500 mm, 49.6500 mm): Footprint L11
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(64.0000 mm, 64.5000 mm): Footprint Y2
+    @(62.2500 mm, 64.2000 mm): Footprint R48
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(58.0000 mm, 56.6000 mm): Footprint U8
     @(59.9000 mm, 58.1000 mm): Footprint L5
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; Severity: warning
+    @(66.8000 mm, 158.6000 mm): Footprint D6
+    @(65.3000 mm, 160.0000 mm): Footprint R37
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; Severity: warning
     @(90.3800 mm, 47.2000 mm): Footprint C49
     @(89.9000 mm, 45.9500 mm): Footprint L9
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(86.3250 mm, 163.6050 mm): Via [CC1] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(83.0750 mm, 163.5800 mm): Via [CC2] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(78.1750 mm, 153.9500 mm): Via [VBAT] on F.Cu - B.Cu
-[track_dangling]: Track has unconnected end
-    Local override; Severity: warning
-    @(100.0634 mm, 140.6685 mm): Track [VBAT] on In1.Cu, length 0.0921 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(77.0500 mm, 152.2000 mm): Via [CHG_ISET] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(73.9000 mm, 153.2250 mm): Via [CHG_ILIM] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(75.8250 mm, 152.1000 mm): Via [CHG_TMR] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(76.4500 mm, 152.0750 mm): Via [CHG_ITERM] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(78.0750 mm, 153.2250 mm): Via [CHG_TS] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(75.6500 mm, 156.4750 mm): Via [PGOOD_N] on F.Cu - B.Cu
-[track_dangling]: Track has unconnected end
-    Local override; Severity: warning
-    @(54.4713 mm, 65.7336 mm): Track [+3V3] on F.Cu, length 0.0354 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(70.5000 mm, 149.3800 mm): Via [BB_L2] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(53.9983 mm, 65.5574 mm): Via [SPI_MOSI] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(101.5250 mm, 61.6750 mm): Via [SPI_MISO] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(87.1500 mm, 137.6250 mm): Via [LCD_G3] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(86.3000 mm, 137.6250 mm): Via [LCD_G1] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(100.2750 mm, 54.7500 mm): Via [GNSS_TXD] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(84.8000 mm, 137.6250 mm): Via [LCD_B4] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(97.2500 mm, 58.1750 mm): Via [FL_D1] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(113.9100 mm, 55.4250 mm): Via [FL_D2] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(60.1500 mm, 60.8250 mm): Via [TCXO_OUT_AC] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(59.0500 mm, 63.5500 mm): Via [SX_VREG] on F.Cu - B.Cu
-[track_dangling]: Track has unconnected end
-    Local override; Severity: warning
-    @(54.7246 mm, 61.5254 mm): Track [LORA_RST_N] on B.Cu, length 1.0395 mm
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(96.9500 mm, 154.3750 mm): Via [SPK_P] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(80.8250 mm, 135.6500 mm): Via [LCD_PCLK_P] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(65.3500 mm, 138.3250 mm): Via [KB_BL] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(62.3500 mm, 157.9800 mm): Via [SD_CS_N] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(61.9500 mm, 141.7750 mm): Via [EXP_RST_N] on F.Cu - B.Cu
-[via_dangling]: Via is not connected or connected on only one layer
-    Local override; Severity: warning
-    @(62.6750 mm, 160.1300 mm): Via [SD_DAT2] on F.Cu - B.Cu
 
 ** Found 0 unconnected pads **
 

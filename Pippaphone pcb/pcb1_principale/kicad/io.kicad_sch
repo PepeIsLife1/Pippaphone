@@ -1414,7 +1414,472 @@
           (number "11"
             (effects
               (font
-                (size 1.27 1.27))))))))
+                (size 1.27 1.27)))))))
+    (symbol "qmesh:VSYS"
+      (power)
+      (pin_names
+        (offset 0))
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "#PWR"
+        (at 0 -3.81 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Value" "VSYS"
+        (at 0 3.556 0)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Datasheet" ""
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_description" "Power symbol creates a global label with name \"VSYS\""
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (symbol "VSYS_0_1"
+        (polyline
+          (pts
+            (xy -0.762 1.27)
+            (xy 0 2.54))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0 0)
+            (xy 0 2.54))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0 2.54)
+            (xy 0.762 1.27))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none))))
+      (symbol "VSYS_1_1"
+        (pin power_in line
+          (at 0 0 90)
+          (length 0) hide
+          (name "VSYS"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))))
+    (symbol "Device:D_Schottky"
+      (pin_numbers hide)
+      (pin_names
+        (offset 1.016) hide)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "D"
+        (at 0 2.54 0)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Value" "D_Schottky"
+        (at 0 -2.54 0)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_keywords" "diode Schottky"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_description" "Schottky diode"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (symbol "D_Schottky_0_1"
+        (polyline
+          (pts
+            (xy 1.27 0)
+            (xy -1.27 0))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 1.27 1.27)
+            (xy 1.27 -1.27)
+            (xy -1.27 0)
+            (xy 1.27 1.27))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy -1.905 0.635)
+            (xy -1.905 1.27)
+            (xy -1.27 1.27)
+            (xy -1.27 -1.27)
+            (xy -0.635 -1.27)
+            (xy -0.635 -0.635))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none))))
+      (symbol "D_Schottky_1_1"
+        (pin passive line
+          (at -3.81 0 0)
+          (length 2.54)
+          (name "K"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin passive line
+          (at 3.81 0 180)
+          (length 2.54)
+          (name "A"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "2"
+            (effects
+              (font
+                (size 1.27 1.27)))))))
+    (symbol "Device:Q_PMOS_GSD"
+      (pin_names
+        (offset 0) hide)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "Q"
+        (at 5.08 1.27 0)
+        (effects
+          (font
+            (size 1.27 1.27))
+          (justify left)))
+      (property "Value" "Q_PMOS_GSD"
+        (at 5.08 -1.27 0)
+        (effects
+          (font
+            (size 1.27 1.27))
+          (justify left)))
+      (property "Footprint" ""
+        (at 5.08 2.54 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_keywords" "transistor PMOS P-MOS P-MOSFET"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_description" "P-MOSFET transistor, gate/source/drain"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (symbol "Q_PMOS_GSD_0_1"
+        (polyline
+          (pts
+            (xy 0.254 0)
+            (xy -2.54 0))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.254 1.905)
+            (xy 0.254 -1.905))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.762 -1.27)
+            (xy 0.762 -2.286))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.762 0.508)
+            (xy 0.762 -0.508))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.762 2.286)
+            (xy 0.762 1.27))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 2.54 2.54)
+            (xy 2.54 1.778))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 2.54 -2.54)
+            (xy 2.54 0)
+            (xy 0.762 0))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.762 -1.778)
+            (xy 3.302 -1.778)
+            (xy 3.302 1.778)
+            (xy 0.762 1.778))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 2.286 0)
+            (xy 1.27 0.381)
+            (xy 1.27 -0.381)
+            (xy 2.286 0))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type outline)))
+        (polyline
+          (pts
+            (xy 2.794 -0.508)
+            (xy 2.921 -0.381)
+            (xy 3.683 -0.381)
+            (xy 3.81 -0.254))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 3.302 -0.381)
+            (xy 2.921 0.254)
+            (xy 3.683 0.254)
+            (xy 3.302 -0.381))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (circle
+          (center 1.651 0)
+          (radius 2.794)
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (circle
+          (center 2.54 -1.778)
+          (radius 0.254)
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type outline)))
+        (circle
+          (center 2.54 1.778)
+          (radius 0.254)
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type outline))))
+      (symbol "Q_PMOS_GSD_1_1"
+        (pin input line
+          (at -5.08 0 0)
+          (length 2.54)
+          (name "G"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin passive line
+          (at 2.54 5.08 270)
+          (length 2.54)
+          (name "S"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "2"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin passive line
+          (at 2.54 -5.08 90)
+          (length 2.54)
+          (name "D"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "3"
+            (effects
+              (font
+                (size 1.27 1.27)))))))
+    (symbol "Jumper:SolderJumper_2_Open"
+      (pin_names
+        (offset 0) hide)
+      (pin_numbers hide)
+      (in_bom no)
+      (on_board yes)
+      (property "Reference" "JP"
+        (at 0 2.032 0)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Value" "SolderJumper_2_Open"
+        (at 0 -2.54 0)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_description" "Solder jumper, 2-pole, open"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (symbol "SolderJumper_2_Open_0_1"
+        (arc
+          (start -0.254 1.016)
+          (mid -1.2656 0)
+          (end -0.254 -1.016)
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy -0.254 1.016)
+            (xy -0.254 -1.016))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (polyline
+          (pts
+            (xy 0.254 1.016)
+            (xy 0.254 -1.016))
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none)))
+        (arc
+          (start 0.254 -1.016)
+          (mid 1.2656 0)
+          (end 0.254 1.016)
+          (stroke
+            (width 0)
+            (type default))
+          (fill
+            (type none))))
+      (symbol "SolderJumper_2_Open_1_1"
+        (pin passive line
+          (at -3.81 0 0)
+          (length 2.54)
+          (name "A"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin passive line
+          (at 3.81 0 180)
+          (length 2.54)
+          (name "B"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "2"
+            (effects
+              (font
+                (size 1.27 1.27)))))))
+  )
   (text "AW9523B (I2C 0x58): uscite lente, LED RGB di notifica (modo LED a corrente costante), retroilluminazione tastiera."
     (at 15 18 0)
     (effects
@@ -1521,48 +1986,6 @@
         (size 1.27 1.27))
       (justify right bottom))
     (uuid "a6f54a50-b220-4e37-9668-910bb5c6676f"))
-  (global_label "SPI_MOSI"
-    (shape passive)
-    (at 31.75 49.53 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "0fccf2e5-51fe-4ae9-aa72-8102ca163616")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 31.75 49.53 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (global_label "SPI_SCK"
-    (shape passive)
-    (at 31.75 52.07 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "e5544907-3663-41ad-ac73-e7431ac897a1")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 31.75 52.07 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (global_label "SPI_MISO"
-    (shape passive)
-    (at 31.75 54.61 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "2029e945-6171-4dd2-9bda-251264f63e69")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 31.75 54.61 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
   (label "SD_DAT1"
     (at 31.75 57.15 180)
     (fields_autoplaced)
@@ -1902,9 +2325,6 @@
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
           (reference "#PWR219")
           (unit 1)))))
-  (no_connect
-    (at 83.82 45.72)
-    (uuid "469f8521-9052-42f1-bcaf-503f68073327"))
   (symbol
     (lib_id "power:GND")
     (at 83.82 48.26 270)
@@ -2287,20 +2707,6 @@
         (size 1.27 1.27))
       (justify left bottom))
     (uuid "a51df806-7b12-40d0-b5e8-8708ae05cfb7"))
-  (global_label "CHG_N"
-    (shape passive)
-    (at 132.08 91.44 0)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left))
-    (uuid "199d7d2c-b35c-49ef-aec4-142d1b18299e")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 132.08 91.44 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
   (symbol
     (lib_id "power:GND")
     (at 111.76 81.28 270)
@@ -2521,14 +2927,6 @@
         (size 1.27 1.27))
       (justify left bottom))
     (uuid "04cdcfc5-9b54-409b-bf6d-9ec9e4474a39"))
-  (label "BTN_PWR_N"
-    (at 132.08 81.28 0)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left bottom))
-    (uuid "db079b5f-bd61-4dcd-aa77-ad20145b21b9"))
   (label "LED_R"
     (at 132.08 50.8 0)
     (fields_autoplaced)
@@ -4124,51 +4522,6 @@
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
           (reference "D3")
           (unit 1)))))
-  (label "LED_R"
-    (at 407.67 43.18 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right bottom))
-    (uuid "d24b554b-c774-420f-8e5c-e743b778695a"))
-  (symbol
-    (lib_id "power:+3V3")
-    (at 415.29 43.18 270)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "0e2bad95-d0c6-46d4-bd45-eae2bc21e2c9")
-    (property "Reference" "#PWR248"
-      (at 417.052 42.38 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "+3V3"
-      (at 417.052 44.98 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 415.29 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 415.29 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "ccf6863c-f501-4717-b188-fa17681ee533"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
-          (reference "#PWR248")
-          (unit 1)))))
   (symbol
     (lib_id "Device:LED")
     (at 439.42 43.18 0)
@@ -4213,51 +4566,6 @@
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
           (reference "D4")
           (unit 1)))))
-  (label "LED_G"
-    (at 435.61 43.18 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right bottom))
-    (uuid "a0896a79-d396-497d-b23b-aa438b5a6283"))
-  (symbol
-    (lib_id "power:+3V3")
-    (at 443.23 43.18 270)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "cfd5906d-14d1-4b14-bbfd-eefd1f12215b")
-    (property "Reference" "#PWR249"
-      (at 444.992 42.38 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "+3V3"
-      (at 444.992 44.98 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 443.23 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 443.23 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "0ed65376-7f5b-4f77-a30b-8dfcf66e04a3"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
-          (reference "#PWR249")
-          (unit 1)))))
   (symbol
     (lib_id "Device:LED")
     (at 469.9 43.18 0)
@@ -4301,51 +4609,6 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
           (reference "D5")
-          (unit 1)))))
-  (label "LED_B"
-    (at 466.09 43.18 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right bottom))
-    (uuid "bf158ada-00b4-46af-89a7-9757ad23aea7"))
-  (symbol
-    (lib_id "power:+3V3")
-    (at 473.71 43.18 270)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "fcf0c0ae-9031-42d5-931a-1a1b50d74e18")
-    (property "Reference" "#PWR250"
-      (at 475.472 42.38 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "+3V3"
-      (at 475.472 44.98 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 473.71 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 473.71 43.18 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "36d16b07-776d-4700-ad53-febd4da30c73"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
-          (reference "#PWR250")
           (unit 1)))))
   (symbol
     (lib_id "Switch:SW_Push")
@@ -4483,43 +4746,6 @@
         (size 1.27 1.27))
       (justify left))
     (uuid "cdfc2b22-32d4-4266-8716-81b1078b8455"))
-  (symbol
-    (lib_id "power:+3V3")
-    (at 525.78 59.69 180)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "675857d6-4b7f-47a1-b942-801ef54c2c15")
-    (property "Reference" "#PWR252"
-      (at 527.542 58.89 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "+3V3"
-      (at 527.542 61.49 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 525.78 59.69 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 525.78 59.69 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "d453fac1-632c-4cb1-8242-976515b1fe0f"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
-          (reference "#PWR252")
-          (unit 1)))))
   (symbol
     (lib_id "Device:C")
     (at 538.48 55.88 0)
@@ -5476,4 +5702,1354 @@
       (at 233.68 119.38 0)
       (effects
         (font
-          (size 1.27 1.27)) hide))))
+          (size 1.27 1.27)) hide)))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 415.29 43.18 270)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "6de40e96-6c0c-4727-913a-afceb9fdf27b")
+    (property "Reference" "#PWR308"
+      (at 417.09 42.38 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 417.09 44.98 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 415.29 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 415.29 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "a3283d96-b91f-4455-955f-2bbb042e967b"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR308")
+          (unit 1)))))
+  (label "LED_R_K"
+    (at 407.67 43.18 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "2b4b62fc-52e6-4130-9c90-ad811724f328"))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 443.23 43.18 270)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "d02e0c4f-1723-44f1-a0f7-709f9f1eb6bc")
+    (property "Reference" "#PWR310"
+      (at 445.03 42.38 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 445.03 44.98 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 443.23 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 443.23 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "eadd6dd8-a719-42a3-9025-fa15dce98f4b"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR310")
+          (unit 1)))))
+  (label "LED_G_K"
+    (at 435.61 43.18 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "5b00d5cd-8f2e-4317-924d-9de98386523a"))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 473.71 43.18 270)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "abfb9e04-f5af-4755-ad5a-27cb5ea733cf")
+    (property "Reference" "#PWR312"
+      (at 475.51 42.38 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 475.51 44.98 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 473.71 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 473.71 43.18 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "8130c99b-174b-4680-b765-39551b0f0086"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR312")
+          (unit 1)))))
+  (label "LED_B_K"
+    (at 466.09 43.18 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "d0d663f3-352d-4800-88a1-d841eabcffdd"))
+  (label "PWR_HOLD"
+    (at 132.08 91.44 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "894a468b-c000-4e02-ad06-c106c60f7c3d"))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 525.78 59.69 180)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "22541a8c-cb89-4be3-873e-b18604200a42")
+    (property "Reference" "#PWR315"
+      (at 527.58 58.89 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 527.58 61.49 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 525.78 59.69 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 525.78 59.69 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "f8dc012b-94c4-4edb-990b-30fca7729816"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR315")
+          (unit 1)))))
+  (label "SD_CLK"
+    (at 31.75 52.07 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "749d9355-e802-4c17-8821-5a92cfea6ca8"))
+  (label "SD_CMD"
+    (at 31.75 49.53 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "8fd10972-dc13-4d80-8bca-bc8ff3a36fbb"))
+  (label "SD_DAT0"
+    (at 31.75 54.61 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "c82a0511-28ac-42f4-a2f6-c1f3c21bbf1b"))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 83.82 45.72 90)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "ebea7f88-9714-490a-9716-280af4c31c8b")
+    (property "Reference" "#PWR319"
+      (at 85.62 44.92 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 85.62 47.52 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 83.82 45.72 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 83.82 45.72 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "90f5bf7a-8d60-4345-a87e-24881994de2e"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR319")
+          (unit 1)))))
+  (symbol
+    (lib_id "Device:R")
+    (at 45.72 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "43b74cb8-a327-432a-99d6-cf205f161d26")
+    (property "Reference" "R49"
+      (at 47.752 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "150R"
+      (at 47.752 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 45.72 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 45.72 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1500TCE"
+      (at 45.72 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "93f84792-28d4-4451-98d1-dbf6dc2a9d54"))
+    (pin "2"
+      (uuid "2f692246-b00b-4a65-9742-a85855f2cbf3"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R49")
+          (unit 1)))))
+  (label "LED_R_K"
+    (at 45.72 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "3658108b-e75f-4b15-8cc0-168b414db84b"))
+  (label "LED_R"
+    (at 45.72 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "c06a148b-39ef-4a81-94cc-0e40d1329569"))
+  (symbol
+    (lib_id "Device:R")
+    (at 63.5 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "39319dd5-f14d-4523-84f4-770b65ea8251")
+    (property "Reference" "R50"
+      (at 65.532 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "100R"
+      (at 65.532 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1000TCE"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "6f661cb6-8f68-45ce-b38c-1671005d2b55"))
+    (pin "2"
+      (uuid "0504d7a5-423a-4720-9d23-c880d658096c"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R50")
+          (unit 1)))))
+  (label "LED_G_K"
+    (at 63.5 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "1e94683e-994e-4df5-a5f7-51d73414630f"))
+  (label "LED_G"
+    (at 63.5 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "5f226d50-6e8f-4458-ac4d-615b7e9aa50f"))
+  (symbol
+    (lib_id "Device:R")
+    (at 81.28 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "90e2b916-6b3e-4193-bb04-a45c245ade25")
+    (property "Reference" "R51"
+      (at 83.312 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "100R"
+      (at 83.312 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 81.28 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 81.28 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1000TCE"
+      (at 81.28 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "4bc86fea-4f27-4d3c-9034-551dcfca235d"))
+    (pin "2"
+      (uuid "02fee61a-f9d0-4d5c-8ed3-9c71def00f15"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R51")
+          (unit 1)))))
+  (label "LED_B_K"
+    (at 81.28 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "8432d87b-a694-41d9-a09d-1108b3404b10"))
+  (label "LED_B"
+    (at 81.28 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "90981f8d-638f-4460-8af9-0c1766617b1f"))
+  (symbol
+    (lib_id "Device:R")
+    (at 99.06 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "e037f1c1-4646-49e4-9026-05394e104a2b")
+    (property "Reference" "R52"
+      (at 101.092 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "330R"
+      (at 101.092 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 99.06 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 99.06 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF3300TCE"
+      (at 99.06 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "ed20f25e-6187-480f-9dfc-60066e7ab3e9"))
+    (pin "2"
+      (uuid "76bb256c-2d78-45de-a191-cfe8022fff4e"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R52")
+          (unit 1)))))
+  (label "LED_R"
+    (at 99.06 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "b0aac213-9776-4765-a70e-0ad5a8e73cb6"))
+  (global_label "CHG_N"
+    (shape passive)
+    (at 99.06 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "1e1b4782-0f0d-45ae-bd8a-54814c26252f")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 99.06 232.41 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (symbol
+    (lib_id "Device:R")
+    (at 45.72 264.16 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "9ffd569f-736a-467e-a6bb-ab5277cbd868")
+    (property "Reference" "R53"
+      (at 47.752 263.36 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "47R"
+      (at 47.752 265.96 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 45.72 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 45.72 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF470JTCE"
+      (at 45.72 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "972af85f-e168-427c-9d9c-9e93829553cb"))
+    (pin "2"
+      (uuid "01caba87-e9c3-46e6-84d9-20534d8d6b7b"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R53")
+          (unit 1)))))
+  (global_label "SPI_SCK"
+    (shape passive)
+    (at 45.72 260.35 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left))
+    (uuid "b1408cf6-fa36-4285-a0ff-ce665c02f9dd")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 45.72 260.35 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "SD_CLK"
+    (at 45.72 267.97 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "a7709d9a-2e8e-4f86-b625-1da35d5f96be"))
+  (symbol
+    (lib_id "Device:R")
+    (at 63.5 264.16 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "ddf01d91-8caf-4372-baaf-5cca8df334ef")
+    (property "Reference" "R54"
+      (at 65.532 263.36 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "47R"
+      (at 65.532 265.96 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 63.5 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 63.5 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF470JTCE"
+      (at 63.5 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "b61021b8-9947-4b3d-ae3a-a60a416ed0b2"))
+    (pin "2"
+      (uuid "049370f2-98af-4e1e-b040-06f2a6ed2d54"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R54")
+          (unit 1)))))
+  (global_label "SPI_MOSI"
+    (shape passive)
+    (at 63.5 260.35 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left))
+    (uuid "e30b456a-b42d-4018-b0a2-08ac9f27a7f1")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 63.5 260.35 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "SD_CMD"
+    (at 63.5 267.97 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "f4b9cc9b-7abc-4aee-b3ae-738514c848f8"))
+  (symbol
+    (lib_id "Device:R")
+    (at 81.28 264.16 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "1b596c86-f375-4d19-947d-1a3cf85ad6d5")
+    (property "Reference" "R55"
+      (at 83.312 263.36 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "47R"
+      (at 83.312 265.96 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 81.28 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 81.28 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF470JTCE"
+      (at 81.28 264.16 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "6af42422-cc16-4221-b8c0-de23bf808bf6"))
+    (pin "2"
+      (uuid "57a9eb4b-98e7-4d35-8132-98e4b25c8db2"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R55")
+          (unit 1)))))
+  (global_label "SPI_MISO"
+    (shape passive)
+    (at 81.28 260.35 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left))
+    (uuid "82c8c058-ab8b-417f-a58c-c014707ad80d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 81.28 260.35 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "SD_DAT0"
+    (at 81.28 267.97 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "2759f4c9-99b4-423f-96ab-33e6d1f28ed4"))
+  (symbol
+    (lib_id "Device:R")
+    (at 45.72 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "51a67617-93a3-4947-bccd-6331a7841c27")
+    (property "Reference" "R58"
+      (at 47.752 305.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "100k"
+      (at 47.752 307.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 45.72 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 45.72 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1003TCE"
+      (at 45.72 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "6533a0ab-3214-4fe4-ad0e-fcd061ee65d6"))
+    (pin "2"
+      (uuid "79852d2f-f0f9-4c68-9ffc-8bf5c47723fb"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R58")
+          (unit 1)))))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 45.72 300.99 0)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "231d4f85-e7af-4c64-821d-8bdbc015c850")
+    (property "Reference" "#PWR334"
+      (at 47.52 300.19 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 47.52 302.79 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 45.72 300.99 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 45.72 300.99 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "491da131-118d-4f22-aace-5983f57b92e9"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR334")
+          (unit 1)))))
+  (label "PWR_G"
+    (at 45.72 308.61 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "a9bcb624-7bd6-4b61-ac4b-3b3661c1e606"))
+  (symbol
+    (lib_id "Device:Q_PMOS_GSD")
+    (at 68.58 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "600afb71-8a65-4286-89f0-48aac605744b")
+    (property "Reference" "Q2"
+      (at 73.66 303.53 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "AO3401A"
+      (at 73.66 306.07 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+      (at 68.58 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 68.58 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "AO3401A"
+      (at 68.58 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "aa9e6e3c-39e3-4769-a622-65af45259fe6"))
+    (pin "2"
+      (uuid "6f4a8ca0-e688-448e-b4f0-c3a0ed29fdd7"))
+    (pin "3"
+      (uuid "1981b100-7a05-45bb-b299-8f8ca9eb7de4"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "Q2")
+          (unit 1)))))
+  (label "PWR_G"
+    (at 63.5 304.8 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "bdf8caf5-e08b-4c20-9023-09446fb2cf8a"))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 71.12 299.72 0)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "9786d714-cda4-490c-9503-1647cf810a64")
+    (property "Reference" "#PWR337"
+      (at 72.92 298.92 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 72.92 301.52 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 71.12 299.72 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 71.12 299.72 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "a6fb5c36-98a3-4def-bd1f-a4c792c729cd"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR337")
+          (unit 1)))))
+  (global_label "TPS_EN"
+    (shape passive)
+    (at 71.12 309.88 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "8c68df0a-9473-4b48-8d83-5621207d4727")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 71.12 309.88 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (symbol
+    (lib_id "Device:D_Schottky")
+    (at 101.6 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "dd396091-f0f2-4eb3-af96-8e9cafd9fb45")
+    (property "Reference" "D6"
+      (at 101.6 302.26 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Value" "BAT54WS"
+      (at 101.6 307.34 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Footprint" "Diode_SMD:D_SOD-323"
+      (at 101.6 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 101.6 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "BAT54WS"
+      (at 101.6 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "cf4e3b94-ac0f-4c61-a71a-2cb69bab6645"))
+    (pin "2"
+      (uuid "e871709f-51c0-4b7e-b9b9-2fdf3dd0f66f"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "D6")
+          (unit 1)))))
+  (global_label "BTN_PWR_N"
+    (shape passive)
+    (at 97.79 304.8 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "d701d061-6705-4886-9416-7bf9c9dee7a3")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 97.79 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "PWR_G"
+    (at 105.41 304.8 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "205a2859-800b-47ba-9cab-aaa4d2805a49"))
+  (symbol
+    (lib_id "Device:D_Schottky")
+    (at 132.08 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "b1e8a85e-cb42-41d6-ad56-7b44c4a68aff")
+    (property "Reference" "D7"
+      (at 132.08 302.26 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Value" "BAT54WS"
+      (at 132.08 307.34 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Footprint" "Diode_SMD:D_SOD-323"
+      (at 132.08 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 132.08 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "BAT54WS"
+      (at 132.08 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "2d03cd05-89d1-4665-8a35-8b63cf297bdc"))
+    (pin "2"
+      (uuid "b97b256a-1bb6-4924-8cb4-396144c49561"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "D7")
+          (unit 1)))))
+  (global_label "TPS_EN"
+    (shape passive)
+    (at 128.27 304.8 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "0c8007d3-8e74-41c7-ad12-a4d9bd915a5c")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 128.27 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "PWR_HOLD"
+    (at 135.89 304.8 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "490447ef-e734-42e5-8dd3-e6bf17169ac8"))
+  (symbol
+    (lib_id "Device:R")
+    (at 160.02 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "1887a2bc-ecb3-4ab5-baa1-f713a5dc44a3")
+    (property "Reference" "R59"
+      (at 162.052 304 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "100k"
+      (at 162.052 306.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 160.02 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 160.02 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1003TCE"
+      (at 160.02 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "00b2272b-5766-4305-8d25-b0d56d87be8c"))
+    (pin "2"
+      (uuid "7b1ba95c-0f45-4e19-9b1f-1ae9fceb66a2"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R59")
+          (unit 1)))))
+  (global_label "TPS_EN"
+    (shape passive)
+    (at 160.02 300.99 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left))
+    (uuid "52abe782-4516-46ba-b2b4-c9db86f6a9d4")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 160.02 300.99 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (symbol
+    (lib_id "power:GND")
+    (at 160.02 308.61 0)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "cfa16229-2873-426d-87ea-66d639b5952e")
+    (property "Reference" "#PWR344"
+      (at 161.82 307.81 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "GND"
+      (at 161.82 310.41 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 160.02 308.61 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 160.02 308.61 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "04b665e4-8ef9-4390-a8d2-fe6dbb82bdb7"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR344")
+          (unit 1)))))
+  (symbol
+    (lib_id "Jumper:SolderJumper_2_Open")
+    (at 185.42 304.8 0)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "7b1da87b-5521-4637-852c-de1f879327c8")
+    (property "Reference" "JP3"
+      (at 185.42 307.8 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Value" "Sempre acceso"
+      (at 185.42 309.8 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Footprint" "qmesh:SolderJumper_2_Open_1.0x1.5mm"
+      (at 185.42 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 185.42 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "9fbd0974-f223-4c04-9742-72ab2dc2c466"))
+    (pin "2"
+      (uuid "aba4f9f3-f063-44bc-a9ea-5aa9df254142"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "JP3")
+          (unit 1)))))
+  (symbol
+    (lib_id "qmesh:VSYS")
+    (at 181.61 304.8 90)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "61eb333b-1d31-441b-82f2-ebd56c7ca1be")
+    (property "Reference" "#PWR345"
+      (at 183.41 304 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "VSYS"
+      (at 183.41 306.6 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 181.61 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 181.61 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "17078bab-ab2e-424b-90f0-376b4f1d748e"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR345")
+          (unit 1)))))
+  (global_label "TPS_EN"
+    (shape passive)
+    (at 189.23 304.8 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left))
+    (uuid "98c3c901-ee70-46d3-a38e-7ec2dfc4e5e8")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 189.23 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (text "rev. 1.1: LED RGB alimentati da VSYS con resistenze in serie (all'accensione l'AW9523B, con AD0=AD1=GND, tiene tutte le uscite basse: senza resistenze i LED\nandrebbero in sovracorrente). Firmware: modo LED (reg. 0x12/0x13), GCR ISEL = Imax/4. R52 (su LED_R, in serie a R49): il BQ24074 accende il rosso durante la carica, anche a telefono spento (~5 mA)."
+    (at 40.64 210.82 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "a5920bf6-3926-45d7-9de5-03fc09a77954"))
+  (text "rev. 1.1: 47 ohm in serie a SCK/MOSI/MISO vicino alla microSD: isolano la capacita' della scheda e smorzano la linea (fronti monotoni su SX1262 e microSD).\nL'SD_CS resta sull'expander (nessun GPIO libero): il firmware deve portarlo alto prima di usare il bus SPI."
+    (at 40.64 248.92 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "0f9a7ec9-1aec-460d-9193-729e9ffd50d7"))
+  (text "rev. 1.1: accensione. PWR premuto -> Q2 porta VSYS su TPS_EN -> parte il 3,3 V; il firmware alza PWR_HOLD (P1_7) entro ~1 s e il telefono resta acceso.\nSpegnimento: il firmware abbassa PWR_HOLD a tasto rilasciato. JP3 chiuso = sempre acceso (prima programmazione). BTN_PWR_N ora ha il pull-up su VSYS (R37).\nL'AW9523B legge il tasto attraverso D8, con R60 a +3,3 V: all'accensione le sue uscite partono a 0 e, senza diodo, P1_3 terrebbe acceso il telefono da solo."
+    (at 40.64 289.56 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "40edf161-5f7d-416a-a27c-02d7ab35d837"))
+  (label "BTN_PWR_SENSE"
+    (at 132.08 81.28 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "9f00645b-4bc9-4e91-8fe9-386ab4b8e6a3"))
+  (symbol
+    (lib_id "Device:D_Schottky")
+    (at 231.14 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "948c2185-822c-4095-8aff-30e085a07bdb")
+    (property "Reference" "D8"
+      (at 231.14 302.26 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Value" "BAT54WS"
+      (at 231.14 307.34 0)
+      (effects
+        (font
+          (size 1.27 1.27))))
+    (property "Footprint" "Diode_SMD:D_SOD-323"
+      (at 231.14 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 231.14 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "BAT54WS"
+      (at 231.14 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "94ef46e3-d9dd-4ff2-8332-5a24c1ab9f88"))
+    (pin "2"
+      (uuid "a6aac124-a81a-456d-854c-611404c80a60"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "D8")
+          (unit 1)))))
+  (global_label "BTN_PWR_N"
+    (shape passive)
+    (at 227.33 304.8 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "e3a97308-c1e6-467c-9cda-412cd6ebf137")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 227.33 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (label "BTN_PWR_SENSE"
+    (at 234.95 304.8 0)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "11cbdef6-b407-4ce8-a238-faddc601ed36"))
+  (symbol
+    (lib_id "Device:R")
+    (at 261.62 304.8 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "02a6ede6-2de8-4f12-ac3c-cb8dff878d42")
+    (property "Reference" "R60"
+      (at 263.652 305.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "100k"
+      (at 263.652 307.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 261.62 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 261.62 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF1003TCE"
+      (at 261.62 304.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "c9ad9b52-a9cb-49a1-8544-fccc3c4bdac9"))
+    (pin "2"
+      (uuid "ae652b34-8c02-4fdc-84e6-1ac36baa5e04"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "R60")
+          (unit 1)))))
+  (symbol
+    (lib_id "power:+3V3")
+    (at 261.62 300.99 0)
+    (unit 1)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "7af764fe-347f-4811-8ca5-00bb8bab4378")
+    (property "Reference" "#PWR350"
+      (at 263.42 300.19 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left) hide))
+    (property "Value" "+3V3"
+      (at 263.42 302.79 0)
+      (effects
+        (font
+          (size 1.27 1.27))
+        (justify left)))
+    (property "Footprint" ""
+      (at 261.62 300.99 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 261.62 300.99 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "3cf24168-1d1a-4195-b1c7-de9ceab565e4"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/84e79b90-b197-4358-8c92-8c3413bafb68"
+          (reference "#PWR350")
+          (unit 1)))))
+  (label "BTN_PWR_SENSE"
+    (at 261.62 308.61 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "b12e249a-ec05-45d2-96a9-075a43230dc8")))

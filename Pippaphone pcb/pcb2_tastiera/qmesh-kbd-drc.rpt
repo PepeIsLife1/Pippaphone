@@ -1,5 +1,5 @@
-** Drc report for /home/claude/qmesh-kicad/qmesh-kbd/qmesh-kbd.kicad_pcb **
-** Created on 2026-09-27 13:43:48 **
+** Drc report for qmesh-kbd.kicad_pcb **
+** Created on 2026-09-28 20:30:12 **
 
 ** Found 2 DRC violations **
 [silk_edge_clearance]: Silkscreen clipped by board edge

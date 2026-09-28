@@ -3050,7 +3050,7 @@
         (font
           (size 1.27 1.27))
         (justify left)))
-    (property "Value" "220R"
+    (property "Value" "0R"
       (at 362.696 62.76 0)
       (effects
         (font
@@ -3105,7 +3105,7 @@
         (font
           (size 1.27 1.27))
         (justify left)))
-    (property "Value" "10nF"
+    (property "Value" "100nF"
       (at 376.412 57.68 0)
       (effects
         (font
@@ -3214,14 +3214,6 @@
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/1ca90765-762e-4bb1-b66b-0a8d926128cd"
           (reference "C29")
           (unit 1)))))
-  (label "TCXO_OUT"
-    (at 391.16 52.07 90)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left))
-    (uuid "5dc85d59-4a05-4e8c-801a-ed2487e9f34b"))
   (label "TCXO_OUT_AC"
     (at 391.16 59.69 270)
     (fields_autoplaced)
@@ -4018,4 +4010,77 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/1ca90765-762e-4bb1-b66b-0a8d926128cd"
           (reference "#PWR133")
-          (unit 1))))))
+          (unit 1)))))
+  (label "TCXO_OUT_R"
+    (at 391.16 52.07 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "47be5543-e684-460b-8caa-fc59aff91663"))
+  (symbol
+    (lib_id "Device:R")
+    (at 63.5 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "5a10aa60-f69d-4336-b1c4-29a7c9458e93")
+    (property "Reference" "R48"
+      (at 65.532 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "220R"
+      (at 65.532 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF2200TCE"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "d5b39162-c198-4cc4-89c6-de1db050fcb1"))
+    (pin "2"
+      (uuid "183bb3b2-f27f-4165-b6ca-734e082da43c"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/1ca90765-762e-4bb1-b66b-0a8d926128cd"
+          (reference "R48")
+          (unit 1)))))
+  (label "TCXO_OUT"
+    (at 63.5 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "fcb687a2-321e-4607-9f64-5a0dea0268bd"))
+  (label "TCXO_OUT_R"
+    (at 63.5 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "d16cee46-82f5-4d66-95e2-13f3b544b5a3"))
+  (text "rev. 1.1: uscita del TCXO verso XTA con 220 ohm (R48) e 10 pF (C29) in serie, alimentazione del TCXO diretta da DIO3 (R17 = 0 ohm) con 100 nF (C28),\ncome nella figura 4-2 del datasheet SX1261/2. Prima i 220 ohm erano sull'alimentazione: il TCXO sarebbe partito sotto tensione."
+    (at 40.64 210.82 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "428f8eb9-0773-4b01-b673-7cdf08295305")))

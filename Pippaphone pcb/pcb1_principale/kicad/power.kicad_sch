@@ -2195,7 +2195,91 @@
           (number "1"
             (effects
               (font
-                (size 1.27 1.27))))))))
+                (size 1.27 1.27)))))))
+    (symbol "Device:Thermistor_NTC"
+      (pin_numbers hide)
+      (pin_names
+        (offset 0))
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "R"
+        (at 2.032 0 90)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Value" "Thermistor_NTC"
+        (at 0 0 90)
+        (effects
+          (font
+            (size 1.27 1.27))))
+      (property "Footprint" ""
+        (at -1.778 0 90)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_keywords" "R res resistor"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_description" "Resistor"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (property "ki_fp_filters" "R_*"
+        (at 0 0 0)
+        (effects
+          (font
+            (size 1.27 1.27)) hide))
+      (symbol "Thermistor_NTC_0_1"
+        (polyline
+          (pts
+            (xy -1.905 -3.175)
+            (xy -1.905 -1.905)
+            (xy 1.905 1.905))
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none)))
+        (rectangle
+          (start -1.016 -2.54)
+          (end 1.016 2.54)
+          (stroke
+            (width 0.254)
+            (type default))
+          (fill
+            (type none))))
+      (symbol "Thermistor_NTC_1_1"
+        (pin passive line
+          (at 0 3.81 270)
+          (length 1.27)
+          (name "~"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "1"
+            (effects
+              (font
+                (size 1.27 1.27)))))
+        (pin passive line
+          (at 0 -3.81 90)
+          (length 1.27)
+          (name "~"
+            (effects
+              (font
+                (size 1.27 1.27))))
+          (number "2"
+            (effects
+              (font
+                (size 1.27 1.27)))))))
+  )
   (text "USB-C -> BQ24074 (power-path, 0.9 A) -> VSYS -> TPS63001 buck-boost -> +3V3. MAX17048 fuel gauge."
     (at 15 18 0)
     (effects
@@ -3623,43 +3707,6 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR025")
-          (unit 1)))))
-  (symbol
-    (lib_id "qmesh:VSYS")
-    (at 165.1 45.72 90)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "b84205d8-c073-4567-9e36-d47c1ff19e5f")
-    (property "Reference" "#PWR026"
-      (at 166.862 44.92 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "VSYS"
-      (at 166.862 47.52 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 165.1 45.72 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 165.1 45.72 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "c0321ac2-4c92-4e75-bb96-14f14c4f75b3"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
-          (reference "#PWR026")
           (unit 1)))))
   (symbol
     (lib_id "power:GND")
@@ -5274,7 +5321,7 @@
           (reference "#PWR054")
           (unit 1)))))
   (symbol
-    (lib_id "Device:R")
+    (lib_id "Device:Thermistor_NTC")
     (at 447.04 50.8 0)
     (unit 1)
     (in_bom yes)
@@ -5287,7 +5334,7 @@
         (font
           (size 1.27 1.27))
         (justify left)))
-    (property "Value" "10k"
+    (property "Value" "NTC 10k B3380"
       (at 449.056 52.6 0)
       (effects
         (font
@@ -5299,6 +5346,11 @@
         (font
           (size 1.27 1.27)) hide))
     (property "Datasheet" "~"
+      (at 447.04 50.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "NCP15XH103F03RC"
       (at 447.04 50.8 0)
       (effects
         (font
@@ -5440,96 +5492,6 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR056")
-          (unit 1)))))
-  (symbol
-    (lib_id "Device:R")
-    (at 474.98 48.26 0)
-    (unit 1)
-    (in_bom yes)
-    (on_board yes)
-    (dnp no)
-    (uuid "f742c816-a020-4bc9-9121-b3bde88e9c59")
-    (property "Reference" "R9"
-      (at 476.996 47.46 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Value" "100k"
-      (at 476.996 50.06 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
-      (at 474.98 48.26 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 474.98 48.26 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "c28b251d-5585-40b7-84cf-7a54f529119c"))
-    (pin "2"
-      (uuid "7af6f9f0-edcc-43d8-a3bf-1fb26f61fef3"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
-          (reference "R9")
-          (unit 1)))))
-  (global_label "CHG_N"
-    (shape passive)
-    (at 474.98 44.45 90)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify left))
-    (uuid "d0c3bef9-b649-4406-9ec0-90d0ff8042a4")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 474.98 44.45 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (symbol
-    (lib_id "power:+3V3")
-    (at 474.98 52.07 180)
-    (unit 1)
-    (in_bom no)
-    (on_board yes)
-    (dnp no)
-    (uuid "5462690e-e09b-442f-85c0-10b62cdb109b")
-    (property "Reference" "#PWR057"
-      (at 476.742 51.27 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left) hide))
-    (property "Value" "+3V3"
-      (at 476.742 53.87 0)
-      (effects
-        (font
-          (size 1.27 1.27))
-        (justify left)))
-    (property "Footprint" ""
-      (at 474.98 52.07 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (property "Datasheet" "~"
-      (at 474.98 52.07 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide))
-    (pin "1"
-      (uuid "42ad9f87-8bb7-4f3e-93e3-13c7e1586ef7"))
-    (instances
-      (project "qmesh-main"
-        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
-          (reference "#PWR057")
           (unit 1)))))
   (symbol
     (lib_id "Device:C")
@@ -6539,4 +6501,25 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR073")
-          (unit 1))))))
+          (unit 1)))))
+  (global_label "TPS_EN"
+    (shape passive)
+    (at 165.1 45.72 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "9af8bd47-0028-4abc-a2ef-c97d3e392cce")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 165.1 45.72 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (text "rev. 1.1: EN del TPS63001 su TPS_EN (accensione col tasto PWR e mantenimento dal firmware, foglio Espansione). R9 tolto: CHG_N ora accende il LED rosso.\nR7 e' un NTC 10 k (B 3380) sul bordo della batteria: il BQ24074 carica solo tra circa 0 e 45 gradi."
+    (at 40.64 210.82 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "b4d471e2-ba1f-4d86-a745-41b57a5427cb")))

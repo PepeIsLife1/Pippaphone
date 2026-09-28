@@ -1685,7 +1685,7 @@
         (size 1.8 1.8))
       (justify left bottom))
     (uuid "883bf9fe-16dd-45fd-ad55-a8baebe598c8"))
-  (text "RGB a 12 bit: R0-R2 legati a R3, B0-B2 legati a B3 (fondo scala pieno). Init SPI 3 fili: SCK=G4, SDA=G5 (condivisi), CS e RESET dall'expander."
+  (text "RGB a 12 bit con bit replicati: R0=R3, R1=R4, R2=R5 e B0=B3, B1=B4, B2=B5 (8 livelli uniformi da 0 a 63 per rosso e blu). Init SPI 3 fili: SCK=G4, SDA=G5 (condivisi), CS e RESET dall'expander."
     (at 15 21.2 0)
     (effects
       (font
@@ -1930,34 +1930,6 @@
           (size 1.27 1.27)) hide)))
   (global_label "LCD_B3"
     (shape passive)
-    (at 33.02 83.82 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "0ac4fb6a-d3ca-45ba-9dcb-4223c6d426b1")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 83.82 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (global_label "LCD_B3"
-    (shape passive)
-    (at 33.02 86.36 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "49a235cc-2f37-475d-a35d-80837b04a9ab")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 86.36 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (global_label "LCD_B3"
-    (shape passive)
     (at 33.02 88.9 180)
     (fields_autoplaced)
     (effects
@@ -2104,20 +2076,6 @@
       (effects
         (font
           (size 1.27 1.27)) hide)))
-  (global_label "LCD_R3"
-    (shape passive)
-    (at 33.02 114.3 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "2e718df0-bcd1-48f6-a8b8-9fd4dc8331a1")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 114.3 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
   (label "LED_K"
     (at 33.02 48.26 180)
     (fields_autoplaced)
@@ -2126,20 +2084,6 @@
         (size 1.27 1.27))
       (justify right bottom))
     (uuid "6e76eec1-352e-43b2-838d-6bc8167133a3"))
-  (global_label "LCD_R3"
-    (shape passive)
-    (at 33.02 116.84 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "e2c93320-7120-4f0b-8de7-58c9ddb1f0de")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 116.84 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
   (global_label "LCD_R3"
     (shape passive)
     (at 33.02 119.38 180)
@@ -3750,4 +3694,60 @@
       (project "qmesh-main"
         (path "/809f13cb-b6bf-4430-ae89-c7018a759296/8764c064-53d7-4f21-a890-acd79e85b45d"
           (reference "#PWR212")
-          (unit 1))))))
+          (unit 1)))))
+  (global_label "LCD_B4"
+    (shape passive)
+    (at 33.02 83.82 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "f7816299-aafc-4f71-a9f5-9383d2f26676")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 33.02 83.82 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (global_label "LCD_B5"
+    (shape passive)
+    (at 33.02 86.36 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "974e6b29-81bf-41fb-b16a-338f591d664d")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 33.02 86.36 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (global_label "LCD_R4"
+    (shape passive)
+    (at 33.02 114.3 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "0c080ffd-c7c4-4e42-8e0a-d031acef4957")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 33.02 114.3 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (global_label "LCD_R5"
+    (shape passive)
+    (at 33.02 116.84 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "c202c159-c8b6-41fb-90e2-b4cf3bb6ed26")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 33.02 116.84 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))))

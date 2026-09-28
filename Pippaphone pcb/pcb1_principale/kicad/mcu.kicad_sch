@@ -1962,34 +1962,6 @@
       (effects
         (font
           (size 1.27 1.27)) hide)))
-  (global_label "SPI_MOSI"
-    (shape passive)
-    (at 33.02 86.36 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "cced7e40-540b-4723-9a3f-2bc084b0e99f")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 86.36 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
-  (global_label "SPI_SCK"
-    (shape passive)
-    (at 33.02 88.9 180)
-    (fields_autoplaced)
-    (effects
-      (font
-        (size 1.27 1.27))
-      (justify right))
-    (uuid "3b7858e5-b137-4ea2-970f-e88b2ae11d62")
-    (property "Intersheetrefs" "${INTERSHEET_REFS}"
-      (at 33.02 88.9 0)
-      (effects
-        (font
-          (size 1.27 1.27)) hide)))
   (global_label "SPI_MISO"
     (shape passive)
     (at 33.02 91.44 180)
@@ -5157,4 +5129,155 @@
       (font
         (size 1.27 1.27))
       (justify right))
-    (uuid "51cfa1d5-90dd-47a4-9a35-732db45178b1")))
+    (uuid "51cfa1d5-90dd-47a4-9a35-732db45178b1"))
+  (label "SPI_SCK_MCU"
+    (at 33.02 88.9 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "a6888eb7-66fc-409f-b00f-942fab77abf6"))
+  (label "SPI_MOSI_MCU"
+    (at 33.02 86.36 180)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right bottom))
+    (uuid "870c894a-cd49-49fe-adeb-b7259377a9da"))
+  (symbol
+    (lib_id "Device:R")
+    (at 63.5 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "3ccf0be1-0666-4681-8d9f-499a4535ad21")
+    (property "Reference" "R56"
+      (at 65.532 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "47R"
+      (at 65.532 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF470JTCE"
+      (at 63.5 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "1900000c-ece7-4af4-a3b6-9b8dd34ab118"))
+    (pin "2"
+      (uuid "ec000b18-3035-4059-aa39-1a6f0ec7ac8f"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/884ab45c-8479-4cf8-8a39-5f9cf76baf96"
+          (reference "R56")
+          (unit 1)))))
+  (label "SPI_SCK_MCU"
+    (at 63.5 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "f06dbe6f-9696-413d-a128-09ec7b229e45"))
+  (global_label "SPI_SCK"
+    (shape passive)
+    (at 63.5 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "2c4563c4-55ea-4b18-b6d1-d81649d2bf3e")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 63.5 232.41 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (symbol
+    (lib_id "Device:R")
+    (at 78.74 228.6 0)
+    (unit 1)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "2acf0a7b-3dae-4cef-99c0-e7b9d05edbc1")
+    (property "Reference" "R57"
+      (at 80.772 227.8 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Value" "47R"
+      (at 80.772 230.4 0)
+      (effects
+        (font
+          (size 1.27 1.27)) (justify left)))
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 78.74 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "Datasheet" "~"
+      (at 78.74 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF470JTCE"
+      (at 78.74 228.6 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide))
+    (pin "1"
+      (uuid "f4a28fec-db26-4e18-b543-c96b9f9eb90b"))
+    (pin "2"
+      (uuid "f98764bd-384a-412f-adf0-168eeee920ea"))
+    (instances
+      (project "qmesh-main"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/884ab45c-8479-4cf8-8a39-5f9cf76baf96"
+          (reference "R57")
+          (unit 1)))))
+  (label "SPI_MOSI_MCU"
+    (at 78.74 224.79 90)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify left bottom))
+    (uuid "4061ab3f-5b11-4b7a-ba49-996bc806b3b0"))
+  (global_label "SPI_MOSI"
+    (shape passive)
+    (at 78.74 232.41 270)
+    (fields_autoplaced)
+    (effects
+      (font
+        (size 1.27 1.27))
+      (justify right))
+    (uuid "d1e19b17-c639-4d0f-8066-d5956cdea875")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 78.74 232.41 0)
+      (effects
+        (font
+          (size 1.27 1.27)) hide)))
+  (text "rev. 1.1: SCK e MOSI escono dall'ESP32 con 47 ohm in serie (R56, R57), vicino ai pin. Con i 47 ohm sul lato microSD (R53-R55) i fronti restano monotoni\nsia sull'SX1262 (a meta' linea) sia sulla microSD (simulazione a linee di trasmissione, VERIFICHE.txt). Consiglio firmware: drive strength 1 o 2 su SCK/MOSI."
+    (at 40.64 210.82 0)
+    (effects
+      (font
+        (size 1.524 1.524))
+      (justify left bottom))
+    (uuid "ed6f805f-c93e-4d4c-a170-436c027a5a1d")))
