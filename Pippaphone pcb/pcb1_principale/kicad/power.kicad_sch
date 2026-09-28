@@ -1,7 +1,7 @@
 (kicad_sch
   (version 20230121)
   (generator eeschema)
-  (uuid "3c075939-50ab-4b6b-88e1-1e051fcc569f")
+  (uuid "4026f6c5-f435-448f-8a38-d8e88a7d4d10")
   (paper "A2")
   (title_block
     (title "Q-Mesh · PCB 1 main — Alimentazione")
@@ -2202,21 +2202,21 @@
       (font
         (size 1.8 1.8))
       (justify left bottom))
-    (uuid "4afc247e-4a70-4c77-a9cf-3f4b0fbb3ac1"))
+    (uuid "27e2322e-5ee5-4689-a9be-6e1c237af228"))
   (text "ISET 1k0 = 0.89 A (batteria 2000 mAh ~0.45C). ILIM 1k1 = ~1.4 A. TS con 10k fisso (batteria senza NTC)."
     (at 15 21.2 0)
     (effects
       (font
         (size 1.8 1.8))
       (justify left bottom))
-    (uuid "8f4c5e7f-d071-4e05-a87f-fb453add1d3a"))
-  (text "ITERM scollegato = 10% (datasheet TI). TMR 46k4 = pre-carica 37 min, carica rapida 6,2 h. PS/SYNC a GND = power-save."
+    (uuid "0333bec2-d940-4d69-ab6f-eb11d8b6ec50"))
+  (text "ITERM scollegato = 10% (datasheet TI). TMR 47k = pre-carica 38 min, carica rapida 6,3 h. PS/SYNC a GND = power-save."
     (at 15 24.4 0)
     (effects
       (font
         (size 1.8 1.8))
       (justify left bottom))
-    (uuid "ffd2c9ba-5268-4334-8670-d20758602412"))
+    (uuid "795c075e-ba17-449b-9e93-5c9bb83337b4"))
   (symbol
     (lib_id "Connector:USB_C_Receptacle_USB2.0_16P")
     (at 33.02 55.88 0)
@@ -2224,7 +2224,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6ab42214-b1db-4551-97c2-3caa5e24b340")
+    (uuid "11ad9e59-ced4-4fa0-99f3-c04005fe0ef6")
     (property "Reference" "J1"
       (at 22.86 36.83 0)
       (effects
@@ -2253,42 +2253,42 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "A1"
-      (uuid "82bbef8f-dfab-47a8-a5e6-554774379d38"))
+      (uuid "22c6f14e-7803-45ef-ac9b-ac8a5ef8edbf"))
     (pin "A12"
-      (uuid "074a3667-5596-4632-b828-3f8f9992de35"))
+      (uuid "8ddbbd4d-0f29-4e03-9d92-3c02fb22cf0f"))
     (pin "A4"
-      (uuid "430525e3-3367-4b67-b991-beb9d97281e5"))
+      (uuid "f0181add-5c88-40c3-9a24-ab579cbcdede"))
     (pin "A5"
-      (uuid "6573b66a-95dd-4147-bd84-01a54d35f4d8"))
+      (uuid "63bb5ebe-b656-42ab-bb09-86d51b21f23e"))
     (pin "A6"
-      (uuid "6be15606-6b3e-4270-895c-acae49e8a40c"))
+      (uuid "a283d0e6-52b7-46a2-9e43-4cf17176527e"))
     (pin "A7"
-      (uuid "8c37557a-51cf-41f3-add1-0699d29c6688"))
+      (uuid "27f802ec-37c1-4bb4-b9a8-99a3977b05a0"))
     (pin "A8"
-      (uuid "5ed7120a-8949-4a93-ae5f-f5741721dd70"))
+      (uuid "a1db9a7c-7679-4824-9c16-b58293120d98"))
     (pin "A9"
-      (uuid "6c12b959-04cc-460b-b750-44cef71c205b"))
+      (uuid "c400d066-ba8b-45d9-8852-64f630df1758"))
     (pin "B1"
-      (uuid "c6be579e-e659-4c76-a5d0-21a5749af236"))
+      (uuid "40fe0890-9935-4534-80ba-f0f69efcefa2"))
     (pin "B12"
-      (uuid "ccbb8477-87bc-4ce1-8486-cd9457db0e50"))
+      (uuid "c5ad8fb3-4426-48d2-a30c-27d63d3d4942"))
     (pin "B4"
-      (uuid "e18b2969-cbef-4d17-8619-a43096fbf787"))
+      (uuid "c6e30ce3-ce6d-489f-809c-24b417ab77cd"))
     (pin "B5"
-      (uuid "3a3ccd24-c2f3-4466-8519-190ba9fe16c6"))
+      (uuid "20292e06-c666-4bf7-a7a2-459825c7260c"))
     (pin "B6"
-      (uuid "4eae3aff-0b56-4cc8-880e-9b73ee0dabff"))
+      (uuid "ac0f19a3-80a4-407b-a189-f9385dd7bfe8"))
     (pin "B7"
-      (uuid "f1ee83fa-feb1-4572-8717-e1e2ab3a3d4e"))
+      (uuid "16486715-26e3-427a-8983-ea6e504cd6a7"))
     (pin "B8"
-      (uuid "6df5dabd-a12b-4afe-8e3f-d058617d53ce"))
+      (uuid "b0297dd4-3942-486f-9991-5840b412b14e"))
     (pin "B9"
-      (uuid "ec8b4b46-1fd6-4220-9fec-9b37c76a1deb"))
+      (uuid "e3aaaff1-fe16-45b7-8955-cb56ce606a88"))
     (pin "S1"
-      (uuid "4c9437cb-9925-424b-a4ba-ef49979a2d99"))
+      (uuid "cd96ff6d-9034-4c33-a5b7-02accf934781"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "J1")
           (unit 1)))))
   (symbol
@@ -2298,7 +2298,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "d1dd860a-b354-4e2d-90b7-74be2c8d40b4")
+    (uuid "fb771472-9083-401e-9b95-b4f4181eff27")
     (property "Reference" "#PWR001"
       (at 35.29 77.94 0)
       (effects
@@ -2322,10 +2322,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "5f3e0dd1-8ed3-4037-9f20-0eb9c32c3933"))
+      (uuid "17631485-f1b4-4f0d-a5c1-b6a1d8005c53"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR001")
           (unit 1)))))
   (symbol
@@ -2335,7 +2335,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ea1649b8-e9e5-4bd5-a9f9-48166c4dab05")
+    (uuid "5f7cee26-cdbe-4461-b5bd-e7db7c7e8702")
     (property "Reference" "#PWR002"
       (at 35.29 77.94 0)
       (effects
@@ -2359,10 +2359,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "5ecdb793-16c6-4291-b32c-a3b49c72ee26"))
+      (uuid "8b764678-ce60-45f3-9edc-3be2c2f45a28"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR002")
           (unit 1)))))
   (symbol
@@ -2372,7 +2372,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "6ef36342-3b20-4041-9f95-e2c37e53a4e2")
+    (uuid "77900b84-24fd-4924-b20c-7dd624df0589")
     (property "Reference" "#PWR003"
       (at 50.022 39.84 0)
       (effects
@@ -2396,10 +2396,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "3e6d5b62-b57b-4555-abf3-05bb000ae57a"))
+      (uuid "d96fb756-9ef6-4c23-85f7-9849fcc3952c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR003")
           (unit 1)))))
   (label "CC1"
@@ -2409,7 +2409,7 @@
       (font
         (size 1.27 1.27))
       (justify left bottom))
-    (uuid "d61266c1-4220-4d33-bbc3-b91f0b871012"))
+    (uuid "0c4f8bfd-4aab-4afd-90b4-f5da5884cfbd"))
   (global_label "USB_DP"
     (shape passive)
     (at 48.26 58.42 0)
@@ -2418,7 +2418,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "f7cfd5cd-15e6-4608-84c5-8b0a35ac2eae")
+    (uuid "9b228753-6de1-4acc-a2f7-54d23696cb55")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 48.26 58.42 0)
       (effects
@@ -2432,7 +2432,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "04375c04-782e-4161-b8c2-b16821f044d9")
+    (uuid "e9cac40f-ab80-425f-b95a-f169687ae92b")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 48.26 53.34 0)
       (effects
@@ -2440,7 +2440,7 @@
           (size 1.27 1.27)) hide)))
   (no_connect
     (at 48.26 68.58)
-    (uuid "e182bb88-b3a2-4647-8d13-6695a8e6dc9a"))
+    (uuid "d2eff9e7-151b-4b88-80cd-5f1ab838638a"))
   (symbol
     (lib_id "power:VBUS")
     (at 48.26 40.64 270)
@@ -2448,7 +2448,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "128d200e-9974-42a5-819b-6b3aa2ab5934")
+    (uuid "3479ac62-6176-4195-a25b-e0950a463ccc")
     (property "Reference" "#PWR004"
       (at 50.022 39.84 0)
       (effects
@@ -2472,10 +2472,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "56bbba5a-363f-4f3d-98b1-3e5c5654bb9f"))
+      (uuid "410b5c58-2c35-45e5-95da-e59c5c750035"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR004")
           (unit 1)))))
   (symbol
@@ -2485,7 +2485,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "0b6e560c-5c99-4d10-af64-2e5360d99831")
+    (uuid "d38e7a7e-c7f4-4ac0-80ea-5a814dc3b047")
     (property "Reference" "#PWR005"
       (at 35.29 77.94 0)
       (effects
@@ -2509,10 +2509,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "60bed6d6-a518-4825-ba6e-12f1b48d3601"))
+      (uuid "05742847-3421-434e-8afc-707a4c03db61"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR005")
           (unit 1)))))
   (symbol
@@ -2522,7 +2522,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "359b21d8-3dba-460d-8256-dc004a50cf83")
+    (uuid "b5d0839b-dbdd-46f3-bd09-3e2876be4744")
     (property "Reference" "#PWR006"
       (at 35.29 77.94 0)
       (effects
@@ -2546,10 +2546,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "165899ee-7798-42eb-b863-d28866506740"))
+      (uuid "acfb2dd9-3248-4cfa-a3fc-a648bbc4b555"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR006")
           (unit 1)))))
   (symbol
@@ -2559,7 +2559,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "4ec0ff73-f243-492d-a818-823acaa45b6e")
+    (uuid "9daf69b0-5115-44da-89c4-f85563450f19")
     (property "Reference" "#PWR007"
       (at 50.022 39.84 0)
       (effects
@@ -2583,10 +2583,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "8e1631c4-54c6-4e28-9acd-320116d6a61b"))
+      (uuid "c3c94a4f-485d-4ac6-a6ef-21f706c3df6d"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR007")
           (unit 1)))))
   (label "CC2"
@@ -2596,7 +2596,7 @@
       (font
         (size 1.27 1.27))
       (justify left bottom))
-    (uuid "cfaf7ed1-84f1-44cb-913d-1790ea323ebd"))
+    (uuid "63cc551f-9376-4fc4-bb82-9fcd490156fb"))
   (global_label "USB_DP"
     (shape passive)
     (at 48.26 60.96 0)
@@ -2605,7 +2605,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "a5127d8a-50d7-4e10-b86c-1090dccc5a9c")
+    (uuid "7f2ee4c3-27c4-4413-80ab-f38122c1c27d")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 48.26 60.96 0)
       (effects
@@ -2619,7 +2619,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "95dc07e5-8bae-4f51-b788-43c9e702f5a2")
+    (uuid "cf9511b4-3c6e-4916-b859-8c7a5d84cea5")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 48.26 55.88 0)
       (effects
@@ -2627,7 +2627,7 @@
           (size 1.27 1.27)) hide)))
   (no_connect
     (at 48.26 71.12)
-    (uuid "46adb75f-2b4d-4942-9e79-7de90373c41a"))
+    (uuid "d8f2fa37-da7f-42fa-94c9-49f55355afb4"))
   (symbol
     (lib_id "power:VBUS")
     (at 48.26 40.64 270)
@@ -2635,7 +2635,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "23b3467a-1cfe-492a-9564-e830ea551df0")
+    (uuid "81de70ec-0ca4-4f47-b886-6073d46ce05c")
     (property "Reference" "#PWR008"
       (at 50.022 39.84 0)
       (effects
@@ -2659,10 +2659,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "ccffc430-4e60-4c8c-a570-d11fba39ece0"))
+      (uuid "148ba62a-c3cb-463e-9225-71ed91d5010e"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR008")
           (unit 1)))))
   (symbol
@@ -2672,7 +2672,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "2d90c9ad-8c3e-49d7-9f7b-dee2979a5c52")
+    (uuid "894b27da-5446-4a9b-a2a2-4da133672122")
     (property "Reference" "#PWR009"
       (at 27.67 77.94 0)
       (effects
@@ -2696,10 +2696,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a44dc72c-3b5c-4752-862e-cc145b6125a4"))
+      (uuid "2651914a-b450-498b-b5f5-4c1e5c0ee966"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR009")
           (unit 1)))))
   (symbol
@@ -2709,7 +2709,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "ada34712-f13d-420e-ad5a-60e7a5504e80")
+    (uuid "82b52566-66f7-4575-8031-24438ff7c9a9")
     (property "Reference" "U1"
       (at 73.66 41.91 0)
       (effects
@@ -2738,20 +2738,20 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c033d74b-d9fe-4dfa-b476-b97fecc03024"))
+      (uuid "18ab8828-1a2d-4acd-ba57-562e3549c4b3"))
     (pin "2"
-      (uuid "e5585dcd-0fa3-41ab-b0d7-84a9fc959591"))
+      (uuid "569f3b67-5b49-403e-9189-b9d1e4b1ed13"))
     (pin "3"
-      (uuid "54e8b2c5-64f3-420e-9407-cb1d6c1378ce"))
+      (uuid "043d0c80-8d4a-4ceb-a158-fdd4da5dcf10"))
     (pin "4"
-      (uuid "3a90f173-5a82-4dd1-a059-84dbb40c4c16"))
+      (uuid "c4d28bef-9c0e-4188-8890-ba3907190ae3"))
     (pin "5"
-      (uuid "5326efc8-209a-463d-85f9-278e87b22762"))
+      (uuid "f8994c8d-d938-4299-8bab-a20989fb3711"))
     (pin "6"
-      (uuid "edc82b50-d43e-4447-8cde-9ac8179f866a"))
+      (uuid "3fa71d11-3b64-4528-826a-4ef0a84dfaf8"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "U1")
           (unit 1)))))
   (global_label "USB_DP"
@@ -2762,7 +2762,7 @@
       (font
         (size 1.27 1.27))
       (justify right))
-    (uuid "58aa49ec-2d13-4a38-9dc1-74660ce43513")
+    (uuid "435da54b-a539-47ac-ba9a-8237639d44a8")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 73.66 48.26 0)
       (effects
@@ -2775,7 +2775,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "7d2baef9-d8f4-46a0-a815-ac39ffb74aa9")
+    (uuid "913128fe-7417-4480-99cc-7fb4b45f486d")
     (property "Reference" "#PWR010"
       (at 81.01 55.08 0)
       (effects
@@ -2799,10 +2799,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "bceec4ef-c277-4723-806e-bb3057e75888"))
+      (uuid "a620ebd8-128c-4b66-b190-23fbfb8d0779"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR010")
           (unit 1)))))
   (global_label "USB_DN"
@@ -2813,7 +2813,7 @@
       (font
         (size 1.27 1.27))
       (justify right))
-    (uuid "afa83e44-85ac-4a3f-ac73-1dd2f430f0bd")
+    (uuid "b8bf3020-b21e-4039-99ca-f361eadb1f44")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 73.66 50.8 0)
       (effects
@@ -2827,7 +2827,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "6b1d2ac2-6103-44bb-b9bb-2d2a20c1af85")
+    (uuid "ad2fe6b4-4bff-4317-8411-ea8ba46ee8d5")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 83.82 50.8 0)
       (effects
@@ -2840,7 +2840,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "4afe9539-29f2-4d18-bf3f-499bd43b16d0")
+    (uuid "3794e013-944f-405d-b1fd-5ec5352ff607")
     (property "Reference" "#PWR011"
       (at 80.502 42.38 0)
       (effects
@@ -2864,10 +2864,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "00fb8133-a22e-4c60-8a6c-d1aff323e6fe"))
+      (uuid "07fa6e30-12f5-489f-ae69-b829b82b9dcb"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR011")
           (unit 1)))))
   (global_label "USB_DP"
@@ -2878,7 +2878,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "2336df05-08be-43e0-badc-6b724ac71399")
+    (uuid "04f88c43-c676-4fd5-8f8d-60e30f92c1a5")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 83.82 48.26 0)
       (effects
@@ -2891,7 +2891,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "be49dc9b-98b6-4109-97f1-a928403904e1")
+    (uuid "a9947f5f-84a4-4d01-be16-18b1929b3701")
     (property "Reference" "U2"
       (at 114.3 41.91 0)
       (effects
@@ -2920,42 +2920,42 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "d57b4606-a0cd-4d36-8304-eb534528bf9e"))
+      (uuid "e769db50-bb0d-4d32-99e7-bfae3636cb83"))
     (pin "10"
-      (uuid "7ef376ad-6b40-41e4-b1cc-bb88d75eb3d7"))
+      (uuid "99bd42d5-4c0e-4afd-89b4-852f650a4f7c"))
     (pin "11"
-      (uuid "85009d12-f9e2-4063-b3fc-d652de73121b"))
+      (uuid "0ceb0017-c012-40cf-8955-dd0cd19d0c05"))
     (pin "12"
-      (uuid "c7091ef5-6eb6-4a2b-91b4-dff8489fdc99"))
+      (uuid "87f4d980-83a3-42d5-9db8-92c8f2b71b8e"))
     (pin "13"
-      (uuid "98fbb18f-4f1a-43bd-912f-090b2650f374"))
+      (uuid "c4f9ce19-bf92-48f8-993e-b4ce8adf8e7f"))
     (pin "14"
-      (uuid "7578a864-d3ec-4014-9d92-c2cc448efa8b"))
+      (uuid "6c0288e6-3646-4e1e-897e-3b1890716e95"))
     (pin "15"
-      (uuid "b0496d67-04ed-4f35-a755-dd2185615cc2"))
+      (uuid "cc74b752-1c44-44e8-9a80-e4575116c3c7"))
     (pin "16"
-      (uuid "2a0a99cd-34d4-4e5e-8ffd-38bffcd84d7f"))
+      (uuid "7cc36e2d-2b2d-4b5a-b2d3-6c46d9f7b914"))
     (pin "17"
-      (uuid "82f57d93-2b6f-4bcb-b45d-a5a6d4ff9329"))
+      (uuid "d09cd1a3-2f8f-479f-a900-5e98c5516816"))
     (pin "2"
-      (uuid "086dbb2d-5c3d-40aa-bcef-b10fa11490a5"))
+      (uuid "b543500c-489c-48cf-8369-f64ae9639d24"))
     (pin "3"
-      (uuid "f0fbe5ee-16b5-4533-ba4a-e2f9c17215b0"))
+      (uuid "4a3689b5-b64f-43c7-90db-c0d64d98d646"))
     (pin "4"
-      (uuid "7e955079-7ee1-47f3-81ad-d3ee4bdfac7b"))
+      (uuid "277a8fb9-018e-429d-b59b-2d02f186202f"))
     (pin "5"
-      (uuid "e0373910-b8f7-4c02-8272-b215720bbf80"))
+      (uuid "1cb61b4a-f38e-4036-9d37-b0feaafe7ce5"))
     (pin "6"
-      (uuid "b2b401c5-ea72-4da1-b894-bc8b4e0e5413"))
+      (uuid "ace7b390-2647-4235-b1f6-74f9b34bed82"))
     (pin "7"
-      (uuid "1ef8021e-6c4a-47c8-83ff-c1b070cb8195"))
+      (uuid "2e4b4e05-1c56-4380-a427-b55f34fc366a"))
     (pin "8"
-      (uuid "f5a7f699-dc6a-4b79-9d39-39f9f7c4e4be"))
+      (uuid "74879511-8358-4ef0-85b0-698d9e328460"))
     (pin "9"
-      (uuid "f23c833c-86cf-4208-bebe-e679a2eb66ab"))
+      (uuid "18e7e0f3-4849-491d-b3e5-09f655aef269"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "U2")
           (unit 1)))))
   (label "CHG_TS"
@@ -2965,7 +2965,7 @@
       (font
         (size 1.27 1.27))
       (justify left bottom))
-    (uuid "9495ce23-a2bf-4d47-bcae-a642e999d612"))
+    (uuid "cb93875e-a500-46ed-85d7-1eca60ec906e"))
   (symbol
     (lib_id "qmesh:VSYS")
     (at 139.7 48.26 270)
@@ -2973,7 +2973,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "826fbc9a-d35c-49b8-9aaa-8c38c17904e0")
+    (uuid "fb11ec52-65d6-481a-836c-e25008f55ec1")
     (property "Reference" "#PWR012"
       (at 141.462 47.46 0)
       (effects
@@ -2997,10 +2997,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c3753de1-59be-495f-a808-fd2d36b149c4"))
+      (uuid "8e9c7814-2405-4355-a9c3-4f7d2e6b6bed"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR012")
           (unit 1)))))
   (symbol
@@ -3010,7 +3010,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "4ac6db09-f88b-4bb4-a9ea-309ef99c6cdd")
+    (uuid "6082ee9b-a975-447a-a21b-9e0edcf8f183")
     (property "Reference" "#PWR013"
       (at 141.462 47.46 0)
       (effects
@@ -3034,10 +3034,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "4a04aebe-bbbc-4f0b-a10e-ffeaba7100b6"))
+      (uuid "f640d84f-1366-410b-aec5-a7a2ddef9e39"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR013")
           (unit 1)))))
   (label "CHG_ILIM"
@@ -3047,7 +3047,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "8ff41904-91a9-4e57-8042-5ec6bd30c390"))
+    (uuid "b5901892-8866-451f-8cce-0d34fd1f7ad4"))
   (symbol
     (lib_id "power:VBUS")
     (at 127 43.18 0)
@@ -3055,7 +3055,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "38fa0d8c-613c-4047-ab92-8b5d6b70cc06")
+    (uuid "f1e7742e-adb9-43ea-965f-d4916be62f21")
     (property "Reference" "#PWR014"
       (at 128.762 42.38 0)
       (effects
@@ -3079,10 +3079,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "16eea8d1-6916-4ce3-aefa-2366cbe7d326"))
+      (uuid "86bb5093-4531-420e-92b0-f31bbf8ab98e"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR014")
           (unit 1)))))
   (label "CHG_TMR"
@@ -3092,7 +3092,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "112cca18-4661-48d8-8975-1365e94e655a"))
+    (uuid "514084a4-1d8d-4982-ae70-cbd605422863"))
   (label "CHG_ITERM"
     (at 114.3 48.26 180)
     (fields_autoplaced)
@@ -3100,7 +3100,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "558c6850-fb11-4e05-a5be-370de9b386d8"))
+    (uuid "35d2cdfa-7418-4c44-91f7-0eab53defdfc"))
   (label "CHG_ISET"
     (at 114.3 68.58 180)
     (fields_autoplaced)
@@ -3108,7 +3108,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "18e426b5-7bf2-4033-8d64-c646aa55fbbc"))
+    (uuid "863c18e6-e4fe-433f-b2ea-af70f2df51e8"))
   (symbol
     (lib_id "power:GND")
     (at 127 73.66 0)
@@ -3116,7 +3116,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "0681d3fc-b904-4779-a6e6-b3405ed76c0c")
+    (uuid "21419007-831f-4d5b-9399-01c33eaca417")
     (property "Reference" "#PWR015"
       (at 129.27 72.86 0)
       (effects
@@ -3140,10 +3140,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c84a8156-65fe-4128-b453-e06bc02a2f70"))
+      (uuid "02e32320-c3f3-4c0e-b754-31fdd9e8fdbd"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR015")
           (unit 1)))))
   (symbol
@@ -3153,7 +3153,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "96b26f32-9509-4156-ac28-d64ab510ede3")
+    (uuid "4a7d95c0-2e21-41be-bfa7-23a72678f081")
     (property "Reference" "#PWR016"
       (at 141.462 55.08 0)
       (effects
@@ -3177,10 +3177,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "57859a52-9a1a-4899-a01f-3a7e632af489"))
+      (uuid "cf88a23c-0775-42ea-a010-9d380853fbe9"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR016")
           (unit 1)))))
   (symbol
@@ -3190,7 +3190,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ac64ef86-6caa-443d-9781-0f65732ef4d8")
+    (uuid "15eaa2e4-7f9d-4a73-afa5-5dd68704983c")
     (property "Reference" "#PWR017"
       (at 141.462 55.08 0)
       (effects
@@ -3214,10 +3214,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "760fd1bc-4cb0-4589-ab31-6469d1af2e29"))
+      (uuid "f9af4086-64ae-4d7d-8931-41f633d7c009"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR017")
           (unit 1)))))
   (symbol
@@ -3227,7 +3227,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ff4c2009-39ab-4b74-97fd-0f2632a178b4")
+    (uuid "b06ebda2-2cd8-451b-acf7-2a3613216528")
     (property "Reference" "#PWR018"
       (at 116.57 52.54 0)
       (effects
@@ -3251,10 +3251,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "0ef2916d-d87f-4469-b6ee-a103617bbadf"))
+      (uuid "6b1f4cc1-2580-4ec0-b511-5f9c7c5272f1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR018")
           (unit 1)))))
   (label "CHG_EN2"
@@ -3264,7 +3264,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "fb12a445-8c29-43a0-a94a-cb266579b061"))
+    (uuid "b9bf2f37-df2b-43eb-9fbf-8d3b14369bd8"))
   (symbol
     (lib_id "power:GND")
     (at 114.3 58.42 270)
@@ -3272,7 +3272,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "93be1423-c239-4b2f-b57e-cee29421abd7")
+    (uuid "b59d92dd-23a0-4eb1-ba52-3b1058caa47a")
     (property "Reference" "#PWR019"
       (at 116.57 57.62 0)
       (effects
@@ -3296,10 +3296,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "99b52f14-7914-4d54-8db1-421415830734"))
+      (uuid "9730ae46-8f93-454f-9cae-9d9d4341b3c5"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR019")
           (unit 1)))))
   (label "PGOOD_N"
@@ -3309,7 +3309,7 @@
       (font
         (size 1.27 1.27))
       (justify left bottom))
-    (uuid "01899be1-a1d0-4851-b04a-3a8e9e17e7dd"))
+    (uuid "23141958-c8d4-4b38-b908-968f60c0043e"))
   (symbol
     (lib_id "power:GND")
     (at 127 73.66 0)
@@ -3317,7 +3317,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "f4a168ce-47b7-4f2d-9224-55d5ac4607ea")
+    (uuid "dfaa122b-9431-42fa-beaa-cf89877bd40c")
     (property "Reference" "#PWR020"
       (at 129.27 72.86 0)
       (effects
@@ -3341,10 +3341,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "bfb30fa5-bcc0-4aad-875d-09bf68a5f019"))
+      (uuid "7a71d352-327d-42ac-986f-06aaea7b3bcf"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR020")
           (unit 1)))))
   (global_label "CHG_N"
@@ -3355,7 +3355,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "81b13b52-ce31-4843-b2eb-14f7e2b6b105")
+    (uuid "12e7d9c8-74e9-4983-a44b-dcefbe9a540d")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 139.7 68.58 0)
       (effects
@@ -3368,7 +3368,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6497301b-d186-43e1-b152-9d1d12171216")
+    (uuid "b82cbcba-e2ba-42fc-9793-2cfc544d2fda")
     (property "Reference" "U3"
       (at 165.1 36.83 0)
       (effects
@@ -3397,30 +3397,30 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "774c2120-58df-4141-84e7-9a6379527de1"))
+      (uuid "19fb3356-a491-4c9d-9cd9-b06b0a3e3a42"))
     (pin "10"
-      (uuid "389c5ea7-8ea0-4465-aa76-b04e2740340b"))
+      (uuid "2893ee92-198f-4b64-8906-0128b765458d"))
     (pin "11"
-      (uuid "c450fb95-51da-49ee-9a8a-3c6b4af996a4"))
+      (uuid "a0c3298e-3384-41d1-b830-a4145af4c5de"))
     (pin "2"
-      (uuid "074234c0-391c-4587-84cd-499bd2eb57cb"))
+      (uuid "947240cc-45bf-416a-bd83-30cb5a469499"))
     (pin "3"
-      (uuid "eff213a6-8d2d-4a40-a2a4-3b64e612fff7"))
+      (uuid "1a386878-ee35-4dc0-9234-88b20fb6c5d7"))
     (pin "4"
-      (uuid "d5c99e87-150e-41c7-ab78-c528a20be4dd"))
+      (uuid "81485f3e-85bd-4563-8100-848d8aac437d"))
     (pin "5"
-      (uuid "ba338c4d-cd47-4a24-888f-af67de3880f4"))
+      (uuid "da43601e-5d48-463a-9536-40271d4e93ef"))
     (pin "6"
-      (uuid "b0d60f89-0775-48e9-a9b8-d5820e8aafbf"))
+      (uuid "ffa8dd3a-aeac-441f-9591-027efda2eaf2"))
     (pin "7"
-      (uuid "99b8864c-0c93-4c70-a0d7-a53559bbe4cb"))
+      (uuid "8a8e9e06-0f4d-4761-bc84-e728fb44598b"))
     (pin "8"
-      (uuid "2586f9c1-cbf2-42c6-a015-ac04b794953b"))
+      (uuid "d325d80f-6dbd-47af-adc0-208fd65b37be"))
     (pin "9"
-      (uuid "07c8d556-051c-4966-b895-ad4f9903627e"))
+      (uuid "3b4a01b1-a96e-4a17-adf2-577379c16886"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "U3")
           (unit 1)))))
   (symbol
@@ -3430,7 +3430,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "b4d46953-7686-470f-a400-5a78ebfd8ac4")
+    (uuid "31061f04-d777-4a0a-b422-a4a0c8a16dfb")
     (property "Reference" "#PWR021"
       (at 187.182 39.84 0)
       (effects
@@ -3454,10 +3454,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "f84d4a18-0483-4caf-b8c5-5726fffbce7b"))
+      (uuid "cb54af6f-ee5b-49aa-88ff-bfdf1004d539"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR021")
           (unit 1)))))
   (symbol
@@ -3467,7 +3467,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "54d3f228-38ee-420d-87d1-06b9d68f06e2")
+    (uuid "ff91c425-83ea-413d-8706-e150c8ba5037")
     (property "Reference" "#PWR022"
       (at 187.182 47.46 0)
       (effects
@@ -3491,10 +3491,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "4803ac66-4b69-452d-b11c-d8b28128b0f8"))
+      (uuid "1f228902-909c-4eaf-9024-83734aaa8246"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR022")
           (unit 1)))))
   (symbol
@@ -3504,7 +3504,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "e77edc4c-97fa-49f2-bf0d-19544e74fe83")
+    (uuid "5c19f2ba-6ae0-4c73-8380-71ba3132f4ea")
     (property "Reference" "#PWR023"
       (at 177.53 65.24 0)
       (effects
@@ -3528,10 +3528,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "56d5b870-bc63-40bf-9fa4-16ccb42ea5d4"))
+      (uuid "512bb5a4-c83e-47cb-819c-07d69bed4f2f"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR023")
           (unit 1)))))
   (label "BB_L2"
@@ -3541,7 +3541,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "56a937fa-cd05-41a6-9b41-01371d80a71e"))
+    (uuid "87b1b601-bbaa-4b18-b2b5-d60e03d6877e"))
   (symbol
     (lib_id "power:GND")
     (at 175.26 66.04 0)
@@ -3549,7 +3549,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "47cd910f-10b7-4464-a636-dbef4eb51a2b")
+    (uuid "5f93c3ca-380c-4a96-9a25-91e9c46f909c")
     (property "Reference" "#PWR024"
       (at 177.53 65.24 0)
       (effects
@@ -3573,10 +3573,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "2a001257-cd6c-462b-aede-0e056c8a720e"))
+      (uuid "351efcc1-7eb3-4600-adbb-201f7248c45e"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR024")
           (unit 1)))))
   (label "BB_L1"
@@ -3586,7 +3586,7 @@
       (font
         (size 1.27 1.27))
       (justify right bottom))
-    (uuid "a4bb6117-827e-4d4d-9ceb-2b5937dd883f"))
+    (uuid "618e0ae6-1f9c-4f01-b276-605dddd676e3"))
   (symbol
     (lib_id "qmesh:VSYS")
     (at 165.1 40.64 90)
@@ -3594,7 +3594,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "fa6d1c0e-6e10-43e6-994f-ab0b4e9b67e3")
+    (uuid "b1c6d770-e127-4053-b984-2610c731aa9f")
     (property "Reference" "#PWR025"
       (at 166.862 39.84 0)
       (effects
@@ -3618,10 +3618,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c5b72193-f924-4469-a112-5159eb05f0d4"))
+      (uuid "10517e5f-84ff-4cc0-a2fa-99872748f93b"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR025")
           (unit 1)))))
   (symbol
@@ -3631,7 +3631,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "2d3ab6dc-6a67-4233-9660-d8479efac13c")
+    (uuid "b84205d8-c073-4567-9e36-d47c1ff19e5f")
     (property "Reference" "#PWR026"
       (at 166.862 44.92 0)
       (effects
@@ -3655,10 +3655,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a75ddd30-655c-4d9c-8934-a2fed96c4c8e"))
+      (uuid "c0321ac2-4c92-4e75-bb96-14f14c4f75b3"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR026")
           (unit 1)))))
   (symbol
@@ -3668,7 +3668,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "fadfa91f-0500-4fb2-9a85-0670fd747955")
+    (uuid "21a3cbe5-4830-4544-9069-1408f608928a")
     (property "Reference" "#PWR027"
       (at 167.37 47.46 0)
       (effects
@@ -3692,10 +3692,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c78d5fa1-0fbb-4e01-9228-8db0442222bc"))
+      (uuid "8bb143cc-fcd8-4caa-9ef7-1208f2acca40"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR027")
           (unit 1)))))
   (symbol
@@ -3705,7 +3705,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "eb409351-e67a-4692-8c34-161b0f8730f7")
+    (uuid "1c363819-3320-4224-a091-8973e652bfa9")
     (property "Reference" "#PWR028"
       (at 166.862 42.38 0)
       (effects
@@ -3729,10 +3729,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "debcb898-d755-4f89-8792-ab76099ec365"))
+      (uuid "afc95f39-9c97-430b-93ef-d04c86d00ab1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR028")
           (unit 1)))))
   (symbol
@@ -3742,7 +3742,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "7a1eef57-2504-4e84-869c-86cfbf240696")
+    (uuid "7cddfe60-c1f8-4992-a86f-fd6c6cf3423e")
     (property "Reference" "#PWR029"
       (at 174.99 65.24 0)
       (effects
@@ -3766,10 +3766,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "d1aa4026-ce46-444e-81b2-9d198599a6b5"))
+      (uuid "08d4b9a1-03cf-4394-8406-a0bae5ccae22"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR029")
           (unit 1)))))
   (symbol
@@ -3779,7 +3779,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "518264ef-d16f-4999-9659-11fd9bfc78a8")
+    (uuid "49b42641-6aff-455a-b865-398a44ac74e9")
     (property "Reference" "U4"
       (at 204.47 38.1 0)
       (effects
@@ -3808,26 +3808,26 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "3"
-      (uuid "86facb8e-2077-464f-967d-b87378eb71db"))
+      (uuid "49ae858b-d48e-49f7-86be-703007183688"))
     (pin "2"
-      (uuid "3e4784b9-b64b-4466-95d9-d3e5b4e323f6"))
+      (uuid "92212cc4-8615-4e57-8924-ae0c3cb63d74"))
     (pin "1"
-      (uuid "b3aea60e-6890-41ce-97d1-df0b4f647baa"))
+      (uuid "562faf49-d29e-4f94-94fe-e29551a6e9ba"))
     (pin "6"
-      (uuid "1123d313-3b68-4354-baed-37d7b1050f02"))
+      (uuid "b5189741-738e-433f-859c-73f661614d95"))
     (pin "8"
-      (uuid "0c1f34e2-a5ca-44e7-bb01-ec6bd807a80b"))
+      (uuid "957db679-2c92-4af3-9136-1661f5a8ea63"))
     (pin "7"
-      (uuid "a0b2962d-5d3f-4775-b049-95b9e8861816"))
+      (uuid "af428176-6da8-4ac6-bca3-1284e70f4301"))
     (pin "5"
-      (uuid "ed0f3513-b60a-40a1-b371-3771cb89dd94"))
+      (uuid "73f95155-b536-497e-b496-9705812c920a"))
     (pin "4"
-      (uuid "ed85e3ba-b899-49a6-bdce-8d431b0ba7b2"))
+      (uuid "5fdfa7f8-89e8-43c8-8a9f-bcdb8065aadb"))
     (pin "9"
-      (uuid "cf1a0a15-2600-43cd-9729-57eeb0235c95"))
+      (uuid "6c5a0bc4-8cb8-4813-9a6f-e00bc1c0f5f1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "U4")
           (unit 1)))))
   (symbol
@@ -3837,7 +3837,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "25014b5a-05c2-4242-9ef9-6d63ce2e25dc")
+    (uuid "ef42d4b3-0c42-4cc9-b265-c0a22fa1c0ec")
     (property "Reference" "#PWR030"
       (at 206.232 41.11 0)
       (effects
@@ -3861,10 +3861,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c39460ba-ccdf-4266-95c3-53366d28ab8f"))
+      (uuid "4b8b91be-b359-4e9f-b599-54a2ac058fca"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR030")
           (unit 1)))))
   (symbol
@@ -3874,7 +3874,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "b5d17e84-e82e-441d-b769-5686c232a2ef")
+    (uuid "d7042162-1279-482a-a297-4945c6600af1")
     (property "Reference" "#PWR031"
       (at 206.232 43.65 0)
       (effects
@@ -3898,10 +3898,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "ac2696fc-52d1-46a7-9653-1d94fa062059"))
+      (uuid "255d6dac-6fee-4a28-9a66-03961365f054"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR031")
           (unit 1)))))
   (symbol
@@ -3911,7 +3911,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "91d3d44f-b201-4f76-b958-a64454c9f99e")
+    (uuid "4fddc1af-0df9-4f57-8ecb-3e774bf19522")
     (property "Reference" "#PWR032"
       (at 206.74 46.19 0)
       (effects
@@ -3935,10 +3935,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "68ec6881-810c-4b52-bfa5-148a9caa2e12"))
+      (uuid "ee0573cf-eeae-4418-9934-25a4dfc745e1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR032")
           (unit 1)))))
   (symbol
@@ -3948,7 +3948,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "974838b8-019a-4814-b096-8785eb9f972d")
+    (uuid "6bb65c74-6d61-4da4-8d2d-d9130287ea49")
     (property "Reference" "#PWR033"
       (at 206.74 48.73 0)
       (effects
@@ -3972,10 +3972,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "e80f47ad-bee9-4acb-9a85-cd47f40092f3"))
+      (uuid "541906d9-fd48-49fb-a91a-9e3eb18f30c0"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR033")
           (unit 1)))))
   (global_label "I2C_SDA"
@@ -3986,7 +3986,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "2ccb8fa7-ed57-41c4-b22b-e0808eedabdd")
+    (uuid "82d69890-dd1f-4f3a-87ae-3015c70ea118")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 232.41 41.91 0)
       (effects
@@ -4000,7 +4000,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "f2a329fd-0e4e-49ff-9e8c-22ee1a218ef8")
+    (uuid "7301874c-d981-4ede-9680-67b11a14e8db")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 232.41 44.45 0)
       (effects
@@ -4014,7 +4014,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "0be70e06-d2f1-4378-a929-d6589c51e33f")
+    (uuid "b50c9660-e4f8-4a35-9203-44de01441e99")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 232.41 46.99 0)
       (effects
@@ -4027,7 +4027,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "87f2eaab-51e7-4587-8c12-ba3b8194073b")
+    (uuid "dc5f3baf-0ece-4675-add4-ccf8780dd96c")
     (property "Reference" "#PWR034"
       (at 234.68 51.27 0)
       (effects
@@ -4051,10 +4051,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "e0ef73fa-0a4e-42d4-bf70-8ece46d74cd7"))
+      (uuid "0cb1e73a-81c0-437c-8394-6329435c3ef4"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR034")
           (unit 1)))))
   (symbol
@@ -4064,7 +4064,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "4ce4073c-24f1-475a-aadd-58ed52f3d170")
+    (uuid "4aa956a6-0fdb-456a-b97a-35828d550df1")
     (property "Reference" "#PWR035"
       (at 234.68 53.81 0)
       (effects
@@ -4088,10 +4088,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "299168e2-94dc-41a6-85e7-29e7cc4cc778"))
+      (uuid "9dab98df-a106-41bf-9f9a-1dba75ad6b38"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR035")
           (unit 1)))))
   (symbol
@@ -4101,7 +4101,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "1477a806-ac2e-4010-a978-0969cce86145")
+    (uuid "405631a2-9b0b-472b-b9ec-2afa400f4122")
     (property "Reference" "#FLG036"
       (at 253.476 39.84 0)
       (effects
@@ -4125,10 +4125,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "02b7b333-fecb-4680-85ea-5a99083404a2"))
+      (uuid "677c002d-925b-4458-9fb8-8dedeed15886"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#FLG036")
           (unit 1)))))
   (symbol
@@ -4138,7 +4138,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "4b1069ab-dc1f-4d96-bf86-bd591c1b3aff")
+    (uuid "ceb03531-c52e-4f9c-84df-0b4790be1e6c")
     (property "Reference" "#PWR037"
       (at 253.73 39.84 0)
       (effects
@@ -4162,10 +4162,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "2427c4d8-4c33-4549-94ad-0ad4c9d60975"))
+      (uuid "087a7f84-d6bf-49f1-b7f8-889b07b6915f"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR037")
           (unit 1)))))
   (symbol
@@ -4175,7 +4175,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "277553ff-b4a1-4a22-9580-47556796cefa")
+    (uuid "6668a8e1-70b5-4904-b43d-6fe01e3838c2")
     (property "Reference" "#FLG038"
       (at 268.716 39.84 0)
       (effects
@@ -4199,10 +4199,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c1a7d5de-e6c2-489a-83ae-21ea425f3b7b"))
+      (uuid "57aceec4-653c-40fb-8c43-fb3b71f40a68"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#FLG038")
           (unit 1)))))
   (symbol
@@ -4212,7 +4212,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "5e92d91b-a2c9-43ee-a46b-5e0ad6f83bab")
+    (uuid "f967f535-26a0-4e45-b518-051dd4377613")
     (property "Reference" "#PWR039"
       (at 268.462 39.84 0)
       (effects
@@ -4236,10 +4236,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "cfea2a36-bb09-403e-8ebf-e9496d058adf"))
+      (uuid "fc2ac07b-2480-48a8-8166-a18ec20aafe8"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR039")
           (unit 1)))))
   (symbol
@@ -4249,7 +4249,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "ded4f942-2d76-4227-b988-416d16a298c1")
+    (uuid "9c10a1d2-17ec-4282-a2a5-41b9559b2c46")
     (property "Reference" "#FLG040"
       (at 281.416 39.84 0)
       (effects
@@ -4273,10 +4273,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "50565011-ad80-4453-ae11-81856c91d794"))
+      (uuid "25e703f7-b7ba-48ce-babb-9f9abc7bf83b"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#FLG040")
           (unit 1)))))
   (symbol
@@ -4286,7 +4286,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "30c49c47-6af8-4ce6-b4c4-f9f6b87bbbd9")
+    (uuid "aa8e1661-9969-4165-b701-786417901e84")
     (property "Reference" "#PWR041"
       (at 281.162 39.84 0)
       (effects
@@ -4310,10 +4310,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "12a7621d-5fed-4574-8daf-0c1ca899111d"))
+      (uuid "47c26b92-28a7-4454-bd43-bdf8f0805c5c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR041")
           (unit 1)))))
   (symbol
@@ -4323,7 +4323,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "732ae158-9672-41f8-b2b2-e1ef20c31e40")
+    (uuid "1443df07-9c55-4d4a-aba9-8e2e3e2e6295")
     (property "Reference" "R1"
       (at 296.656 44.92 0)
       (effects
@@ -4347,12 +4347,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "58536427-cbae-40c9-a855-e949b8ac116e"))
+      (uuid "c817c08e-f280-43e9-ace1-dd160566ac83"))
     (pin "2"
-      (uuid "214c4ec2-721b-4149-a9a2-e8e5db519d9e"))
+      (uuid "f7d177ba-f68e-4a77-b7de-732d36207fa6"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R1")
           (unit 1)))))
   (label "CC1"
@@ -4362,7 +4362,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "b147876e-fafc-4303-96a2-745f2ffc2f58"))
+    (uuid "67d1932b-023c-4540-b153-89f15855a230"))
   (symbol
     (lib_id "power:GND")
     (at 294.64 49.53 0)
@@ -4370,7 +4370,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "b9e765bc-b95e-4459-a164-068d7a9dec65")
+    (uuid "f13a35d4-f11c-4052-92e5-e907448ff952")
     (property "Reference" "#PWR042"
       (at 296.91 48.73 0)
       (effects
@@ -4394,10 +4394,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "2948f0c9-630d-4557-bb80-acdd5367559d"))
+      (uuid "c3326202-13a5-4143-8281-6ead64bb64a5"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR042")
           (unit 1)))))
   (symbol
@@ -4407,7 +4407,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "3e6b96ad-0f08-4144-86dc-c916ff6a09eb")
+    (uuid "63e8cf29-265e-4557-8590-de2ed19a2fe4")
     (property "Reference" "R2"
       (at 309.356 44.92 0)
       (effects
@@ -4431,12 +4431,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "37ad7711-663b-47fd-9d85-60c1f6161e0b"))
+      (uuid "8ab7dfef-6caf-470d-9118-7971730b7eac"))
     (pin "2"
-      (uuid "50f30237-7f32-4861-896b-3190dcf3d75a"))
+      (uuid "9e959a05-6ab5-4a74-b88f-6c09b0da04b3"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R2")
           (unit 1)))))
   (label "CC2"
@@ -4446,7 +4446,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "917bbcb5-7e83-4566-a5c8-50895f368759"))
+    (uuid "2e91b661-2a98-4b9e-aceb-12487503d824"))
   (symbol
     (lib_id "power:GND")
     (at 307.34 49.53 0)
@@ -4454,7 +4454,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ee5c37c7-02c8-48e8-b0e4-c067c69f6c42")
+    (uuid "9a7bc857-bbdd-4574-b1cc-0e8e10c1d8b1")
     (property "Reference" "#PWR043"
       (at 309.61 48.73 0)
       (effects
@@ -4478,10 +4478,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "93f40924-7992-4d6e-8546-9c80a81e6900"))
+      (uuid "82082f62-98a3-42f1-b7ae-d2b9e098d445"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR043")
           (unit 1)))))
   (symbol
@@ -4491,7 +4491,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "312208ab-a4e8-4d41-82fb-a2b4476cc889")
+    (uuid "d0073a9d-f6a4-4199-9692-9b4258dceb68")
     (property "Reference" "TP2"
       (at 323.58 42.38 0)
       (effects
@@ -4515,10 +4515,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "4141a9af-c58d-47a8-a52b-741b4f39c768"))
+      (uuid "bc413273-44d0-4370-bf34-d9c47ae9de6c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "TP2")
           (unit 1)))))
   (symbol
@@ -4528,7 +4528,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "8147f4c1-6dc8-4b2a-a6d2-da86bb1a9238")
+    (uuid "5f4d155b-a3f2-421c-8ecf-6ea9a4146bb5")
     (property "Reference" "#PWR044"
       (at 324.342 42.38 0)
       (effects
@@ -4552,10 +4552,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "817dd35e-50bc-42ec-9bc0-c8e6d91a373c"))
+      (uuid "2335f829-9897-4c52-adcd-bb66f3ada7e9"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR044")
           (unit 1)))))
   (symbol
@@ -4565,7 +4565,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5d620599-3cab-4104-9936-71f0772ac06c")
+    (uuid "c2932be4-19db-4dc0-acea-25050cc1b898")
     (property "Reference" "TP3"
       (at 333.74 42.38 0)
       (effects
@@ -4589,10 +4589,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "d409a9f7-feca-4b7e-98e9-3e5c3dcdfb36"))
+      (uuid "254dbe0a-8ded-40c1-9eaa-432edefaa9d0"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "TP3")
           (unit 1)))))
   (symbol
@@ -4602,7 +4602,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "36c75231-2feb-4692-9e23-0b814db8a3e8")
+    (uuid "938bfd79-4467-4bcf-9001-7fc33fc1aae1")
     (property "Reference" "#PWR045"
       (at 334.502 42.38 0)
       (effects
@@ -4626,10 +4626,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "9517e093-624a-4aa9-bc8a-d33e2067c2e9"))
+      (uuid "a307259c-d20d-44d7-bd6f-2a8d8de71f37"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR045")
           (unit 1)))))
   (symbol
@@ -4639,7 +4639,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "15e7551e-dca3-44fc-a2a7-260d540734b7")
+    (uuid "add2a40f-946d-40f7-8af5-ffbf490dd379")
     (property "Reference" "TP4"
       (at 346.44 42.38 0)
       (effects
@@ -4663,10 +4663,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "ac3bc093-21a5-4153-9eed-032dad4418c3"))
+      (uuid "85ee6537-c0ce-4a2b-a29d-59b99f5ccdcb"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "TP4")
           (unit 1)))))
   (symbol
@@ -4676,7 +4676,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "72a58af7-a6cd-4b01-a1af-917a0198294b")
+    (uuid "8de8d84c-3b6e-4adf-b638-6b56bddd69c9")
     (property "Reference" "#PWR046"
       (at 347.202 42.38 0)
       (effects
@@ -4700,10 +4700,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "21a47782-d9ab-493a-8c03-62a0de596896"))
+      (uuid "15199abf-33de-4ae3-a8f0-e25391dedbec"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR046")
           (unit 1)))))
   (symbol
@@ -4713,7 +4713,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "d0898185-ab89-4520-ae09-fb29ab2b5ae4")
+    (uuid "18df9b48-6500-48aa-9db8-b9fd519f5aef")
     (property "Reference" "TP5"
       (at 359.14 42.38 0)
       (effects
@@ -4737,10 +4737,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "66c50d18-f377-4b25-8fad-12b23d9caa59"))
+      (uuid "3bdf50a4-56e5-42bd-a2eb-d1270bc65c6d"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "TP5")
           (unit 1)))))
   (symbol
@@ -4750,7 +4750,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "07dea513-bcda-4bbc-9bf7-8bbc9735fa40")
+    (uuid "45d9202c-abaa-4a95-b36e-35552a91d3de")
     (property "Reference" "#PWR047"
       (at 360.41 42.38 0)
       (effects
@@ -4774,10 +4774,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "28e4e05f-9c8d-4dfd-8b31-40ddc9173dd0"))
+      (uuid "acd7afb4-466c-40c6-95f2-cd750320d91b"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR047")
           (unit 1)))))
   (symbol
@@ -4787,7 +4787,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "0258d32e-4acc-488e-92b8-f7318dd9b2e2")
+    (uuid "e68b9ef1-a306-43df-9e55-fc6f576625e9")
     (property "Reference" "J2"
       (at 373.38 38.1 0)
       (effects
@@ -4816,14 +4816,14 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "db43a4c7-66a1-4d8b-b0c4-13a530e1c80c"))
+      (uuid "b57d73ad-6718-4bf9-a32d-8592f2eda994"))
     (pin "2"
-      (uuid "f9722edb-a249-4226-b0a8-914fee235619"))
+      (uuid "14a85850-a44b-474b-820b-e4b7ad762e7c"))
     (pin "MP"
-      (uuid "958285df-af82-48bf-b007-5478bde88724"))
+      (uuid "ef533186-0061-42fe-b36e-507cec4e6de1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "J2")
           (unit 1)))))
   (symbol
@@ -4833,7 +4833,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "f8f9c772-975a-453a-9762-5dfe9aae907e")
+    (uuid "870a7d08-201b-4030-b8b1-d555258bb5bd")
     (property "Reference" "#PWR048"
       (at 375.142 39.84 0)
       (effects
@@ -4857,10 +4857,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "4093b229-6059-44e5-8eb3-b0061023461a"))
+      (uuid "9972bacf-eaa3-49b9-9cc9-26a31a0742db"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR048")
           (unit 1)))))
   (symbol
@@ -4870,7 +4870,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "16cc0991-8f50-476d-a3b8-3ebb6378e58c")
+    (uuid "96ecd0e8-48a1-43af-a93c-2483628f361d")
     (property "Reference" "#PWR049"
       (at 375.65 42.38 0)
       (effects
@@ -4894,10 +4894,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "ea2e373e-9953-4ef4-b1d1-c0e4173655c1"))
+      (uuid "7b6be019-d388-456d-9464-85ffaa5ad319"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR049")
           (unit 1)))))
   (symbol
@@ -4907,7 +4907,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ee4b9d2f-5c54-4201-aae8-b1bd207fa489")
+    (uuid "e3485f0e-3c95-4aec-a1fe-1a50f98bc4f8")
     (property "Reference" "#PWR050"
       (at 380.73 47.46 0)
       (effects
@@ -4931,10 +4931,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a3235af8-c168-486b-8825-7fb066f6521f"))
+      (uuid "9b596edd-43be-48b7-87fc-1bd3b92f5fba"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR050")
           (unit 1)))))
   (symbol
@@ -4944,7 +4944,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "dcd96d06-e989-4f44-8950-10c736fac16e")
+    (uuid "3f52ee78-b504-4737-a75a-42f1f03aad8a")
     (property "Reference" "R3"
       (at 393.176 50 0)
       (effects
@@ -4968,12 +4968,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "76a01ff8-3cd4-4d85-843d-04799ac5c291"))
+      (uuid "5ec28b3e-f7a2-406d-abb6-0f24187987df"))
     (pin "2"
-      (uuid "f6a93f3f-2fa5-42ed-86dd-71476e8d86b6"))
+      (uuid "56850e4e-b217-4cac-81aa-90d5837deebf"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R3")
           (unit 1)))))
   (label "CHG_ISET"
@@ -4983,7 +4983,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "9987497b-e4a1-45f1-8811-e4cf9ee78c0c"))
+    (uuid "bd1bef6a-c663-4931-88dd-49413a4645bc"))
   (symbol
     (lib_id "power:GND")
     (at 391.16 54.61 0)
@@ -4991,7 +4991,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "6ef98204-7915-4758-839f-b50ca1736527")
+    (uuid "fb70314f-ba23-4462-a12d-32f0534d1be5")
     (property "Reference" "#PWR051"
       (at 393.43 53.81 0)
       (effects
@@ -5015,10 +5015,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "9dc6861f-7226-4655-aa62-4d7927600641"))
+      (uuid "f55b2a81-3784-49c5-8c83-7bbd3e7cd764"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR051")
           (unit 1)))))
   (symbol
@@ -5028,7 +5028,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "cb4e9649-ebe9-48db-b8e8-f4235b523548")
+    (uuid "6a6f2da8-2270-4518-9d08-3e2277997103")
     (property "Reference" "R4"
       (at 408.416 50 0)
       (effects
@@ -5052,12 +5052,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "fca7c747-b69f-4347-9c5d-264067ba80d5"))
+      (uuid "917e7713-ef49-483d-a63a-aea7905cc519"))
     (pin "2"
-      (uuid "0dc6621a-d4a3-4ce0-a666-386e7616b673"))
+      (uuid "f8f11112-d880-4ae8-980c-b8804ad3954f"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R4")
           (unit 1)))))
   (label "CHG_ILIM"
@@ -5067,7 +5067,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "4106f35b-6742-4c23-acaa-d57510950f45"))
+    (uuid "48a9d0c5-80ad-4a52-aa0a-4be9aa84dec7"))
   (symbol
     (lib_id "power:GND")
     (at 406.4 54.61 0)
@@ -5075,7 +5075,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "92382383-1415-40e7-bcd0-8054ddda8350")
+    (uuid "d702f14f-e7bf-4d01-8097-0a2519798858")
     (property "Reference" "#PWR052"
       (at 408.67 53.81 0)
       (effects
@@ -5099,10 +5099,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "7cc77b0f-2b11-416a-bbe9-3693548afae0"))
+      (uuid "c4386f76-c077-44d2-9415-637769175271"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR052")
           (unit 1)))))
   (symbol
@@ -5112,14 +5112,14 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "21b4ce55-47dc-4b50-ba55-25ff6661336d")
+    (uuid "00f63d35-f43e-4060-9e9b-22fa340fd68e")
     (property "Reference" "R5"
       (at 421.116 50 0)
       (effects
         (font
           (size 1.27 1.27))
         (justify left)))
-    (property "Value" "46k4"
+    (property "Value" "47k"
       (at 421.116 52.6 0)
       (effects
         (font
@@ -5136,12 +5136,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "8b81cf73-5156-4505-bbf0-16c6a3795aea"))
+      (uuid "053b9315-d2b7-49b9-a8f2-57167b5d91bd"))
     (pin "2"
-      (uuid "7a81571a-681b-48c2-a98a-c70369c9e983"))
+      (uuid "0e501a52-0fd0-493c-a4a4-ac539cf51b7a"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R5")
           (unit 1)))))
   (label "CHG_TMR"
@@ -5151,7 +5151,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "827dddfd-95ef-41e2-8913-e6b797818f60"))
+    (uuid "84fdde33-513d-491f-91bf-47795b566d77"))
   (symbol
     (lib_id "power:GND")
     (at 419.1 54.61 0)
@@ -5159,7 +5159,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "3ce14739-fe68-40e4-973e-0d4b84365794")
+    (uuid "244d5daf-6be0-4b23-8197-9bc82b577e62")
     (property "Reference" "#PWR053"
       (at 421.37 53.81 0)
       (effects
@@ -5183,10 +5183,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "eab3b04e-f60b-4a41-a895-15b0cf44f283"))
+      (uuid "6f2a9afd-b93b-43f7-8e82-1578d8beacb1"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR053")
           (unit 1)))))
   (symbol
@@ -5196,7 +5196,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp yes)
-    (uuid "ad761512-190d-4f03-9f68-05058ffa6c61")
+    (uuid "2495ba1c-7de3-4478-8b3e-dc050517ded2")
     (property "Reference" "R6"
       (at 436.356 52.54 0)
       (effects
@@ -5220,12 +5220,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "b94754f7-f39f-4d34-9ebb-2d8b46e7676e"))
+      (uuid "c77faee9-cbdb-4acb-b03c-8794006b4a62"))
     (pin "2"
-      (uuid "f0741cb8-04c0-4c0e-920a-4fd0343376e6"))
+      (uuid "5e512a39-b482-42c1-8a07-b2f573802b18"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R6")
           (unit 1)))))
   (label "CHG_ITERM"
@@ -5235,7 +5235,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "46e6622a-1265-4b02-8c51-c48e43428e3b"))
+    (uuid "818db6e5-57d1-474b-b556-b7a52e9d3ed2"))
   (symbol
     (lib_id "power:GND")
     (at 434.34 57.15 0)
@@ -5243,7 +5243,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "6680e4e6-d92e-421e-b3e5-9115c92f64ef")
+    (uuid "945db7f4-3b4e-4fa0-9005-b0d150189307")
     (property "Reference" "#PWR054"
       (at 436.61 56.35 0)
       (effects
@@ -5267,10 +5267,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "0758d9ae-fdf7-4fd4-9332-247791973fd5"))
+      (uuid "ae1b5569-4ba5-487b-adfe-dd0ad976bc9f"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR054")
           (unit 1)))))
   (symbol
@@ -5280,7 +5280,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "a94cec87-728a-4e38-b178-adf06cd5f6bf")
+    (uuid "991657ca-edee-404d-b80d-115bce37bb2b")
     (property "Reference" "R7"
       (at 449.056 50 0)
       (effects
@@ -5304,12 +5304,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "5437868f-23bc-4cdf-b225-7c4284dcf024"))
+      (uuid "2661c377-6139-4948-b982-75f23901876c"))
     (pin "2"
-      (uuid "cab0860d-6cff-4067-8ae3-3a71a3d2321a"))
+      (uuid "d3c9e6c7-ebac-496f-b7ae-d0628f00b0e9"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R7")
           (unit 1)))))
   (label "CHG_TS"
@@ -5319,7 +5319,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "efc78064-3b02-4d15-b286-171d062ef5da"))
+    (uuid "800a54d3-fe25-43ff-a301-0916c1a0fb30"))
   (symbol
     (lib_id "power:GND")
     (at 447.04 54.61 0)
@@ -5327,7 +5327,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "ac2e686c-e7a6-4a2e-b736-41fe9e8a9077")
+    (uuid "4014fb4a-31cc-478c-8b84-793d676fb204")
     (property "Reference" "#PWR055"
       (at 449.31 53.81 0)
       (effects
@@ -5351,10 +5351,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a6645c7c-8b97-4503-9110-aab7e8c130da"))
+      (uuid "c58a355a-281c-431d-9212-6dfc9c40be1a"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR055")
           (unit 1)))))
   (symbol
@@ -5364,7 +5364,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "944a0d0e-d51a-4035-8d1b-4b809a8d51d0")
+    (uuid "7a112231-0c99-4639-b00a-510b754e5b8d")
     (property "Reference" "R8"
       (at 464.296 50 0)
       (effects
@@ -5388,12 +5388,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "21d0f140-1319-47f6-a193-d64da1df4a4a"))
+      (uuid "e8237e3b-ecd9-4f82-a836-e6d8e169d57e"))
     (pin "2"
-      (uuid "3d1a2f77-b99e-47c8-a51c-5e978bdc968c"))
+      (uuid "5520796b-1ca1-46d5-8cc5-4da08b4a4c0d"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R8")
           (unit 1)))))
   (label "CHG_EN2"
@@ -5403,7 +5403,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "f5e594d9-ff11-4667-994a-cbdb9e8d7208"))
+    (uuid "c5f519f1-f8e3-474d-98b7-b535260b5d96"))
   (symbol
     (lib_id "power:VBUS")
     (at 462.28 54.61 180)
@@ -5411,7 +5411,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "654d75ad-d2a3-49b7-82e8-c34962713fd7")
+    (uuid "2bb31f13-2642-4a12-a734-46a1d735d0e1")
     (property "Reference" "#PWR056"
       (at 464.042 53.81 0)
       (effects
@@ -5435,10 +5435,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c9464b3a-cdfb-486e-9425-f9f8b1d6422d"))
+      (uuid "fceb6012-129a-4106-a8ed-d26b39cbef7c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR056")
           (unit 1)))))
   (symbol
@@ -5448,7 +5448,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5014c6e9-2acd-4e95-a825-08afaefc8e12")
+    (uuid "f742c816-a020-4bc9-9121-b3bde88e9c59")
     (property "Reference" "R9"
       (at 476.996 47.46 0)
       (effects
@@ -5472,12 +5472,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "96217828-457c-4528-82e8-d694bb0717d5"))
+      (uuid "c28b251d-5585-40b7-84cf-7a54f529119c"))
     (pin "2"
-      (uuid "047558e9-bfc6-42b5-950e-9e752f2b87a4"))
+      (uuid "7af6f9f0-edcc-43d8-a3bf-1fb26f61fef3"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "R9")
           (unit 1)))))
   (global_label "CHG_N"
@@ -5488,7 +5488,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "7dd863f2-3c2b-4c4a-a114-e5d13b553c96")
+    (uuid "d0c3bef9-b649-4406-9ec0-90d0ff8042a4")
     (property "Intersheetrefs" "${INTERSHEET_REFS}"
       (at 474.98 44.45 0)
       (effects
@@ -5501,7 +5501,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "befef9e8-aca8-4f45-99d1-03129ce9965a")
+    (uuid "5462690e-e09b-442f-85c0-10b62cdb109b")
     (property "Reference" "#PWR057"
       (at 476.742 51.27 0)
       (effects
@@ -5525,10 +5525,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "f7e12dd6-203b-4610-b8a3-58e50444d2be"))
+      (uuid "42ad9f87-8bb7-4f3e-93e3-13c7e1586ef7"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR057")
           (unit 1)))))
   (symbol
@@ -5538,7 +5538,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "73df7db9-4e1c-42d8-9b8e-a88a5a0a1d72")
+    (uuid "d477c0d2-424e-4cdd-b917-7ab9ff7ad2b6")
     (property "Reference" "C1"
       (at 493.252 44.92 0)
       (effects
@@ -5562,12 +5562,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a17df8a6-31be-4a46-92c7-869d490e498a"))
+      (uuid "31140aa1-7f11-4f33-8f20-c24e8ee2b943"))
     (pin "2"
-      (uuid "4b804d23-e47f-462f-96f3-99cf0143f666"))
+      (uuid "764a4a99-18ec-4558-aad7-f8a2e584deab"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C1")
           (unit 1)))))
   (symbol
@@ -5577,7 +5577,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "7b2a783c-fcad-4631-b936-fc8e2595be35")
+    (uuid "c49cb0c6-b8e7-4e87-9f05-6d41c8098205")
     (property "Reference" "#PWR058"
       (at 491.982 41.11 0)
       (effects
@@ -5601,10 +5601,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "5f7d5540-df3c-451f-a214-771c7a144c76"))
+      (uuid "8e05ba17-4f48-4f6f-b402-26b0cfefc73f"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR058")
           (unit 1)))))
   (symbol
@@ -5614,7 +5614,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "c08bf7cb-42ee-4845-82ce-516dc347aa79")
+    (uuid "e82620ef-2da7-40f8-9deb-24fb18672f0e")
     (property "Reference" "#PWR059"
       (at 492.49 48.73 0)
       (effects
@@ -5638,10 +5638,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "9b1624bc-3d47-473a-ba1d-72cd7cbe4283"))
+      (uuid "784b0642-444c-49cd-93a5-b77e70002f9c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR059")
           (unit 1)))))
   (symbol
@@ -5651,7 +5651,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "4e2e6a0c-4067-4f1d-833a-8f9a4a63254a")
+    (uuid "277a4ebb-821a-4113-ad52-7e6ad2428f2d")
     (property "Reference" "C2"
       (at 511.032 44.92 0)
       (effects
@@ -5675,12 +5675,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "991e37aa-f8f7-45ab-be18-2476d203782a"))
+      (uuid "dca89b90-cbac-4146-b8ba-2ba7b987743b"))
     (pin "2"
-      (uuid "e1035312-49ee-405f-83d3-1cf434afe289"))
+      (uuid "26778b4b-6dda-4b18-a7e5-0e1673de8da6"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C2")
           (unit 1)))))
   (symbol
@@ -5690,7 +5690,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "f4c6472f-3633-4cc3-848c-345e8a026074")
+    (uuid "a2fb2cb6-c41a-4f4f-9ee1-c1bc0dad182f")
     (property "Reference" "#PWR060"
       (at 509.762 41.11 0)
       (effects
@@ -5714,10 +5714,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "7d595083-e0b4-4ec5-bcff-3fd2d4825f04"))
+      (uuid "77c50583-dedf-4894-819d-08c07f83b43e"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR060")
           (unit 1)))))
   (symbol
@@ -5727,7 +5727,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "b09ec485-4820-4408-899f-d7143bfe9f87")
+    (uuid "13d4b55a-c656-4997-818c-e4d1461c4b02")
     (property "Reference" "#PWR061"
       (at 510.27 48.73 0)
       (effects
@@ -5751,10 +5751,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "c1f3c8cd-5d43-4f96-abee-0786173a1684"))
+      (uuid "3827c45a-b0be-423b-ae3c-65d04ce4ee83"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR061")
           (unit 1)))))
   (symbol
@@ -5764,7 +5764,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "4ef7c229-4ccb-41f6-a1cd-8ae6ac8ea759")
+    (uuid "55615928-8a33-4b88-90b7-88c03389f05a")
     (property "Reference" "C3"
       (at 526.272 44.92 0)
       (effects
@@ -5788,12 +5788,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "510e33ab-4db3-4eba-a676-25d8d95b28fd"))
+      (uuid "5fbeff78-0286-4417-a750-96e6bd6b3b2f"))
     (pin "2"
-      (uuid "47334fdd-002a-450d-8bfa-2507b20cdfad"))
+      (uuid "d7653b63-8ac0-455d-a0e6-236b42440a50"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C3")
           (unit 1)))))
   (symbol
@@ -5803,7 +5803,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "458b405f-706e-4cdf-b548-5fe7521878d0")
+    (uuid "09a81c41-1097-49e9-8f8a-5fba91434b9c")
     (property "Reference" "#PWR062"
       (at 525.002 41.11 0)
       (effects
@@ -5827,10 +5827,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "9f64818e-620a-4668-a2e9-35df5c154f5e"))
+      (uuid "a5827bf4-241f-4da2-b665-1b26a1aded1d"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR062")
           (unit 1)))))
   (symbol
@@ -5840,7 +5840,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "71f97df0-62eb-4bac-bba5-87d037995d68")
+    (uuid "678efbc6-e75e-49e6-8ae8-fe0196fe9395")
     (property "Reference" "#PWR063"
       (at 525.51 48.73 0)
       (effects
@@ -5864,10 +5864,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "660205bd-e004-4ce0-bba0-f78755bc5f34"))
+      (uuid "1efac959-41ee-47b1-94e4-04748ad65810"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR063")
           (unit 1)))))
   (symbol
@@ -5877,7 +5877,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "c519e429-8112-4c18-90ad-8ed804ab0a78")
+    (uuid "a59fde0c-1d1c-4d2b-b6c1-3214cd223f7f")
     (property "Reference" "TP1"
       (at 536.94 42.38 0)
       (effects
@@ -5901,10 +5901,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "8e315720-0f17-4fde-a615-08a1c9a9dea6"))
+      (uuid "582d8cb2-42d4-4695-b3d0-a694d043fb02"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "TP1")
           (unit 1)))))
   (label "PGOOD_N"
@@ -5914,7 +5914,7 @@
       (font
         (size 1.27 1.27))
       (justify right))
-    (uuid "1aad2033-3957-4578-9702-e513b5f466d4"))
+    (uuid "c14a6331-9eda-411f-ad01-5b615b87a8be"))
   (symbol
     (lib_id "Device:L")
     (at 548.64 48.26 0)
@@ -5922,7 +5922,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "d128148c-82af-4e76-a5f9-ffdbeb44847d")
+    (uuid "952ff50c-2189-4b91-b0a0-a8884ba4911e")
     (property "Reference" "L1"
       (at 549.64 47.46 0)
       (effects
@@ -5945,18 +5945,18 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "FNR252012S2R2MT"
+    (property "MPN" "FTC252012S2R2MBCA"
       (at 548.64 48.26 0)
       (effects
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "109c42bb-be80-46da-8732-5c9ba3cb1bb9"))
+      (uuid "194837e4-20fc-41ed-8c02-c022ac728eda"))
     (pin "2"
-      (uuid "45f6084c-d3b2-4baf-9a70-c9e9a1f0f42b"))
+      (uuid "5072857b-f7d6-4276-80b6-b0d7d4d9a45d"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "L1")
           (unit 1)))))
   (label "BB_L1"
@@ -5966,7 +5966,7 @@
       (font
         (size 1.27 1.27))
       (justify left))
-    (uuid "cc564818-236a-4614-a6fe-69d8b38afb87"))
+    (uuid "efcfabe3-5252-4b1c-8f77-db6463cbb9ec"))
   (label "BB_L2"
     (at 548.64 52.07 270)
     (fields_autoplaced)
@@ -5974,7 +5974,7 @@
       (font
         (size 1.27 1.27))
       (justify right))
-    (uuid "fd3301c4-7bf4-43ba-a86c-98ac800fd568"))
+    (uuid "c7bdee5c-376f-49df-abf4-6da4b61d16b0"))
   (symbol
     (lib_id "Device:C")
     (at 563.88 45.72 0)
@@ -5982,7 +5982,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "ceba980d-ef51-4153-8b6d-04d2d138259d")
+    (uuid "451d5184-3b0a-400a-bdd1-63013eca84f9")
     (property "Reference" "C4"
       (at 566.912 44.92 0)
       (effects
@@ -6006,12 +6006,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "95f52297-7ea4-49f9-8785-c21f561a2a4e"))
+      (uuid "5a318485-5285-4015-b3e8-9600ca80d77d"))
     (pin "2"
-      (uuid "f1c42392-3f7e-4365-9344-e1a303019784"))
+      (uuid "3c7ac604-17d9-4899-b16b-93f1a1e33684"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C4")
           (unit 1)))))
   (symbol
@@ -6021,7 +6021,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "aff345ed-e479-44bf-a234-8a6487f0f6ed")
+    (uuid "bb3f05d4-9a2d-4b90-b01e-712da4d075df")
     (property "Reference" "#PWR064"
       (at 565.642 41.11 0)
       (effects
@@ -6045,10 +6045,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "8527e69d-14c5-4b4c-a36f-27a5bf23ccbf"))
+      (uuid "0e500430-1cb5-40ba-8fcf-af24958073ea"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR064")
           (unit 1)))))
   (symbol
@@ -6058,7 +6058,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "364c30f3-1a44-4349-be6e-b9fd9853d4c2")
+    (uuid "72101763-dd28-4813-89e3-206985f5eb4e")
     (property "Reference" "#PWR065"
       (at 566.15 48.73 0)
       (effects
@@ -6082,10 +6082,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a4f5eb63-ad21-4c36-bd5a-b14d67c0ee48"))
+      (uuid "e95a11a3-3717-44c9-9199-b92a7278acb7"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR065")
           (unit 1)))))
   (symbol
@@ -6095,7 +6095,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "037b8e7f-12b0-45f3-a541-e39ec3ffd3ca")
+    (uuid "b6ee1d12-3a21-4dc9-a66c-eeebcb3473bc")
     (property "Reference" "C5"
       (at 28.432 105.88 0)
       (effects
@@ -6119,12 +6119,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "a9142934-687c-4835-8b7d-8a681d4ba7dd"))
+      (uuid "df1d4556-8b2d-40af-907d-0c12cfe6a4fd"))
     (pin "2"
-      (uuid "0d50bc03-46fb-4491-9afe-37ee61d35f1e"))
+      (uuid "2bdc3030-4475-43c2-b747-703f9c2172ff"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C5")
           (unit 1)))))
   (symbol
@@ -6134,7 +6134,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "e3c98549-982f-46fe-892c-da99f042da29")
+    (uuid "634386c6-8841-4b04-b122-597b62a7345f")
     (property "Reference" "#PWR066"
       (at 27.162 102.07 0)
       (effects
@@ -6158,10 +6158,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "b77802bf-67ea-48b1-aab8-623ee60085e0"))
+      (uuid "33c1236d-2bce-4fc5-a6e2-dabc531cea3a"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR066")
           (unit 1)))))
   (symbol
@@ -6171,7 +6171,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "2415689c-22fb-4db4-8d04-081eef9189a5")
+    (uuid "d94b3389-9aff-4ad6-9c21-4108b66d370f")
     (property "Reference" "#PWR067"
       (at 27.67 109.69 0)
       (effects
@@ -6195,10 +6195,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "f1b1d9b4-2cab-41b9-8406-0f9a43464d0f"))
+      (uuid "a2121128-7f76-4532-963c-03e000cc6318"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR067")
           (unit 1)))))
   (symbol
@@ -6208,7 +6208,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "6d04828d-efb9-477b-9152-234a9b5f919f")
+    (uuid "f37dce3d-15ad-4dad-8166-9d3eeba4e5f7")
     (property "Reference" "C6"
       (at 43.672 105.88 0)
       (effects
@@ -6232,12 +6232,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "9acc576e-af33-4750-a4cb-c849acd1fc0a"))
+      (uuid "cda06158-1bca-4855-9037-02719393849d"))
     (pin "2"
-      (uuid "2d6fe091-c2fd-4a71-89cc-ed387c4147c5"))
+      (uuid "fc0d611f-373e-41ef-b2ac-9299f28d3669"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C6")
           (unit 1)))))
   (symbol
@@ -6247,7 +6247,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "644f6e62-12ad-4093-a949-d77bae200e62")
+    (uuid "ab8656c2-9c99-412c-b879-fd2e84675766")
     (property "Reference" "#PWR068"
       (at 42.402 102.07 0)
       (effects
@@ -6271,10 +6271,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "22d164a3-b4d1-4cfb-8386-28ddcf57e932"))
+      (uuid "760e51e5-872c-47f1-85cc-30a06658cab9"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR068")
           (unit 1)))))
   (symbol
@@ -6284,7 +6284,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "7d2806dd-fd97-4cff-8d52-0d7be366f8f7")
+    (uuid "a2241990-1ed5-4a48-b9d5-ab8bfac701cf")
     (property "Reference" "#PWR069"
       (at 42.91 109.69 0)
       (effects
@@ -6308,10 +6308,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "452fcf33-4162-4b32-996e-5755b4acc847"))
+      (uuid "662b030f-5f99-4d92-aae1-7251e3902499"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR069")
           (unit 1)))))
   (symbol
@@ -6321,7 +6321,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "5ddca01b-acb4-4420-84a6-e6c74b3fb5c9")
+    (uuid "738fa328-0b59-4c84-9ad3-98311a08166f")
     (property "Reference" "C7"
       (at 61.452 105.88 0)
       (effects
@@ -6345,12 +6345,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "45879052-d523-45bd-b09a-ae2c29cf8af7"))
+      (uuid "e9e4490f-f799-462a-a59b-5b55978ba442"))
     (pin "2"
-      (uuid "056faece-3900-4e4a-99e2-c6409916380f"))
+      (uuid "439d97a0-39d3-47db-b8a5-ba46fef275d3"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C7")
           (unit 1)))))
   (symbol
@@ -6360,7 +6360,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "61f438ea-4678-48c8-ad50-0d945ad84a9b")
+    (uuid "3d970fbb-1b6b-4607-bd13-5ec8b1c70b7e")
     (property "Reference" "#PWR070"
       (at 60.182 102.07 0)
       (effects
@@ -6384,10 +6384,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "b2bd486e-7f41-4878-a467-3949130043c1"))
+      (uuid "8c02cf3d-bd04-427b-88fb-6374f54ce209"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR070")
           (unit 1)))))
   (symbol
@@ -6397,7 +6397,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "d3156d42-d5c0-4988-ac7a-e7ebe7959db7")
+    (uuid "2ee48f53-0427-4647-a9f7-044682aa44cc")
     (property "Reference" "#PWR071"
       (at 60.69 109.69 0)
       (effects
@@ -6421,10 +6421,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "cf7feb5f-2199-46b6-9795-699f5599c2ca"))
+      (uuid "ec4b8c98-8d48-4f1d-b84a-c56c3bb36954"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR071")
           (unit 1)))))
   (symbol
@@ -6434,7 +6434,7 @@
     (in_bom yes)
     (on_board yes)
     (dnp no)
-    (uuid "78cb832f-7a3c-4e6e-ac1e-db3865a2d8fa")
+    (uuid "1bb6558f-1fa1-4260-9c25-ed2f16bb4a6f")
     (property "Reference" "C8"
       (at 76.692 105.88 0)
       (effects
@@ -6458,12 +6458,12 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "1098cf69-e9b3-4452-9ff4-feafd9202184"))
+      (uuid "a610b885-a238-4a57-a179-ef2165d8f79e"))
     (pin "2"
-      (uuid "db592a38-28a6-412d-94c0-3b20ae3a5b81"))
+      (uuid "70956ccf-fd21-45a0-92e7-cd4e3f0414aa"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "C8")
           (unit 1)))))
   (symbol
@@ -6473,7 +6473,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "6139b19e-9008-4cb0-af5e-71dc87bdad00")
+    (uuid "8e122dd5-64b5-4b01-8320-b0f6d878ff71")
     (property "Reference" "#PWR072"
       (at 75.422 102.07 0)
       (effects
@@ -6497,10 +6497,10 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "636e356b-701d-436b-9597-25e744c33b15"))
+      (uuid "fce59623-fbf7-4143-ba53-ec7d19f5456c"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR072")
           (unit 1)))))
   (symbol
@@ -6510,7 +6510,7 @@
     (in_bom no)
     (on_board yes)
     (dnp no)
-    (uuid "d2d4633b-ae55-46d1-91cc-c8b41a846741")
+    (uuid "65cee60f-2b34-44b3-8781-734dd7237a33")
     (property "Reference" "#PWR073"
       (at 75.93 109.69 0)
       (effects
@@ -6534,9 +6534,9 @@
         (font
           (size 1.27 1.27)) hide))
     (pin "1"
-      (uuid "2485d9e0-fde9-48b8-bc97-d1afae328792"))
+      (uuid "89ce7281-149c-4030-bcfe-6d376a569a47"))
     (instances
       (project "qmesh-main"
-        (path "/20870c95-9363-45d8-8640-cca61952289a/502094c4-e98e-4721-bc2d-00796faeda0a"
+        (path "/809f13cb-b6bf-4430-ae89-c7018a759296/b325e8b4-892d-40d1-adc8-728cbf91a77e"
           (reference "#PWR073")
           (unit 1))))))

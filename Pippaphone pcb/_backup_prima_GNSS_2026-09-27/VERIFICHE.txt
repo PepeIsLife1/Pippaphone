@@ -1,0 +1,40 @@
+== qmesh-main ==
+BOM: 72 righe, CPL: 157 componenti, gerber/forature: 16 file
+DRC: connessioni mancanti 0
+  courtyards_overlap       warning  11
+  silk_edge_clearance      warning  2
+  silk_over_copper         warning  4
+  track_dangling           warning  3
+  via_dangling             warning  27
+qmesh-main: 181 footprint, 0 differenze
+== qmesh-kbd ==
+BOM: 10 righe, CPL: 63 componenti, gerber/forature: 14 file
+DRC: connessioni mancanti 0
+  silk_edge_clearance      warning  2
+qmesh-kbd: 65 footprint, 0 differenze
+
+== Linee RF (PCB 1) ==
+CPWG W 0,30 / gap 0,20 su 0,2104 mm Er 4,4: Z0 = 49.0 ohm (eps_eff 3.02)
+buchi nel piano In2 in mm2: 'sotto' = pista + gap (0,2 mm per lato), 'fascia' = 0,6 mm dall'asse
+rete         lungh.    largh.     strato gap GND  sotto   fascia
+LORA_ANT_M   3.9 mm    0.30       B.Cu   0.200    0.000   0.000
+LORA_ANT     6.6 mm    0.30       B.Cu   0.200    0.000   0.024
+WIFI_RF      3.4 mm    0.20/0.30  B.Cu   0.200    0.000   0.076
+WIFI_ANT     4.7 mm    0.30       B.Cu   0.200    0.000   0.000
+GN_ANT       5.1 mm    0.30       B.Cu   0.200    0.000   0.000
+GN_ANT_M     1.8 mm    0.30       B.Cu   0.224    0.000   0.000
+GN_LNA_IN    8.1 mm    0.20/0.30  B.Cu   0.200    0.079   0.308 (1 via altre reti)
+SX_RFO       3.1 mm    0.20       B.Cu   0.201    0.000   0.000
+SX_RFI_P     1.8 mm    0.20       B.Cu   0.200    0.000   0.000
+SX_RFI_N     1.8 mm    0.20       B.Cu   0.275    0.000   0.000
+IPD_SW_RFO   1.4 mm    0.20       B.Cu   0.200    0.000   0.000
+IPD_SW_RFI   1.4 mm    0.20       B.Cu   0.200    0.000   0.000
+RFSW_TX      1.1 mm    0.20       B.Cu   0.200    0.000   0.000
+RFSW_RX      1.1 mm    0.20       B.Cu   0.200    0.000   0.000
+RFSW_COM     0.8 mm    0.20       B.Cu   0.450    0.000   0.000
+GN_LNA_OUT   1.7 mm    0.20       B.Cu   0.200    0.000   0.000
+GN_SAW_IN    0.8 mm    0.20       B.Cu   0.200    0.000   0.000
+GN_SAW_OUT   0.6 mm    0.20       B.Cu   0.263    0.000   0.000
+GN_RFA_IN    7.8 mm    0.20/0.30  B.Cu   0.200    0.000   0.122
+eccezione accettata - GN_LNA_IN: antipad In2 della via +3V3 del pin 3 di U10 (0,57 mm dall'asse) sotto il gap per 0,08 mm2, proprio al pin del chip dove la pista e' gia' ristretta a 0,2: discontinuita' lunga ~0,5 mm, trascurabile a 1575 MHz (lambda/10 ~ 11 mm)
+ESITO: OK con 1 eccezione motivata

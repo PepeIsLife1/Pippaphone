@@ -2469,7 +2469,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 210.82 43.18 0)
       (effects
         (font
@@ -2529,7 +2529,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 243.84 43.18 0)
       (effects
         (font
@@ -2589,7 +2589,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 276.86 43.18 0)
       (effects
         (font
@@ -2649,7 +2649,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 307.34 43.18 0)
       (effects
         (font
@@ -2709,7 +2709,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 340.36 43.18 0)
       (effects
         (font
@@ -2769,7 +2769,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 373.38 43.18 0)
       (effects
         (font
@@ -2829,7 +2829,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 406.4 43.18 0)
       (effects
         (font
@@ -2889,7 +2889,7 @@
       (effects
         (font
           (size 1.27 1.27)) hide))
-    (property "MPN" "White LED 0603"
+    (property "MPN" "KT-0603W"
       (at 436.88 43.18 0)
       (effects
         (font

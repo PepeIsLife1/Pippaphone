@@ -1,29 +1,71 @@
 # Q-Mesh rev. 1: cosa comprare
 
-I prezzi e le disponibilità sono quelli visti il 24 settembre 2026: ricontrollali prima di ordinare.
+I prezzi sono quelli visti il 24 settembre 2026, le disponibilità dei componenti JLCPCB/LCSC quelle del 27 settembre 2026: ricontrollale prima di ordinare.
 
-## 1. PCB montate da JLCPCB
+## 1. Montaggio a mano: PCB da JLCPCB, componenti da LCSC (2 telefoni)
+
+**PCB nude e stencil da JLCPCB.** Carica `qmesh-main-gerber.zip` e `qmesh-kbd-gerber.zip` con le impostazioni di `PRODUZIONE.md`, **senza** *PCB Assembly*, e aggiungi uno **stencil per lato** di ogni scheda (4 in tutto). Usa i gerber di questa versione: rispetto a prima è stata rifatta tutta la sezione GNSS (piedinatura dell'AT6558R, LNA U15, secondo SAW FL2).
+
+**Componenti da LCSC.** Nella cartella `ordine_LCSC_montaggio_a_mano/`:
+
+- `Q-Mesh-LCSC-BOM-2telefoni.xlsx` (o `.csv`): caricala nel **BOM Tool** di LCSC. La colonna `LCSC Part Number` fa prendere esattamente il pezzo giusto, senza abbinamenti automatici. Le quantità sono per 2 telefoni più le scorte (20% o almeno 5 pezzi per i passivi, un pezzo in più per integrati e connettori). LCSC le arrotonda al minimo d'ordine.
+- `Customer Part Number` elenca dove va ogni pezzo (`PCB1:` scheda principale, `PCB2:` tastiera): LCSC lo stampa sulle bustine.
+- 78 righe, con stock LCSC controllato il 27 settembre 2026. Unica riga senza stock: **C13594** (33 nF 0402, C70), esaurito su LCSC; va bene qualsiasi 33 nF 0402 X7R da 10 V in su, lo dice la colonna `Note`. In 4 righe il codice è diverso da quello della BOM JLCPCB perché su LCSC l'altro era esaurito; anche questo è nella colonna `Note`.
+
+**Due pezzi fuori da LCSC** (`Q-Mesh-fuori-LCSC.csv`), da [Mouser](https://www.mouser.it) o [DigiKey](https://www.digikey.it):
+
+| Rif. | Parte | Quantità | Perché |
+|---|---|---|---|
+| AE2 | Antenova **SR4G013** | 3 | LCSC non la vende, e nessuna antenna LCSC entra nella stessa impronta |
+| U5 | Espressif **ESP32-S3R8** | 3 | Esaurito su LCSC. Se torna disponibile (C2913194), prendilo lì |
+
+### Alternativa: montaggio da JLCPCB
 
 | Scheda | File da caricare | Impostazioni |
 |---|---|---|
-| **PCB 1 (principale)** | `qmesh-main-gerber.zip`, `qmesh-main-BOM-JLCPCB.csv`, `qmesh-main-CPL-JLCPCB.csv` | Vedi `PRODUZIONE.md`: 4 strati, 1,0 mm, stackup **JLC04101H-7628**, controllo d'impedenza, montaggio su **due lati** |
-| **PCB 2 (tastiera)** | `qmesh-kbd-gerber.zip`, `qmesh-kbd-BOM-JLCPCB.csv`, `qmesh-kbd-CPL-JLCPCB.csv` | 2 strati, 0,6 mm, montaggio su due lati (tasti sul lato F, TCA8418 sul lato B) |
+| **PCB 1 (principale)** | `qmesh-main-gerber.zip`, `qmesh-main-BOM-JLCPCB.csv`, `qmesh-main-CPL-JLCPCB.csv` | 4 strati, 1,0 mm, stackup **JLC04101H-7628**, controllo d'impedenza, montaggio su **due lati** |
+| **PCB 2 (tastiera)** | `qmesh-kbd-gerber.zip`, `qmesh-kbd-BOM-JLCPCB.csv`, `qmesh-kbd-CPL-JLCPCB.csv` | 2 strati, 0,6 mm, montaggio su due lati |
 
-### Parti che LCSC non ha a magazzino
+Nelle BOM JLCPCB solo l'antenna AE2 resta in Global Sourcing. Righe da tenere d'occhio: U8 **C7434807** e U9 **C534203** vanno spesso in *shortfall* (si comprano con *Pre-order* da LCSC; per U9 non usare C1854968, che JLCPCB propone da solo); U5 ESP32-S3R8 **C2913194** è esaurito su LCSC ma JLCPCB ne ha nel suo magazzino. C70 **C13594** (33 nF) è una parte *extended*: se JLCPCB non ne ha, sostituiscila nel pannello BOM con un altro 33 nF 0402 X7R.
 
-JLCPCB le compra per te con il **Global Sourcing**: nell'ordine le aggiungi da DigiKey o Mouser e le fai arrivare prima del montaggio. Calcola 1–2 settimane in più.
+### Parti cambiate per trovarle a magazzino
 
-| Rif. | Parte | Perché serve quella |
-|---|---|---|
-| U8 | Johanson **0900FM15K0039001E** | Balun, adattamento e filtro dell'SX1262 in un solo pezzo |
-| U9 | Infineon **BGS12WN6E6327XTSA1** | Switch TX/RX |
-| FL1 | Qualcomm/RF360 **B39162B9416K610** | SAW GPS 1575 MHz. Se non si trova, qualunque SAW 1575 MHz in case 1,4 × 1,1 mm con la stessa piedinatura (1 uscita, 4 ingresso, 2/3/5 massa) |
-| AE2 | Antenova **SR4G013** | Antenna chip GNSS |
-| Y3 | Epson **TG2520SMN 26.0000M** (TCXO 26 MHz ±0,5 ppm, 2,5 × 2,0 mm) | Riferimento del GNSS. Va bene qualunque TCXO 26 MHz 2520 clipped-sine a 3,3 V con piedinatura standard (1 NC, 2 GND, 3 uscita, 4 VCC) |
-| J6 | Molex **104031-0811** | Slot microSD |
-| J7 (PCB 1), J1 (PCB 2) | Hirose **FH12-12S-0.5SH(55)** | Connettore del cavo piatto della tastiera |
+Stessa impronta, prestazioni uguali o migliori:
 
-I codici LCSC già verificati sono nella colonna `LCSC Part #` delle BOM. Per resistenze e condensatori il codice è vuoto: lo strumento BOM di JLCPCB li abbina da solo per valore e contenitore (0402/0603/0805). Controlla gli abbinamenti proposti prima di confermare.
+| Rif. | Prima | Ora | Perché va bene |
+|---|---|---|---|
+| FL1 | RF360 B39162B9416K610 (introvabile) | RF360 **B39162B4327P810** (C2650956) | Stessa custodia 1,4 × 1,1 e stessi piedini (1 e 4 segnale, 2/3/5 massa). Passa anche GLONASS e BeiDou, che l'AT6558R riceve |
+| L1 | FNR252012S2R2MT | cjiang **FTC252012S2R2MBCA** (C5832372) | 2,2 µH, 2520, Isat 3,8 A, 55 mΩ (l'originale aveva 216 mΩ) |
+| L12 | FNR252012S100MT | cjiang **FTC252012S100MBCA** (C5832376) | 10 µH, 2520, Isat 1,6 A |
+| FB2, FB3 | ferrite 1 kΩ | Murata **BLM15PX601SN1D** (C160977) | 600 Ω @ 100 MHz ma **900 mA**: le ferrite da 1 kΩ in 0402 reggono al massimo 350 mA, poche per l'altoparlante |
+| R5 | 46,4 kΩ | **47 kΩ** (C25792) | Timer di sicurezza della carica 6,3 h invece di 6,2 h |
+| D3–D5 | KT-0402 | XINGLIGHT **XL-1005SURC / UGC / UBC** | LED 0402 rosso, verde, blu |
+| D1 | BAT54WS | BAT54WS Yangjie **C699104** (LCSC) / Diodes BAT54WS-7-F C124205 (JLCPCB) | Stesso diodo |
+| D2 | B0540WS (Shikues, esaurito) | JSCJ **B0540WS** (C22635) | 40 V, 500 mA |
+| U2 | BQ24074RGTR | BQ24074RGTT **C2861252** (LCSC) / RGTR C54313 (JLCPCB) | Stesso chip, bobina diversa |
+| U10 | AT6558R | **AT6558R-5N32** (C500608) | Stesso chip nella sigla con cui si vende oggi |
+| J4 | U.FL-R-SMT-1 | (10) **C88373** (LCSC) / (80) C88374 (JLCPCB) | Stesso connettore, bobina diversa |
+| C1, C59 | 1 µF 0603 | Samsung CL10A105KA8NNNC **C5673** (LCSC) / C15849 (JLCPCB) | 1 µF 25 V X5R |
+| Y1 | quarzo 40 MHz generico | SCTF **SX3B40.000F1010F30** (C7302016) | 40 MHz, 10 pF, ±10 ppm, ESR 30 Ω |
+| Y2 | TG2520SMN 32M ECGNNM3 | Epson **X1G0054210205** (C7527388) | È ancora un TG2520SMN 32 MHz ±0,5 ppm, alimentabile da 1,7 a 3,63 V |
+| Y3 | Epson TG2520SMN 26M | Huaxin **2T026000VY** (C19725361) | TCXO 26 MHz 2520, piedinatura standard (1 NC, 2 GND, 3 uscita, 4 VCC). Il datasheet dà ±1,5 ppm (LCSC ±0,5): il GPS funziona, il primo fix a freddo può essere un po' più lento |
+| Y4 | quarzo 32 kHz generico | Seiko **SC-20S 9 pF** (C97603) | 32,768 kHz, 2012. Da 9 pF perché sull'AT6558R il quarzo va senza condensatori esterni (prima era un FC-12M da 12,5 pF) |
+
+### Sezione GNSS rifatta (27/9/2026)
+
+| Rif. | Parte | Codice LCSC | Note |
+|---|---|---|---|
+| U15 | ZHONGKEWEI **AT2659** (LNA GNSS, DFN-6 1,5 × 1,0) | C92450 | Nuovo |
+| FL2 | RF360 **B39162B4327P810** | C2650956 | Secondo SAW, prima dell'LNA: lo protegge da LoRa e Wi-Fi |
+| L11 | Murata **LQG15HS6N8J02D** 6,8 nH | C77110 | Nuovo, adattamento d'ingresso dell'LNA |
+| C70 | Samsung **CL05B333KO5NNNC** 33 nF | C13594 | Nuovo. Esaurito su LCSC al 27/9: va bene qualsiasi 33 nF 0402 X7R |
+| C71 | 1 µF 0402 | C52923 | Nuovo |
+| R44 | 10 Ω 0402 | C25077 | Nuovo, filtro sull'alimentazione dell'LNA |
+| R45, R46 | 0 Ω 0402 | C17168 | Nuovi (R46 alimenta il DC-DC interno; R47 resta DNP) |
+| L8 | Murata **LQM18PN2R2MFRL** 2,2 µH | C337910 | Era 4,7 µH |
+| C36, C37 | 4,7 µF 0603 | C19666 | Erano 10 µF e 1 µF |
+| C46 | 100 nF 0402 | C1525 | Era 10 nF |
+| R19, C47 | – | – | Tolti |
 
 ## 2. Da comprare a parte e montare a mano
 
@@ -45,6 +87,6 @@ I codici LCSC già verificati sono nella colonna `LCSC Part #` delle BOM. Per re
 
 ## 3. Da controllare quando arrivano i pezzi
 
-1. **Contatti del flat del display.** J5 è un Hirose FH12**A** (contatti in alto): va bene se, tenendo il display con lo schermo verso di te, i contatti dorati del flat sono sul **retro**. Il flat fa una piega a Z nell'asola e arriva a J5 dal lato B. Se invece i contatti sono davanti, serve l'FH12 normale (contatti in basso, stessa impronta, LCSC **C202114**). Per non restare fermi, aggiungi 2 FH12-40S-0.5SH(55) sfusi all'ordine LCSC: costano poco e, se serve, si cambia J5 con l'aria calda.
+1. **Contatti del flat del display.** J5 è un Hirose FH12**A** (contatti in alto): va bene se, tenendo il display con lo schermo verso di te, i contatti dorati del flat sono sul **retro**. Il flat fa una piega a Z nell'asola e arriva a J5 dal lato B. Se invece i contatti sono davanti, serve l'FH12 normale (contatti in basso, stessa impronta, LCSC **C202114**). Nella BOM LCSC ci sono già 2 FH12-40S-0.5SH(55) di scorta: se serve, monti quello al posto dell'FH12A.
 2. **Polarità della batteria** sul cavetto JST SH (pin 1 = +).
 3. **Esagono dell'SMA** del pigtail: la sede nella scocca è per 8 mm.
