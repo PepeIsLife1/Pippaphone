@@ -183,6 +183,11 @@ void console() {
 }  // namespace
 
 extern "C" void app_main() {
+#if CONFIG_RIPETITORE_SCHEDA_TELEFONO
+    // PCB del telefono rev. 1.1: prima di tutto l'autoritenuta, cosi' resta acceso anche dopo
+    // aver rilasciato PWR.
+    scheda::holdPower();
+#endif
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         nvs_flash_erase();
@@ -212,7 +217,11 @@ extern "C" void app_main() {
     };
     g_node->battery = batteryPercent();
 
-    if (!g_radio.begin(radioConfig(), g_node, g_lock)) {
+    const bool radioOk = g_radio.begin(radioConfig(), g_node, g_lock);
+#if CONFIG_RIPETITORE_SCHEDA_TELEFONO
+    scheda::spiLowDrive();  // dopo l'inizializzazione del bus SPI
+#endif
+    if (!radioOk) {
         ESP_LOGE(TAG, "radio non disponibile: controlla l'SX1262");
     } else {
         int8_t p = CONFIG_RIPETITORE_POTENZA_MAX;
@@ -239,6 +248,24 @@ extern "C" void app_main() {
             }
         },
         "led", 3072, nullptr, 2, nullptr);
+
+#if CONFIG_RIPETITORE_SCHEDA_TELEFONO
+    // PWR tenuto premuto 3 secondi: spegnimento.
+    xTaskCreate(
+        [](void*) {
+            // Prima aspetta il rilascio del tasto usato per accendere.
+            while (scheda::expander().readButtons() & scheda::Expander::BTN_PWR) vTaskDelay(pdMS_TO_TICKS(100));
+            for (int held = 0;;) {
+                vTaskDelay(pdMS_TO_TICKS(100));
+                held = (scheda::expander().readButtons() & scheda::Expander::BTN_PWR) ? held + 1 : 0;
+                if (held >= 30) {
+                    ESP_LOGI(TAG, "PWR tenuto premuto: spegnimento");
+                    scheda::powerOff();
+                }
+            }
+        },
+        "pwr", 3072, nullptr, 3, nullptr);
+#endif
 
     console();
 }

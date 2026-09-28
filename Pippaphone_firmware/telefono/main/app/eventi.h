@@ -21,6 +21,7 @@ enum class Ev : uint8_t {
     PROV_OFFER,      // l'amministratore mi offre un numero
     PROV_HELLO,      // (amministratore) un telefono nuovo chiede un numero
     TIME,            // ora sincronizzata
+    BATTERY,         // batteria: a = percentuale; id = 0 quasi scarica, 1 scarica (si spegne)
 };
 
 struct Event {

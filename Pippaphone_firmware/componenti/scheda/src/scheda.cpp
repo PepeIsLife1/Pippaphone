@@ -3,6 +3,7 @@
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_sleep.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -13,6 +14,7 @@ namespace scheda {
 namespace {
 const char* TAG = "scheda";
 TaskHandle_t g_inputTask = nullptr;
+bool g_full = false;  // init(true): display, audio, tastiera e GNSS inizializzati
 
 void IRAM_ATTR onIntN(void*) {
     BaseType_t woken = pdFALSE;
@@ -26,9 +28,13 @@ void inputTask(void*) {
     for (;;) {
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(200));
         tastiera().service();
-        // Linea ancora bassa: c'e' altro da leggere.
+        // Linea ancora bassa: c'e' altro da leggere, oppure e' l'allarme del MAX17048 (va
+        // cancellato, altrimenti INT_N resta bassa e i fronti dei tasti si perdono).
         int guard = 0;
-        while (gpio_get_level(PIN_INT_N) == 0 && guard++ < 8) tastiera().service();
+        while (gpio_get_level(PIN_INT_N) == 0 && guard++ < 8) {
+            batteria().clearAlert();
+            tastiera().service();
+        }
     }
 }
 
@@ -74,6 +80,35 @@ void vibCb(TimerHandle_t) {
 }
 }  // namespace
 
+Avvio holdPower() {
+    // Qualche tentativo: senza l'expander il telefono si spegne appena si rilascia PWR.
+    bool ok = false;
+    for (int i = 0; i < 5 && !ok; i++) {
+        ok = expander().begin();
+        if (!ok) vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (!ok) ESP_LOGE(TAG, "AW9523B assente: PWR_HOLD non attivo, resta acceso solo finche' PWR e' premuto");
+    const esp_reset_reason_t why = esp_reset_reason();
+    Avvio a;
+    if (why == ESP_RST_BROWNOUT) {
+        a = Avvio::TASTO;  // batteria quasi scarica: si riaccende solo se PWR e' premuto
+    } else if (ok && expander().heldAtBoot()) {
+        // Autoritenuta gia' attiva: il telefono era acceso (riavvio software, watchdog, USB,
+        // tasto RESET). Il RESET (CHIP_PU) si presenta come ESP_RST_POWERON: per questo si guarda
+        // prima qui.
+        a = Avvio::RIAVVIO;
+    } else if (why == ESP_RST_DEEPSLEEP) {
+        a = Avvio::RISVEGLIO;
+    } else if (why == ESP_RST_POWERON) {
+        a = Avvio::TASTO;
+    } else {
+        a = Avvio::RIAVVIO;  // autoritenuta a 0 dopo un riavvio: prima programmazione via USB
+    }
+    static const char* const NOMI[] = {"tasto", "riavvio", "risveglio"};
+    ESP_LOGI(TAG, "avvio: %s (reset %d, PWR_HOLD era %d)", NOMI[int(a)], int(why), int(expander().heldAtBoot()));
+    return a;
+}
+
 InitResult init(bool full) {
     InitResult r;
     // INT_N: ingresso con pull-up esterno, interruzione sul fronte di discesa.
@@ -88,6 +123,7 @@ InitResult init(bool full) {
     g_blinkTimer = xTimerCreate("led", pdMS_TO_TICKS(100), pdFALSE, nullptr, blinkCb);
     g_vibTimer = xTimerCreate("vib", pdMS_TO_TICKS(100), pdFALSE, nullptr, vibCb);
     if (!full) return r;
+    g_full = true;
 
     r.tastiera = tastiera().begin();
     xTaskCreatePinnedToCore(inputTask, "input", 4096, nullptr, 12, &g_inputTask, 1);
@@ -130,22 +166,38 @@ void ledOff() {
 
 void keyboardLight(uint8_t level) { expander().led(Exp::KB_BL, level); }
 
-bool wokeFromSleep() { return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0; }
+void spiLowDrive() {
+    gpio_set_drive_capability(PIN_SPI_SCK, GPIO_DRIVE_CAP_1);
+    gpio_set_drive_capability(PIN_SPI_MOSI, GPIO_DRIVE_CAP_1);
+}
 
 void powerOff() {
     ESP_LOGI(TAG, "spegnimento");
-    display().backlight(0);
-    keyboardLight(0);
+    if (g_full) {
+        display().backlight(0);
+        keyboardLight(0);
+        audio().stop();
+        gnss().power(false);
+    } else {
+        expander().set(Exp::GNSS_EN, false);
+    }
     ledOff();
-    audio().stop();
-    gnss().power(false);
+    if (g_vibTimer) xTimerStop(g_vibTimer, 0);
+    expander().set(Exp::VIB_EN, false);
     expander().set(Exp::AMP_SD, false);
     expander().set(Exp::LORA_RST_N, false);  // SX1262 in reset: consuma pochissimo
-    // Aspetta che PWR sia rilasciato, altrimenti si risveglia subito.
-    for (int i = 0; i < 100 && (expander().readButtons() & Expander::BTN_PWR); i++) vTaskDelay(pdMS_TO_TICKS(20));
-    // Solo il tasto PWR sveglia: tastiera zitta, interruzione dell'expander solo su PWR.
+    // Aspetta che PWR sia rilasciato (al massimo 5 s): finche' e' premuto il 3,3 V c'e' comunque,
+    // e col deep sleep si risveglierebbe subito.
+    for (int i = 0; i < 250 && (expander().readButtons() & Expander::BTN_PWR); i++) vTaskDelay(pdMS_TO_TICKS(20));
+    // Fine dell'autoritenuta: il TPS63001 si spegne e con lui tutto il 3,3 V.
+    expander().set(Exp::PWR_HOLD, false);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    // Ancora acceso: JP3 chiuso (o PWR tenuto premuto oltre i 5 s). Deep sleep come nella rev. 1;
+    // solo il tasto PWR sveglia: tastiera zitta, interruzione dell'expander solo su PWR.
+    ESP_LOGW(TAG, "3,3 V ancora presente (JP3 chiuso?): deep sleep");
     tastiera().sleep();
     expander().onlyPowerWakes();
+    batteria().clearAlert();  // con INT_N bassa si risveglierebbe subito
     rtc_gpio_pullup_dis(PIN_INT_N);
     rtc_gpio_pulldown_dis(PIN_INT_N);
     esp_sleep_enable_ext0_wakeup(PIN_INT_N, 0);

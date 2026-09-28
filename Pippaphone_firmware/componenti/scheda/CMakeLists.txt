@@ -1,4 +1,4 @@
-# Driver della PCB del Pippaphone (rev. 1): expander, tastiera, batteria, display, audio, GNSS.
+# Driver della PCB del Pippaphone (rev. 1.1): expander, tastiera, batteria, display, audio, GNSS.
 idf_component_register(SRCS "src/i2c.cpp"
                             "src/expander.cpp"
                             "src/tastiera.cpp"

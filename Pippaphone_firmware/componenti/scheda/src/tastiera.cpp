@@ -70,9 +70,7 @@ Tastiera& tastiera() {
 
 bool Tastiera::begin() {
     if (!q_) q_ = xQueueCreate(32, sizeof(KeyEvent));
-    side_ = expander().readButtons();
-    charging_ = (side_ & Expander::CHARGING) != 0;
-    side_ &= 0x0F;
+    side_ = expander().readButtons() & 0x0F;
     if (!dev_.attach(i2cBus(), ADDR_TCA8418)) {
         ESP_LOGE("tastiera", "TCA8418 non trovato: il cavo piatto della tastiera e' collegato?");
         return false;
@@ -110,10 +108,8 @@ void Tastiera::service() {
         }
         dev_.writeReg(REG_INT_STAT, 0x1F);
     }
-    // Tasti laterali e stato di carica (expander).
-    const uint8_t now = expander().readButtons();
-    charging_ = (now & Expander::CHARGING) != 0;
-    const uint8_t side = now & 0x0F;
+    // Tasti laterali (expander).
+    const uint8_t side = expander().readButtons() & 0x0F;
     const uint8_t changed = side ^ side_;
     const struct { uint8_t bit; Key key; } map[] = {{Expander::BTN_PWR, Key::PWR},
                                                    {Expander::BTN_PTT, Key::PTT},

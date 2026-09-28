@@ -277,6 +277,16 @@ void handleEvent(const app::Event& e) {
             if (st.vibration) scheda::vibrate(150);
             break;
         }
+        case Ev::BATTERY:
+            wake();
+            if (e.id == 0) {
+                toast("Batteria quasi scarica", std::to_string(e.a) + "% · collega il caricabatterie");
+                if (st.vibration) scheda::vibrate(300);
+            } else {
+                toast("Batteria scarica", "Il telefono si spegne", ROSSO());
+                scheda::vibratePattern(3, 200, 150);
+            }
+            break;
         case Ev::VOICE_INCOMING:
             wake();
             toast("Walkie-talkie", name(e.from) + " sta parlando...", VERDE());
@@ -465,7 +475,7 @@ void refreshBars() {
     const app::Rete::Signal sig = app::rete().signal();
     for (int i = 0; i < 4; i++) fill(g_sbBars[i], i < sig.bars ? BIANCO() : GRIGIO1());
     const uint8_t b = scheda::batteria().percent();
-    const bool chg = scheda::tastiera().charging();
+    const bool chg = scheda::batteria().charging();
     std::string bt = b <= 100 ? std::to_string(b) + "% " : "";
     bt += chg ? IC_CARICA : batteryIcon(b <= 100 ? b : 50);
     lv_label_set_text(g_sbBatt, bt.c_str());

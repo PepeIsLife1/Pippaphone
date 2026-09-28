@@ -57,7 +57,9 @@ bool Rete::begin() {
     cfg.dio2AsRfSwitch = true;
     cfg.tcxoVoltage = 1.8f;
     cfg.maxPowerDbm = 22;
-    if (!radio_.begin(cfg, phone_, lock_)) return false;
+    const bool ok = radio_.begin(cfg, phone_, lock_);
+    scheda::spiLowDrive();  // dopo l'inizializzazione del bus SPI
+    if (!ok) return false;
     setPower(dati().settings().txPower);
     radio_.start(0, 10);
     return true;

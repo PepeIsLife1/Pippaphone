@@ -37,18 +37,16 @@ public:
     // Configura il TCA8418; gli eventi finiscono nella coda restituita da queue().
     bool begin();
     bool ok() const { return dev_.present(); }
-    // Da chiamare quando INT_N scende: legge tastiera, tasti laterali e carica.
+    // Da chiamare quando INT_N scende: legge tastiera e tasti laterali.
     void service();
     QueueHandle_t queue() const { return q_; }
     // Smette di generare interruzioni (prima dello spegnimento).
     void sleep();
-    bool charging() const { return charging_; }
 
 private:
     I2cDev dev_;
     QueueHandle_t q_ = nullptr;
     uint8_t side_ = 0;
-    bool charging_ = false;
 };
 
 Tastiera& tastiera();

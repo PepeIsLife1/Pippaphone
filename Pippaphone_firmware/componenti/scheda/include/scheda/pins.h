@@ -1,4 +1,8 @@
-// Piedinatura della PCB 1 rev. 1 (Pippaphone), ricavata dal file KiCad.
+// Piedinatura della PCB 1 rev. 1.1 (Pippaphone), ricavata dal file KiCad.
+//
+// Rev. 1.1: il 3,3 V si accende col tasto PWR e resta acceso finche' PWR_HOLD (P1_7) e' a 1;
+// il tasto arriva a P1_3 attraverso D8 (con R60 a +3,3 V); CHG_N del BQ24074 accende solo il
+// LED rosso e non e' piu' leggibile (la carica si ricava dal MAX17048).
 #pragma once
 
 #include "driver/gpio.h"
@@ -64,11 +68,11 @@ enum class Exp : uint8_t {
     LCD_RST_N = 8,   // P1_0
     LCD_CS_N = 9,    // P1_1
     SD_CS_N = 10,    // P1_2
-    BTN_PWR_N = 11,  // P1_3 ingresso
+    BTN_PWR_N = 11,  // P1_3 ingresso: BTN_PWR_SENSE (tasto PWR attraverso D8), 0 = premuto
     BTN_PTT_N = 12,  // P1_4 ingresso
     BTN_VOLUP_N = 13,  // P1_5 ingresso
     BTN_VOLDN_N = 14,  // P1_6 ingresso
-    CHG_N = 15,      // P1_7 ingresso: 0 = in carica
+    PWR_HOLD = 15,   // P1_7 uscita: 1 = tiene acceso il TPS63001 (autoritenuta), 0 = spegne tutto
 };
 
 }  // namespace scheda

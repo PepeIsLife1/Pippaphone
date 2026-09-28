@@ -48,7 +48,31 @@ idf.py build flash monitor
 
 La porta USB-C della PCB è collegata alla USB interna dell'ESP32-S3: non servono adattatori.
 Se il chip non entra in programmazione, tieni GPIO0 a massa (punto di test **TP6**) mentre
-colleghi il cavo.
+accendi la scheda (vedi sotto: col cavo USB da solo la PCB rev. 1.1 resta spenta).
+
+### Accensione e spegnimento (PCB rev. 1.1)
+
+Nella rev. 1.1 il 3,3 V si accende col tasto **PWR** e resta acceso perché il firmware, come
+prima cosa, porta a 1 l'uscita PWR_HOLD dell'expander (P1_7). Quindi:
+
+- **prima programmazione** (ESP32 vuoto): il cavo USB da solo non accende la scheda. Tieni
+  premuto PWR per tutta la programmazione, oppure chiudi il ponticello **JP3** (sempre acceso)
+  e riaprilo dopo. Una volta caricato il firmware, il telefono resta acceso anche durante
+  `idf.py flash`;
+- **accendere**: tieni premuto PWR finché vibra (poco più di un secondo); se lo rilasci
+  prima, si rispegne. Nel primo mezzo secondo LED e tastiera si accendono per un attimo: è
+  normale, l'expander parte con tutte le uscite a 0 finché il firmware non lo configura;
+- **spegnere**: tieni premuto PWR → "Spegnere il telefono?" → Spegni. Lo spegnimento è vero:
+  restano alimentati solo il caricabatterie BQ24074 e l'indicatore MAX17048;
+- il tasto **RESET** fa ripartire il telefono senza spegnerlo;
+- **batteria scarica**: sotto il 5% compare "Batteria quasi scarica". Se non è in carica e
+  resta sotto il 2%, oppure sotto 3,3 V, per 30 secondi, il telefono avvisa e si spegne da
+  solo, per non rovinare la cella. Con un SOS attivo resta acceso fino a 3,0 V;
+- **carica**: il LED rosso si accende col caricabatterie anche a telefono spento. L'icona di
+  carica sullo schermo viene dal MAX17048 (la percentuale sale) e compare con un po' di
+  ritardo;
+- con **JP3 chiuso** il telefono è sempre alimentato: "spegni" torna a essere il deep sleep
+  della rev. 1 e si riaccende tenendo premuto PWR.
 
 ### Partizioni del telefono (flash da 16 MB)
 
@@ -94,7 +118,7 @@ alla versione precedente.
 | **PTT** (lato destro) | walkie-talkie: tieni premuto, parla, lascia |
 | **VOL+ / VOL−** | volume |
 | **VOL+ e VOL− insieme per 3 s** | **SOS** da qualsiasi schermata |
-| **PWR** | schermo acceso/spento; tenuto premuto: spegni |
+| **PWR** | da spento, tenuto premuto finché vibra: accendi; da acceso: schermo acceso/spento, tenuto premuto: spegni |
 | **SYM** | lettere accentate e simboli |
 | **ALT** | numeri e punteggiatura (due volte: blocca) |
 | **SHIFT** | maiuscola (due volte: tutto maiuscolo) |
@@ -160,7 +184,15 @@ una PCB vera):
 4. **audio**: volume dell'altoparlante e sensibilità del microfono (guadagni in
    `scheda/src/audio.cpp`) e qualità di Codec2 700C;
 5. **GPS**: velocità della seriale (9600) e frasi NMEA;
-6. **batteria**: indicatore MAX17048 e segnale di carica.
+6. **batteria**: indicatore MAX17048. Il segnale di carica ora viene dalla variazione misurata
+   (`Batteria::charging()` in `scheda/src/batteria.cpp`: sì sopra 1 %/h, no sotto 0,2 %/h).
+   Avviso e spegnimento per batteria scarica in `checkBattery()` (`telefono/main/main.cpp`):
+   da controllare che la percentuale del MAX17048 sia giusta vicino allo 0%;
+7. **accensione (rev. 1.1)**: autoritenuta con PWR_HOLD, tasto PWR letto attraverso D8,
+   spegnimento vero. All'avvio il log scrive `avvio: tasto`, `riavvio` o `risveglio`;
+8. **SPI**: SCK e MOSI con la corrente d'uscita più bassa (`scheda::spiLowDrive()`), insieme
+   alle resistenze da 47 Ω R56/R57. Se la radio desse errori di comunicazione, si porta a
+   `GPIO_DRIVE_CAP_2` (il valore normale).
 
 **Ancora da fare:**
 

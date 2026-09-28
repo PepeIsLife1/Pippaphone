@@ -8,7 +8,7 @@ namespace {
 // Registri AW9523B.
 constexpr uint8_t REG_IN0 = 0x00, REG_IN1 = 0x01, REG_OUT0 = 0x02, REG_OUT1 = 0x03, REG_CFG0 = 0x04,
                   REG_CFG1 = 0x05, REG_INTEN0 = 0x06, REG_INTEN1 = 0x07, REG_ID = 0x10, REG_GCR = 0x11,
-                  REG_LEDMODE0 = 0x12, REG_LEDMODE1 = 0x13, REG_DIM_P0_0 = 0x24, REG_RESET = 0x7F;
+                  REG_LEDMODE0 = 0x12, REG_LEDMODE1 = 0x13, REG_DIM_P0_0 = 0x24;
 }  // namespace
 
 Expander& expander() {
@@ -17,9 +17,18 @@ Expander& expander() {
 }
 
 bool Expander::begin() {
+    if (ok()) return true;
     if (!lock_) lock_ = xSemaphoreCreateMutex();
     if (!dev_.attach(i2cBus(), ADDR_AW9523)) return false;
-    dev_.writeReg(REG_RESET, 0x00);
+    heldAtBoot_ = (dev_.readReg8(REG_OUT1) & 0x80) != 0;
+    // Per prima cosa l'autoritenuta: PWR_HOLD (P1_7) uscita a 1, CS di display e microSD alti.
+    // Niente reset software (REG_RESET): dopo un riavvio del solo ESP32 l'AW9523B tiene ancora
+    // acceso il telefono, e un reset porterebbe PWR_HOLD a 0 spegnendo tutto.
+    // Stato iniziale: display fuori reset, CS display e CS microSD alti (non selezionati).
+    out1_ = 0x80 | 0x07;
+    dev_.writeReg(REG_OUT1, out1_);
+    // Direzioni della porta 1: P1_0..P1_2 e P1_7 uscite, P1_3..P1_6 ingressi (tasti).
+    dev_.writeReg(REG_CFG1, 0x78);
     const uint8_t id = dev_.readReg8(REG_ID);
     if (id != 0x23) ESP_LOGW("expander", "ID inatteso 0x%02x", id);
     // P0 push-pull (serve per AMP_SD e GNSS_EN che hanno pull-down), corrente LED = 1/4 del massimo.
@@ -29,16 +38,12 @@ bool Expander::begin() {
     dev_.writeReg(REG_LEDMODE1, 0xFF);
     // Stato iniziale: GNSS acceso, LoRa fuori reset, amplificatore spento, vibrazione spenta.
     out0_ = (1 << 6) | (1 << 7);
-    // Display fuori reset, CS display e CS microSD alti (non selezionati).
-    out1_ = 0x07;
     dev_.writeReg(REG_OUT0, out0_);
-    dev_.writeReg(REG_OUT1, out1_);
-    // Direzioni: P0 tutto uscita, P1_0..P1_2 uscite, P1_3..P1_7 ingressi.
+    // Porta 0 tutta uscita.
     dev_.writeReg(REG_CFG0, 0x00);
-    dev_.writeReg(REG_CFG1, 0xF8);
-    // Interruzioni (0 = abilitata) solo sui tasti e sulla carica.
+    // Interruzioni (0 = abilitata) solo sui tasti P1_3..P1_6.
     dev_.writeReg(REG_INTEN0, 0xFF);
-    dev_.writeReg(REG_INTEN1, 0x07);
+    dev_.writeReg(REG_INTEN1, 0x87);
     for (int i = 0; i < 4; i++) dev_.writeReg(REG_DIM_P0_0 + i, 0);
     readButtons();
     return true;
@@ -78,11 +83,8 @@ uint8_t Expander::readButtons() {
     if (!(in1 & (1 << 4))) r |= BTN_PTT;
     if (!(in1 & (1 << 5))) r |= BTN_VOLUP;
     if (!(in1 & (1 << 6))) r |= BTN_VOLDN;
-    if (!(in1 & (1 << 7))) r |= CHARGING;
     return r;
 }
-
-bool Expander::charging() { return (readButtons() & CHARGING) != 0; }
 
 void Expander::onlyPowerWakes() {
     if (!ok()) return;

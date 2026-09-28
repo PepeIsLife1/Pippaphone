@@ -4,7 +4,9 @@ Il firmware del ripetitore gira su due schede (si sceglie in `idf.py menuconfig`
 "Pippaphone ripetitore"):
 
 1. **La PCB del telefono**, per provare la rete subito, senza hardware nuovo. Potenza massima
-   22 dBm (circa 160 mW).
+   22 dBm (circa 160 mW). Con la PCB rev. 1.1 si accende premendo PWR e si spegne tenendo
+   premuto PWR per 3 secondi; da solo, l'USB non la accende. Per un ripetitore fisso, che deve
+   ripartire da solo quando torna la corrente, chiudi il ponticello JP3 (sempre acceso).
 2. **La scheda ripetitore proposta qui**: ESP32-S3 e modulo Ebyte **E22-900M30S** (SX1262 con
    amplificatore da 1 W). È una proposta: la PCB è ancora da disegnare.
 
