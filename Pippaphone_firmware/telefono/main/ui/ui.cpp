@@ -12,11 +12,14 @@
 #include "freertos/task.h"
 #include "scheda/scheda.h"
 #include "ui/schermate.h"
+#if TDECK
+#include "ui/widget.h"
+#endif
 
 namespace ui {
 
 namespace {
-constexpr int W = 480, H = 480, BAR_TOP = 36, BAR_BOTTOM = 32;
+constexpr int W = W_SCHERMO, H = H_SCHERMO, BAR_TOP = PX(36, 22), BAR_BOTTOM = PX(32, 22);
 
 lv_display_t* g_disp = nullptr;
 lv_obj_t* g_status = nullptr;
@@ -55,9 +58,9 @@ void flushCb(lv_display_t* d, const lv_area_t* a, uint8_t* px) {
 uint32_t tickCb() { return uint32_t(esp_timer_get_time() / 1000); }
 
 void buildStatusBar(lv_obj_t* parent) {
-    g_status = row(parent, 10);
+    g_status = row(parent, PX(10, 6));
     lv_obj_set_size(g_status, W, BAR_TOP);
-    pad(g_status, 0, 14, 0, 14);
+    pad(g_status, 0, PX(14, 8), 0, PX(14, 8));
     fill(g_status, NERO());
     lv_obj_set_style_border_side(g_status, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(g_status, GRIGIO1(), 0);
@@ -66,17 +69,17 @@ void buildStatusBar(lv_obj_t* parent) {
     g_sbUnread = label(g_status, &font_18, AMBRA(), "");
     g_sbSos = label(g_status, &font_16, BIANCO(), " SOS ");
     fill(g_sbSos, ROSSO_SCURO());
-    radius(g_sbSos, 4);
+    radius(g_sbSos, PX(4, 3));
     lv_obj_t* spacer = box(g_status);
     grow(spacer);
     lv_obj_set_height(spacer, 1);
     g_sbGps = label(g_status, &icone_18, VERDE(), IC_GPS);
     lv_obj_t* bars = box(g_status);
-    lv_obj_set_size(bars, 22, 16);
+    lv_obj_set_size(bars, PX(22, 15), PX(16, 12));
     for (int i = 0; i < 4; i++) {
         g_sbBars[i] = box(bars);
-        lv_obj_set_size(g_sbBars[i], 4, 4 + i * 4);
-        lv_obj_set_pos(g_sbBars[i], i * 6, 12 - i * 4);
+        lv_obj_set_size(g_sbBars[i], PX(4, 3), PX(4 + i * 4, 3 + i * 3));
+        lv_obj_set_pos(g_sbBars[i], PX(i * 6, i * 4), PX(12 - i * 4, 9 - i * 3));
         fill(g_sbBars[i], GRIGIO1());
     }
     g_sbBatt = label(g_status, &font_18, GRIGIO3(), "");
@@ -89,16 +92,38 @@ void buildHints(const std::vector<Hint>& hints) {
     g_hintsKey = key;
     lv_obj_clean(g_hints);
     for (const auto& h : hints) {
-        lv_obj_t* r = row(g_hints, 6);
+        lv_obj_t* r = row(g_hints, PX(6, 4));
         lv_obj_set_size(r, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+#if TDECK
+        lv_obj_t* k = label(r, &font_16, BIANCO(), tasto(h.key));  // con le icone (cancella, microfono)
+#else
         lv_obj_t* k = label(r, &mono_16, BIANCO(), h.key);
+#endif
         lv_obj_set_style_border_width(k, 1, 0);
         lv_obj_set_style_border_color(k, GRIGIO2(), 0);
-        radius(k, 4);
-        pad(k, 0, 5, 0, 5);
+        radius(k, PX(4, 3));
+        pad(k, 0, PX(5, 3), 0, PX(5, 3));
         label(r, &font_16, GRIGIO3(), h.text.c_str());
     }
 }
+
+#if TDECK
+// T-Deck: il tasto 0/microfono e' il PTT, tranne quando il campo di testo aspetta una cifra (dopo
+// ALT, o nei campi numerici); il tasto cancella e' BACK quando non c'e' niente da cancellare. La
+// scelta si fa alla pressione e vale anche per il rilascio.
+void translateKey(scheda::KeyEvent& e) {
+    static bool micIsPtt = false, bkspIsBack = false;
+    const Screen* s = top();
+    const TextInput* in = s ? s->input() : nullptr;
+    if (e.key == Key::ZERO_MIC) {
+        if (e.pressed) micIsPtt = !(in && in->wantsDigit());
+        if (micIsPtt) e.key = Key::PTT;
+    } else if (e.key == Key::BKSP) {
+        if (e.pressed) bkspIsBack = g_ask.box || !in || in->symOpen() || in->empty();
+        if (bkspIsBack) e.key = Key::BACK;
+    }
+}
+#endif
 
 const char* batteryIcon(uint8_t p) {
     return p > 85 ? IC_BATT_PIENA : p > 60 ? IC_BATT_3 : p > 35 ? IC_BATT_2 : p > 10 ? IC_BATT_1 : IC_BATT_0;
@@ -128,6 +153,9 @@ void screenOff() {
 // Tasti che valgono ovunque. true = consumato.
 bool globalKey(Key k, bool pressed) {
     const int64_t now = nowMs();
+#if TDECK
+    if (k == Key::SOS) g_volUp = g_volDn = pressed;  // i due SHIFT valgono come VOL+ e VOL- insieme
+#endif
     if (k == Key::VOLUP) g_volUp = pressed;
     if (k == Key::VOLDN) g_volDn = pressed;
     if (g_volUp && g_volDn) {
@@ -295,7 +323,9 @@ void handleEvent(const app::Event& e) {
             wake();
             if (walkieTakesVoice(e.from)) break;  // lo riproduce il walkie-talkie aperto
             if (walkieRecording() || scheda::audio().recording()) {
-                toast("Vocale da " + name(e.from), "Premi CALL dopo per ascoltarlo", VERDE());
+                toast("Vocale da " + name(e.from),
+                      TXT("Premi CALL dopo per ascoltarlo", std::string("Premi ") + tasto("CALL") + " dopo per ascoltarlo"),
+                      VERDE());
                 break;
             }
             push(makeVoicePlayer(e.from, e.id, true));
@@ -314,7 +344,12 @@ void uiTask(void*) {
     if (!app::rete().radioOk()) toast("Radio LoRa non trovata", "Controlla il modulo SX1262", ROSSO());
     for (;;) {
         scheda::KeyEvent ke;
-        while (xQueueReceive(scheda::tastiera().queue(), &ke, 0) == pdTRUE) handleKey(ke);
+        while (xQueueReceive(scheda::tastiera().queue(), &ke, 0) == pdTRUE) {
+#if TDECK
+            translateKey(ke);
+#endif
+            handleKey(ke);
+        }
         app::Event ev;
         while (app::poll(ev)) handleEvent(ev);
         const int64_t now = nowMs();
@@ -323,7 +358,9 @@ void uiTask(void*) {
             g_pwrLongDone = true;
             g_pwrDownAt = 0;
             wake();
-            ask("Spegnere il telefono?", "Non riceverai messaggi finché non lo riaccendi (tieni premuto PWR).",
+            ask("Spegnere il telefono?",
+                TXT("Non riceverai messaggi finché non lo riaccendi (tieni premuto PWR).",
+                    "Non riceverai messaggi finché non lo riaccendi con l'interruttore laterale."),
                 {"Spegni", "Annulla"}, [](int i) {
                     if (i == 0) scheda::powerOff();
                 });
@@ -419,9 +456,9 @@ void init() {
     buildStatusBar(scr);
     g_content = box(scr);
     lv_obj_set_size(g_content, W, H - BAR_TOP - BAR_BOTTOM);
-    g_hints = row(scr, 16);
+    g_hints = row(scr, PX(16, 8));
     lv_obj_set_size(g_hints, W, BAR_BOTTOM);
-    pad(g_hints, 0, 14, 0, 14);
+    pad(g_hints, 0, PX(14, 6), 0, PX(14, 6));
     lv_obj_set_style_border_side(g_hints, LV_BORDER_SIDE_TOP, 0);
     lv_obj_set_style_border_color(g_hints, GRIGIO1(), 0);
     lv_obj_set_style_border_width(g_hints, 1, 0);
@@ -484,22 +521,22 @@ void refreshBars() {
 
 void toast(const std::string& title, const std::string& text, lv_color_t accent) {
     if (g_toast) lv_obj_delete(g_toast);
-    g_toast = column(lv_layer_top(), 4);
-    lv_obj_set_width(g_toast, 452);
+    g_toast = column(lv_layer_top(), PX(4, 2));
+    lv_obj_set_width(g_toast, PX(452, 304));
     lv_obj_set_height(g_toast, LV_SIZE_CONTENT);
-    lv_obj_align(g_toast, LV_ALIGN_TOP_MID, 0, 42);
+    lv_obj_align(g_toast, LV_ALIGN_TOP_MID, 0, PX(42, 26));
     fill(g_toast, GRIGIO1());
-    radius(g_toast, 12);
+    radius(g_toast, PX(12, 8));
     lv_obj_set_style_border_width(g_toast, 2, 0);
     lv_obj_set_style_border_color(g_toast, accent, 0);
-    pad(g_toast, 10, 14, 12, 14);
+    pad(g_toast, PX(10, 5), PX(14, 8), PX(12, 6), PX(14, 8));
     label(g_toast, &font_18, accent, title.c_str());
     if (!text.empty()) {
         lv_obj_t* l = label(g_toast, &font_22, BIANCO(), text.c_str());
-        lv_obj_set_width(l, 420);
+        lv_obj_set_width(l, PX(420, 284));
         lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
         lv_obj_set_height(l, LV_SIZE_CONTENT);
-        lv_obj_set_style_max_height(l, 60, 0);
+        lv_obj_set_style_max_height(l, PX(60, 38), 0);
     }
     g_toastUntil = nowMs() + 4000;
 }
@@ -507,25 +544,25 @@ void toast(const std::string& title, const std::string& text, lv_color_t accent)
 void ask(const std::string& title, const std::string& text, const std::vector<std::string>& options,
          std::function<void(int)> cb) {
     closeAsk();
-    g_ask.box = column(lv_layer_top(), 10);
-    lv_obj_set_size(g_ask.box, 440, LV_SIZE_CONTENT);
+    g_ask.box = column(lv_layer_top(), PX(10, 4));
+    lv_obj_set_size(g_ask.box, PX(440, 300), LV_SIZE_CONTENT);
     lv_obj_center(g_ask.box);
     fill(g_ask.box, GRIGIO1());
-    radius(g_ask.box, 16);
+    radius(g_ask.box, PX(16, 10));
     lv_obj_set_style_border_width(g_ask.box, 2, 0);
     lv_obj_set_style_border_color(g_ask.box, AMBRA(), 0);
-    pad(g_ask.box, 18, 18, 18, 18);
+    pad(g_ask.box, PX(18, 8), PX(18, 10), PX(18, 8), PX(18, 10));
     label(g_ask.box, &font_26b, BIANCO(), title.c_str());
     if (!text.empty()) {
         lv_obj_t* l = label(g_ask.box, &font_20, GRIGIO3(), text.c_str());
-        lv_obj_set_width(l, 400);
+        lv_obj_set_width(l, PX(400, 276));
         lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     }
     for (const auto& o : options) {
         lv_obj_t* r = row(g_ask.box, 0);
-        lv_obj_set_size(r, 400, 48);
-        radius(r, 24);
-        pad(r, 0, 18, 0, 18);
+        lv_obj_set_size(r, PX(400, 276), PX(48, 28));
+        radius(r, PX(24, 14));
+        pad(r, 0, PX(18, 12), 0, PX(18, 12));
         label(r, &font_22b, BIANCO(), o.c_str());
         g_ask.rows.push_back(r);
     }
@@ -544,6 +581,21 @@ void wake() {
 }
 
 bool screenOn() { return g_on; }
+
+#if TDECK
+const char* tasto(const char* k) {
+    // Col firmware della tastiera senza modo raw le combinazioni sono quelle del ripiego.
+    const bool raw = scheda::tastiera().rawMode();
+    const std::string s = k;
+    if (s == "MENU") return raw ? "sym+M" : "shift+$";
+    if (s == "CALL") return raw ? "sym+C" : "alt+C";
+    if (s == "END") return raw ? "sym+H" : "sym+shift+H";
+    if (s == "BACK") return IC_CANCELLA;
+    if (s == "PTT") return raw ? IC_MICROFONO : "shift+" IC_MICROFONO;
+    if (s == "PWR") return "sym+spazio";
+    return k;  // OK (clic del trackball), NAV, ENTER, SYM, A-Z...
+}
+#endif
 
 // ---------------------------------------------------------------- formattazione
 

@@ -2,9 +2,35 @@
 #pragma once
 
 #include "scheda/i2c.h"
+#include "sdkconfig.h"
 
 namespace scheda {
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: niente indicatore di carica, solo la tensione della cella sul partitore 1:2
+// (GPIO 4). La percentuale e' stimata dalla curva di scarica di una LiPo; "in carica" si ricava
+// dalla tensione che sale (o dalla USB collegata a un computer).
+class Batteria {
+public:
+    bool begin();
+    bool ok() const { return ok_; }
+    uint8_t percent();
+    float volts();
+    float ratePerHour();
+    bool charging();
+    bool clearAlert() { return false; }
+
+private:
+    float measure();  // media di piu' letture, in volt
+    bool ok_ = false;
+    bool charging_ = false;
+    float filtered_ = 0;  // tensione filtrata
+    float ref_ = 0;       // tensione di riferimento per la tendenza
+    int64_t refAtMs_ = 0;
+    int64_t lastMs_ = 0;
+    float rate_ = 0;      // %/h stimati
+};
+#else
 class Batteria {
 public:
     bool begin();
@@ -24,6 +50,7 @@ private:
     I2cDev dev_;
     bool charging_ = false;
 };
+#endif
 
 Batteria& batteria();
 

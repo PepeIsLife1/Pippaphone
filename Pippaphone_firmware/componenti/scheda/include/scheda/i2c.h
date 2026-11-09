@@ -17,6 +17,8 @@ public:
     bool readReg(uint8_t reg, uint8_t* out, size_t len);
     uint8_t readReg8(uint8_t reg, bool* ok = nullptr);
     bool readReg16be(uint8_t reg, uint16_t& out);
+    // Lettura semplice, senza scrivere prima il registro (tastiera del T-Deck).
+    bool read(uint8_t* out, size_t len);
 
 private:
     i2c_master_dev_handle_t dev_ = nullptr;

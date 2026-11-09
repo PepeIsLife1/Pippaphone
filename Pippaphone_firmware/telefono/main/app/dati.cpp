@@ -45,9 +45,15 @@ Dati& dati() {
 }
 
 std::string chatFile(const ChatId& id) {
+#if CONFIG_SCHEDA_TDECK_PLUS
+    char buf[64];  // T-Deck: la cartella dei dati puo' essere sulla microSD
+    const char k = id.kind == ChatKind::DIRECT ? 'n' : id.kind == ChatKind::GROUP ? 'g' : 'x';
+    snprintf(buf, sizeof(buf), "%s/chat/%c%u.bin", DATI, k, unsigned(id.id));
+#else
     char buf[40];
     const char k = id.kind == ChatKind::DIRECT ? 'n' : id.kind == ChatKind::GROUP ? 'g' : 'x';
     snprintf(buf, sizeof(buf), "/dati/chat/%c%u.bin", k, unsigned(id.id));
+#endif
     return buf;
 }
 
@@ -56,7 +62,7 @@ void Dati::load() {
     std::vector<uint8_t> data;
     // Rubrica.
     contacts_.clear();
-    if (readFile("/dati/rubrica.bin", data)) {
+    if (readFile(DATI_PATH("/rubrica.bin"), data)) {
         pn::Reader r(data.data(), data.size());
         while (r.remaining() >= 4) {
             Contact c;
@@ -68,7 +74,7 @@ void Dati::load() {
     }
     // Gruppi.
     groups_.clear();
-    if (readFile("/dati/gruppi.bin", data)) {
+    if (readFile(DATI_PATH("/gruppi.bin"), data)) {
         pn::Reader r(data.data(), data.size());
         while (r.remaining() > 36) {
             pn::GroupInfo g;
@@ -84,7 +90,7 @@ void Dati::load() {
     }
     // Conversazioni.
     chats_.clear();
-    DIR* d = opendir("/dati/chat");
+    DIR* d = opendir(DATI_CPATH("/chat"));
     if (d) {
         while (struct dirent* e = readdir(d)) {
             const char* n = e->d_name;
@@ -179,7 +185,7 @@ void Dati::saveContacts() {
         put16(v, c.number);
         putStr(v, c.name, 40);
     }
-    writeFile("/dati/rubrica.bin", v);
+    writeFile(DATI_PATH("/rubrica.bin"), v);
 }
 
 // ---------------------------------------------------------------- conversazioni
@@ -234,7 +240,7 @@ bool Dati::addMessage(const ChatId& id, const Message& m, bool countUnread) {
     if (c.msgs.size() > MAX_MSGS) {
         // Toglie i piu' vecchi (e i loro vocali).
         for (size_t i = 0; i < c.msgs.size() - MAX_MSGS; i++)
-            if (c.msgs[i].voiceFile) removeFile("/dati/voce/" + std::to_string(c.msgs[i].voiceFile) + ".c2");
+            if (c.msgs[i].voiceFile) removeFile(DATI_PATH("/voce/") + std::to_string(c.msgs[i].voiceFile) + ".c2");
         c.msgs.erase(c.msgs.begin(), c.msgs.end() - MAX_MSGS);
     }
     if (countUnread) c.unread++;
@@ -294,7 +300,7 @@ void Dati::deleteChat(const ChatId& id) {
     auto it = chats_.find(id);
     if (it == chats_.end()) return;
     for (const auto& m : it->second.msgs)
-        if (m.voiceFile) removeFile("/dati/voce/" + std::to_string(m.voiceFile) + ".c2");
+        if (m.voiceFile) removeFile(DATI_PATH("/voce/") + std::to_string(m.voiceFile) + ".c2");
     chats_.erase(it);
     removeFile(chatFile(id));
 }
@@ -370,7 +376,7 @@ void Dati::saveGroups() {
         for (auto a : g.members) put16(v, a);
         putStr(v, g.name, 40);
     }
-    writeFile("/dati/gruppi.bin", v);
+    writeFile(DATI_PATH("/gruppi.bin"), v);
 }
 
 // ---------------------------------------------------------------- impostazioni

@@ -1,0 +1,16 @@
+menu "Pippaphone: scheda"
+
+    choice SCHEDA
+        prompt "Hardware del telefono"
+        default SCHEDA_PIPPAPHONE
+        help
+            Su quale hardware gira il firmware. Il ripetitore funziona solo con la PCB
+            Pippaphone (o con la scheda E22, che si sceglie nel suo menu).
+
+        config SCHEDA_PIPPAPHONE
+            bool "PCB Pippaphone rev. 1.1"
+        config SCHEDA_TDECK_PLUS
+            bool "LilyGO T-Deck Plus (ESP32-S3, 320x240, LoRa 868 MHz)"
+    endchoice
+
+endmenu

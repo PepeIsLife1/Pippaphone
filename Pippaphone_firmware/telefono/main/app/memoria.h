@@ -9,6 +9,7 @@
 
 #include "pippanet/crypto.h"
 #include "pippanet/phone.h"
+#include "sdkconfig.h"
 
 namespace app {
 
@@ -35,6 +36,24 @@ void saveCert(const pn::Cert& c);
 bool readFile(const std::string& path, std::vector<uint8_t>& out);
 bool writeFile(const std::string& path, const std::vector<uint8_t>& data);
 void removeFile(const std::string& path);
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: con la microSD i dati (rubrica, certificati degli altri, gruppi, chat, vocali,
+// impostazioni) stanno in /sd/pippaphone; senza, nella partizione interna "dati" come sulla PCB.
+// Le chiavi, il certificato proprio e il PIN restano sempre nella memoria interna (NVS).
+extern const char* DATI;  // "/sd/pippaphone" oppure "/dati"
+std::string datiPath(const char* rel);
+#define DATI_PATH(rel) (app::datiPath(rel))
+#define DATI_CPATH(rel) (app::datiPath(rel).c_str())
+bool sdPresente();
+// Mappe offline sulla microSD: /sd/mappe/<zoom>/<x>/<y>.png (tile OpenStreetMap).
+extern const char* const MAPPE;
+// Scrive /sd/pippaphone/info.txt (informazioni del dispositivo, da leggere sul computer).
+void writeDeviceInfo(const std::string& text);
+#else
 extern const char* const DATI;  // punto di montaggio ("/dati")
+#define DATI_PATH(rel) ("/dati" rel)
+#define DATI_CPATH(rel) ("/dati" rel)
+#endif
 
 }  // namespace app

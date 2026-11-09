@@ -19,13 +19,15 @@ Pippaphone_firmware/
 │   ├── pippanet/        protocollo di rete (indipendente dall'hardware, testato sul PC)
 │   ├── pippa_radio/     SX1262 con RadioLib, CAD prima di trasmettere, cambio canale
 │   ├── scheda/          driver della PCB: expander AW9523B, tastiera TCA8418, MAX17048,
-│   │                    display ST7701S, audio I2S, GPS AT6558R
+│   │                    display ST7701S, audio I2S, GPS AT6558R; in src/tdeck quelli del
+│   │                    LilyGO T-Deck Plus (vedi "LilyGO T-Deck Plus" qui sotto)
 │   ├── lvgl/            LVGL 9.2.2 (MIT)
 │   ├── RadioLib/        RadioLib 7.7.1 (MIT)
 │   ├── monocypher/      Monocypher 4.0.2 (BSD-2 / CC0)
 │   └── codec2/          Codec 2, modo 700C (LGPL 2.1)
 ├── test/                test del protocollo sul PC (rete simulata)
-├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome)
+├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome),
+│   └── simulatore/      l'interfaccia del telefono sul PC: screenshot di tutte le schermate
 └── PROTOCOLLO.md        descrizione del protocollo PippaNet
 ```
 
@@ -84,6 +86,109 @@ prima cosa, porta a 1 l'uscita PWR_HOLD dell'expander (P1_7). Quindi:
 
 Il firmware occupa circa 2,2 MB. Se un aggiornamento non parte, al riavvio si torna da soli
 alla versione precedente.
+
+## LilyGO T-Deck Plus
+
+Lo stesso firmware del telefono gira anche sul **LilyGO T-Deck Plus** (ESP32-S3, display 2,8"
+320×240, tastiera BlackBerry, trackball, LoRa SX1262, GPS, microSD). Serve la versione **868 MHz**.
+L'hardware si sceglie in compilazione (`menuconfig` → "Pippaphone: scheda"): la PCB resta la
+scelta predefinita e il suo firmware è identico a prima, byte per byte, come quello del ripetitore
+(controllato confrontando i binari: cambiano solo data, ora e impronte SHA-256 della compilazione).
+
+```sh
+cd Pippaphone_firmware/telefono
+idf.py -B build-tdeck -D SDKCONFIG=build-tdeck/sdkconfig \
+       -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.tdeck" build
+idf.py -B build-tdeck -D SDKCONFIG=build-tdeck/sdkconfig -p COM5 flash monitor
+```
+
+Su Windows (PowerShell) le stesse righe senza `\` a capo. Se si cambia `sdkconfig.defaults.tdeck`
+bisogna cancellare `build-tdeck/sdkconfig`: ESP-IDF non riapplica i valori predefiniti a un
+sdkconfig che esiste già. Se il T-Deck non entra in programmazione: tieni premuto il clic del
+trackball mentre lo accendi o mentre premi RST. Caricando il firmware si cancella quello di
+fabbrica LilyGO (si può rimettere dai loro file). La partizione e la memoria sono le stesse della
+PCB (16 MB di flash, 8 MB di PSRAM).
+
+### Tasti
+
+La tastiera del T-Deck è la stessa della PCB 2 (BlackBerry Q10): lettere, ALT (numeri e
+punteggiatura), SHIFT, SYM (accenti) e $ funzionano come sulla PCB. Al posto dei tasti che il
+T-Deck non ha:
+
+| Pippaphone | T-Deck Plus |
+|---|---|
+| frecce / OK | trackball / clic del trackball |
+| PTT | tenere premuto il tasto 🎤 (lo 0); lo 0 si scrive con ALT+🎤, nei campi numerici direttamente |
+| BACK | ⌫ quando non c'è testo da cancellare |
+| MENU / CALL / END | SYM+M / SYM+C / SYM+H |
+| VOL+ / VOL− | SYM + trackball su/giù |
+| SOS (VOL+ e VOL− per 3 s) | i due SHIFT insieme per 3 s |
+| PWR (schermo acceso/spento; tenuto: spegni) | SYM+spazio |
+| SYM + altro tasto | il simbolo stampato sul tasto (come col firmware di fabbrica) |
+
+La barra in basso mostra sempre i tasti giusti. Il modo "raw" (tasti premuti e rilasciati) c'è nel
+firmware della tastiera (ESP32-C3) dal giugno 2025. Con un firmware più vecchio il telefono se ne
+accorge da solo e passa a un **ripiego**: i caratteri arrivano già composti dal C3 (i numeri con
+SYM tenuto), il PTT è SHIFT+🎤 premuto una volta per parlare e una per inviare, MENU è SHIFT+$,
+CALL è ALT+C, END è SYM+SHIFT+H, l'SOS si annulla tenendo premuto il trackball, e non ci sono il
+riquadro degli accenti, il volume dai tasti e la scorciatoia dell'SOS. Per avere tutto basta
+aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un adattatore USB-seriale
+sui pin accanto al tasto RST). Il monitor seriale scrive quale modo è in uso.
+
+### Differenze dalla PCB
+
+- **Accensione**: con l'interruttore laterale. "Spegni" (e la batteria scarica) spegne le
+  periferiche e mette l'ESP32-S3 in sonno profondo; si riaccende con l'interruttore (o RST).
+- **Vibrazione**: non c'è il motore; la voce "Vibrazione" sparisce dalle impostazioni.
+- **LED di notifica**: lampeggia la luce della tastiera, solo a schermo spento.
+- **Batteria**: c'è solo la tensione della cella. La percentuale è stimata dalla curva di una
+  LiPo; "in carica" si capisce dal salto di tensione quando si collega il caricabatterie, dalla
+  percentuale che sale o dalla USB collegata a un computer.
+- **GPS**: u-blox M10Q (38400 baud) oppure Quectel L76K (9600), riconosciuto da solo. Quando non
+  serve, l'u-blox va in standby; l'L76K resta acceso (non ha un comando per spegnersi).
+- **Display, LoRa e microSD** sono sullo stesso bus SPI.
+
+### microSD
+
+Con la microSD (FAT32: il telefono non la formatta mai) i dati stanno nella cartella
+`/pippaphone`: rubrica, chat, gruppi, vocali, certificati degli altri e `impostazioni.txt`, che si
+può modificare sul computer a telefono spento. In `/pippaphone/info.txt` il telefono scrive
+all'accensione e ogni 10 minuti numero, codici, versione, radio, tastiera e batteria. **Chiavi,
+certificato proprio e PIN restano sempre nella memoria interna**: la scheda non contiene niente
+che permetta di leggere i messaggi cifrati degli altri telefoni. Senza scheda si usa la memoria
+interna come sulla PCB; la prima volta che si mette una scheda, i dati della memoria interna
+vengono copiati lì. Non togliere la scheda a telefono acceso.
+
+### Mappe offline
+
+Nel menu c'è **Mappa** (la mia posizione e l'ultima posizione nota di ogni contatto), e le
+posizioni ricevute e gli SOS si vedono sulla mappa invece che sulla bussola. Le mappe sono tile
+OpenStreetMap PNG 256×256 nella cartella `/mappe/<zoom>/<x>/<y>.png` della microSD: lo schema
+"slippy map" che usano quasi tutti i programmi per scaricare mappe offline (per esempio quelli
+per le mappe del T-Deck con Meshtastic). Bastano pochi livelli di zoom, per esempio 10–16 per la
+zona dove si usa la rete. Attenzione alle condizioni di chi fornisce i tile: i server di
+tile.openstreetmap.org non permettono di scaricare zone intere; si usano fornitori che lo
+consentono o tile generati da sé. Sulla mappa: trackball = sposta, OK o I = più vicino, O = più
+lontano, C = di nuovo tutti i segnaposto. Senza tile i segnaposto si vedono lo stesso, con la
+scala delle distanze.
+
+### Da provare sul T-Deck vero
+
+Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non ancora su un T-Deck:
+
+1. **display**: orientamento e colori (`SWAP_XY`, `MIRROR_X`, `INVERT` e ordine RGB in
+   `scheda/src/tdeck/display_tdeck.cpp`) e i 16 livelli della retroilluminazione;
+2. **tastiera**: riconoscimento del modo raw e del ripiego; il monitor seriale stampa ogni tasto
+   (colonna, riga, nome) e il modo scelto;
+3. **trackball**: sensibilità (`TB_EDGES_PER_STEP` in `tastiera_tdeck.cpp`);
+4. **audio**: canale e guadagni del microfono (ES7210, 24 dB + `MIC_DIGITAL_GAIN` in
+   `audio.cpp`), volume dell'altoparlante;
+5. **GPS**: riconoscimento della velocità e standby dell'u-blox;
+6. **batteria**: curva tensione → percentuale e riconoscimento della carica
+   (`batteria_tdeck.cpp`);
+7. **microSD**: montaggio, copia dei dati dalla memoria interna, mappe;
+8. **radio** sul bus SPI condiviso col display;
+9. **sonno profondo**: consumo da "spento" e riaccensione con l'interruttore.
 
 ## Mettere in piedi la rete
 
@@ -156,6 +261,25 @@ cmake -S test -B build-test && cmake --build build-test
 PN_SEED=7 ./build-test/pippanet_test        # altro seme casuale
 PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
 ```
+
+### Simulatore dell'interfaccia
+
+`strumenti/simulatore` compila sul PC le schermate vere, i dati veri e LVGL, con una scheda, una
+rete e un GPS finti, e salva uno screenshot di ogni schermata (34 per la PCB, 39 per il T-Deck,
+mappe comprese). Controlla anche che nessuna scritta esca dal suo riquadro. Su Windows serve
+MSYS2 (gcc e ninja), su Linux basta gcc:
+
+```sh
+cmake -S strumenti/simulatore -B build-sim -G Ninja && cmake --build build-sim
+build-sim/sim_tdeck screenshot-tdeck            # 320x240
+build-sim/sim_pcb screenshot-pcb                # 480x480
+SIM_NOMI_LUNGHI=1 build-sim/sim_tdeck prova     # tutti i nomi lunghissimi
+SIM_NOMI_MAX=1 build-sim/sim_pcb prova          # nomi lunghi quanto il massimo che si può scrivere
+```
+
+Per controllare che una modifica non cambi l'interfaccia della PCB si compila il simulatore anche
+coi sorgenti di prima (`-DUI_DIR=... -DSCHEDA_DIR=...`) e si confrontano gli screenshot: devono
+essere identici pixel per pixel.
 
 ## Stato del lavoro
 

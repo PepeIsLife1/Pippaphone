@@ -1,11 +1,14 @@
 #include "scheda/tastiera.h"
 
 #include "esp_log.h"
+#if !CONFIG_SCHEDA_TDECK_PLUS
 #include "scheda/expander.h"
+#endif
 #include "scheda/pins.h"
 
 namespace scheda {
 
+#if !CONFIG_SCHEDA_TDECK_PLUS
 namespace {
 // Registri TCA8418.
 constexpr uint8_t REG_CFG = 0x01, REG_INT_STAT = 0x02, REG_KEY_LCK_EC = 0x03, REG_KEY_EVENT_A = 0x04,
@@ -31,6 +34,7 @@ Key keyFromCode(uint8_t code) {
     }
 }
 }  // namespace
+#endif
 
 char letterOf(Key k) {
     if (k >= Key::A && k <= Key::Z) return char('a' + (uint8_t(k) - uint8_t(Key::A)));
@@ -58,7 +62,11 @@ const char* keyName(Key k) {
                                   "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "$", "SPACE",
                                   "ENTER", "BKSP", "ALT", "LSHIFT", "RSHIFT", "SYM", "0/MIC", "CALL", "MENU",
                                   "BACK", "END", "SU", "GIU", "SINISTRA", "DESTRA", "OK", "PWR", "PTT", "VOL+",
-                                  "VOL-"};
+                                  "VOL-"
+#if CONFIG_SCHEDA_TDECK_PLUS
+                                  , "SOS"
+#endif
+                                  };
     const size_t i = size_t(k);
     return i < sizeof(names) / sizeof(names[0]) ? names[i] : "?";
 }
@@ -68,6 +76,7 @@ Tastiera& tastiera() {
     return t;
 }
 
+#if !CONFIG_SCHEDA_TDECK_PLUS
 bool Tastiera::begin() {
     if (!q_) q_ = xQueueCreate(32, sizeof(KeyEvent));
     side_ = expander().readButtons() & 0x0F;
@@ -123,5 +132,6 @@ void Tastiera::service() {
         }
     side_ = side;
 }
+#endif
 
 }  // namespace scheda

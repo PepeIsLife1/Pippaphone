@@ -18,24 +18,29 @@ int64_t nowMs() { return esp_timer_get_time() / 1000; }
 lv_obj_t* holdBar(lv_obj_t* parent) {
     lv_obj_t* b = lv_bar_create(parent);
     lv_obj_remove_style_all(b);
-    lv_obj_set_size(b, 400, 12);
+    lv_obj_set_size(b, PX(400, 260), PX(12, 8));
     lv_obj_set_style_bg_color(b, GRIGIO1(), 0);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(b, 6, 0);
+    lv_obj_set_style_radius(b, PX(6, 4), 0);
     lv_obj_set_style_bg_color(b, ROSSO(), LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(b, 6, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(b, PX(6, 4), LV_PART_INDICATOR);
     lv_bar_set_range(b, 0, int32_t(HOLD_MS));
     return b;
 }
 
-lv_obj_t* wrapped(lv_obj_t* parent, const lv_font_t* f, lv_color_t c, const std::string& s, int w = 440) {
+lv_obj_t* wrapped(lv_obj_t* parent, const lv_font_t* f, lv_color_t c, const std::string& s, int w = PX(440, 300)) {
     lv_obj_t* l = label(parent, f, c, s.c_str());
     lv_obj_set_width(l, w);
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
     return l;
 }
+#if TDECK
+// Col firmware vecchio della tastiera non si puo' tenere premuto END (SYM+H): si annulla tenendo
+// premuto il clic del trackball, come per attivare.
+bool rawKeys() { return scheda::tastiera().rawMode(); }
+#endif
 }  // namespace
 
 // ================================================================ il mio SOS
@@ -52,33 +57,36 @@ public:
         scheda::ledBlink(80, 0, 0, 200, 800, 0);
     }
     void build(lv_obj_t* root) override {
-        lv_obj_t* col = column(root, 10);
-        lv_obj_set_size(col, 480, 412);
-        pad(col, 12, 20, 10, 20);
+        lv_obj_t* col = column(root, PX(10, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        pad(col, PX(12, 4), PX(20, 10), PX(10, 4), PX(20, 10));
         lv_obj_set_flex_align(col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         const size_t nContacts = app::dati().contacts().size();
         if (!app::rete().sosActive()) {
             // Spiegazione e attivazione tenendo premuto OK.
             lv_obj_t* c = box(col);
-            lv_obj_set_size(c, 120, 120);
+            lv_obj_set_size(c, PX(120, 50), PX(120, 50));
             radius(c, LV_RADIUS_CIRCLE);
             fill(c, ROSSO_SCURO());
             lv_obj_center(label(c, &font_32b, BIANCO(), "SOS"));
-            wrapped(col, &font_22, BIANCO(),
+            wrapped(col, PX(&font_22, &font_20), BIANCO(),
                     "Manda un allarme con la tua posizione a tutti i contatti della rubrica (" +
                         std::to_string(nContacts) + "). Si ripete ogni 2 minuti finché non lo annulli.");
             if (!nContacts) wrapped(col, &font_20, ROSSO(), "La rubrica è vuota: nessuno riceverà l'allarme!");
-            wrapped(col, &font_22b, AMBRA(), "Tieni premuto OK per 3 secondi");
+            wrapped(col, &font_22b, AMBRA(), TXT("Tieni premuto OK per 3 secondi", "Tieni premuto il trackball per 3 secondi"));
             bar_ = holdBar(col);
-            wrapped(col, &font_16, GRIGIO2(), "Scorciatoia da qualsiasi schermata: VOL+ e VOL- insieme per 3 secondi");
+            wrapped(col, &font_16, GRIGIO2(),
+                    TXT("Scorciatoia da qualsiasi schermata: VOL+ e VOL- insieme per 3 secondi",
+                        rawKeys() ? "Scorciatoia da qualsiasi schermata: i due SHIFT insieme per 3 secondi"
+                                  : "Con questa tastiera l'SOS si attiva solo da qui"));
             return;
         }
         // SOS in corso.
-        lv_obj_t* banner = row(col, 12);
-        lv_obj_set_size(banner, 440, 70);
+        lv_obj_t* banner = row(col, PX(12, 8));
+        lv_obj_set_size(banner, PX(440, 300), PX(70, 44));
         fill(banner, ROSSO_SCURO());
-        radius(banner, 12);
-        pad(banner, 0, 16, 0, 16);
+        radius(banner, PX(12, 8));
+        pad(banner, 0, PX(16, 10), 0, PX(16, 10));
         label(banner, &icone_44, BIANCO(), IC_ATTENZIONE);
         lv_obj_t* bt = column(banner, 0);
         grow(bt);
@@ -90,21 +98,24 @@ public:
         // Contatti che hanno ricevuto.
         const auto contacts = app::rete().sosContacts();
         const auto acked = app::rete().sosAcked();
-        lv_obj_t* lst = column(col, 4);
-        lv_obj_set_size(lst, 440, 160);
+        lv_obj_t* lst = column(col, PX(4, 1));
+        lv_obj_set_size(lst, PX(440, 300), PX(160, 54));
         lv_obj_add_flag(lst, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(lst, LV_SCROLLBAR_MODE_OFF);
         label(lst, &font_16, GRIGIO2(),
               ("Ricevuto da " + std::to_string(acked.size()) + " su " + std::to_string(contacts.size())).c_str());
         for (auto n : contacts) {
-            lv_obj_t* r = row(lst, 10);
-            lv_obj_set_size(r, lv_pct(100), 30);
+            lv_obj_t* r = row(lst, PX(10, 6));
+            lv_obj_set_size(r, lv_pct(100), PX(30, 18));
             const bool ok = acked.count(n);
             label(r, &icone_18, ok ? VERDE() : GRIGIO2(), ok ? IC_OK : IC_OROLOGIO);
             lv_obj_t* l = label(r, &font_20, ok ? BIANCO() : GRIGIO3(), app::dati().nameOf(n).c_str());
             grow(l);
         }
-        label(col, &font_20, AMBRA(), "Per annullare tieni premuto END per 3 secondi");
+        label(col, &font_20, AMBRA(),
+              TXT("Per annullare tieni premuto END per 3 secondi",
+                  rawKeys() ? "Per annullare tieni SYM+H per 3 secondi"
+                            : "Per annullare tieni il trackball 3 secondi"));
         bar_ = holdBar(col);
     }
     void updatePos() {
@@ -141,7 +152,7 @@ public:
     }
     bool onKey(Key k, bool pressed) override {
         const bool active = app::rete().sosActive();
-        const Key hold = active ? Key::END : Key::OK;
+        const Key hold = active ? TXT(Key::END, rawKeys() ? Key::END : Key::OK) : Key::OK;
         if (k == hold) {
             holdAt_ = pressed ? nowMs() : 0;
             if (!pressed && bar_) lv_bar_set_value(bar_, 0, LV_ANIM_OFF);
@@ -156,7 +167,7 @@ public:
         }
     }
     std::vector<Hint> hints() override {
-        if (app::rete().sosActive()) return {{"END", "tieni premuto: annulla"}, {"BACK", "indietro"}};
+        if (app::rete().sosActive()) return {{TXT("END", rawKeys() ? "END" : "OK"), "tieni premuto: annulla"}, {"BACK", "indietro"}};
         return {{"OK", "tieni premuto: attiva"}, {"BACK", "indietro"}};
     }
     bool capturesEnd() const override { return app::rete().sosActive(); }
@@ -203,15 +214,19 @@ public:
     }
     void build(lv_obj_t* root) override {
         app::rete().wantGnss(300);  // per calcolare distanza e direzione
-        lv_obj_t* col = column(root, 10);
-        lv_obj_set_size(col, 480, 480);
+        lv_obj_t* col = column(root, PX(10, 2));
+        lv_obj_set_size(col, W_SCHERMO, H_SCHERMO);
         fill(col, ROSSO_SCURO());
-        pad(col, 24, 20, 16, 20);
+        pad(col, PX(24, 6), PX(20, 10), PX(16, 4), PX(20, 10));
         lv_obj_set_flex_align(col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         label(col, &icone_44, BIANCO(), IC_ATTENZIONE);
         label(col, &font_48b, BIANCO(), "SOS");
         const std::string name = app::dati().nameOf(from_);
+#if TDECK
+        wrapped(col, &font_32b, BIANCO(), name);  // il nome si legge tutto, anche su due righe
+#else
         label(col, &font_32b, BIANCO(), name.c_str());
+#endif
         if (name != std::to_string(from_)) label(col, &mono_20, BIANCO(), std::to_string(from_).c_str());
         app::Message m;
         hasPos_ = false;
@@ -255,7 +270,9 @@ public:
         lv_obj_set_width(sp, 10);
         wrapped(col, &font_20, BIANCO(),
                 std::string(hasPos_ ? "OK: silenzia e mostra la posizione\n" : "OK: silenzia\n") +
-                    "CALL: scrivi · PTT: parla · BACK: chiudi");
+                    TXT("CALL: scrivi · PTT: parla · BACK: chiudi",
+                        std::string(tasto("CALL")) + ": scrivi · " + tasto("PTT") + ": parla · " + tasto("BACK") +
+                            ": chiudi"));
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return k == Key::PTT;

@@ -43,9 +43,9 @@ void List::clear() {
 }
 
 lv_obj_t* List::addRow(int height) {
-    lv_obj_t* r = row(cont_, 12);
+    lv_obj_t* r = row(cont_, PX(12, 8));
     lv_obj_set_size(r, lv_pct(100), height);
-    pad(r, 0, 16, 0, 16);
+    pad(r, 0, PX(16, 10), 0, PX(16, 10));
     lv_obj_set_style_bg_opa(r, LV_OPA_TRANSP, 0);
     lv_obj_set_style_bg_color(r, AMBRA(), LV_STATE_CHECKED);
     lv_obj_set_style_bg_opa(r, LV_OPA_COVER, LV_STATE_CHECKED);
@@ -66,12 +66,12 @@ lv_obj_t* List::text(lv_obj_t* r, const lv_font_t* font, lv_color_t color, const
         }
     // Icone tutte della stessa larghezza, cosi' i testi accanto sono allineati.
     if (font == &icone_18 || font == &icone_22 || font == &icone_28) {
-        lv_obj_set_width(l, font == &icone_28 ? 36 : 28);
+        lv_obj_set_width(l, font == &icone_28 ? PX(36, 26) : PX(28, 20));
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
     }
     if (expand) {
         grow(l);
-        lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+        unaRiga(l);
     }
     return l;
 }
@@ -102,10 +102,10 @@ bool List::key(Key k) {
 void TextInput::create(lv_obj_t* parent, int w, int h, bool multiline, size_t maxChars, const char* placeholder) {
     closeSym();
     max_ = maxChars;
-    wrap_ = row(parent, 8);
+    wrap_ = row(parent, PX(8, 5));
     lv_obj_set_size(wrap_, w, h);
-    pad(wrap_, 4, 12, 4, 12);
-    radius(wrap_, 12);
+    pad(wrap_, PX(4, 2), PX(12, 8), PX(4, 2), PX(12, 8));
+    radius(wrap_, PX(12, 8));
     lv_obj_set_style_border_width(wrap_, 2, 0);
     lv_obj_set_style_border_color(wrap_, GRIGIO1(), 0);
     ta_ = lv_textarea_create(wrap_);
@@ -276,10 +276,10 @@ void TextInput::openSym() {
     // coperta o chiusa, il riquadro sparisce con lei.
     lv_obj_t* area = wrap_;
     while (lv_obj_get_parent(area) && lv_obj_get_parent(lv_obj_get_parent(area))) area = lv_obj_get_parent(area);
-    sym_ = column(area, 8);
+    sym_ = column(area, PX(8, 3));
     lv_obj_add_flag(sym_, LV_OBJ_FLAG_FLOATING);
-    lv_obj_set_size(sym_, 452, LV_SIZE_CONTENT);
-    lv_obj_align(sym_, LV_ALIGN_BOTTOM_MID, 0, -78);
+    lv_obj_set_size(sym_, PX(452, 304), LV_SIZE_CONTENT);
+    lv_obj_align(sym_, LV_ALIGN_BOTTOM_MID, 0, PX(-78, -40));
     lv_obj_add_event_cb(
         sym_,
         [](lv_event_t* e) {
@@ -289,8 +289,8 @@ void TextInput::openSym() {
         },
         LV_EVENT_DELETE, this);
     fill(sym_, GRIGIO1());
-    radius(sym_, 12);
-    pad(sym_, 10, 12, 12, 12);
+    radius(sym_, PX(12, 8));
+    pad(sym_, PX(10, 6), PX(12, 8), PX(12, 6), PX(12, 8));
     lv_obj_t* head = row(sym_, 0);
     lv_obj_set_width(head, lv_pct(100));
     lv_obj_set_height(head, LV_SIZE_CONTENT);
@@ -300,13 +300,13 @@ void TextInput::openSym() {
     lv_obj_t* grid = box(sym_);
     lv_obj_set_size(grid, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_style_pad_row(grid, 6, 0);
-    lv_obj_set_style_pad_column(grid, 6, 0);
+    lv_obj_set_style_pad_row(grid, PX(6, 3), 0);
+    lv_obj_set_style_pad_column(grid, PX(6, 4), 0);
     symCells_.clear();
     for (int i = 0; i < SYM_COUNT; i++) {
         lv_obj_t* c = box(grid);
-        lv_obj_set_size(c, 47, 38);
-        radius(c, 8);
+        lv_obj_set_size(c, PX(47, 32), PX(38, 22));
+        radius(c, PX(8, 5));
         lv_obj_t* l = label(c, &font_22b, BIANCO(), SYMS[i]);
         lv_obj_center(l);
         symCells_.push_back(c);
@@ -333,14 +333,14 @@ void TextInput::closeSym() {
 
 lv_obj_t* header(lv_obj_t* parent, const char* icon, const std::string& title, const std::string& right,
                  lv_color_t iconColor) {
-    lv_obj_t* h = row(parent, 10);
-    lv_obj_set_size(h, lv_pct(100), 48);
-    pad(h, 0, 14, 0, 14);
+    lv_obj_t* h = row(parent, PX(10, 6));
+    lv_obj_set_size(h, lv_pct(100), H_TITOLO);
+    pad(h, 0, PX(14, 8), 0, PX(14, 8));
     underline(h);
     if (icon) label(h, &icone_22, iconColor, icon);
     lv_obj_t* t = label(h, &font_26b, BIANCO(), title.c_str());
     grow(t);
-    lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
+    unaRiga(t);
     if (!right.empty()) label(h, &font_16, GRIGIO2(), right.c_str());
     return h;
 }
@@ -359,7 +359,7 @@ lv_obj_t* avatar(lv_obj_t* parent, uint16_t number, const std::string& name, int
     } else {
         ini = "#";
     }
-    lv_obj_t* l = label(a, size >= 70 ? &font_32b : &font_22b, BIANCO(), ini.c_str());
+    lv_obj_t* l = label(a, size >= PX(70, 46) ? &font_32b : &font_22b, BIANCO(), ini.c_str());
     lv_obj_center(l);
     return a;
 }

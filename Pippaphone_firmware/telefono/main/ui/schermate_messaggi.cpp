@@ -60,20 +60,20 @@ public:
     PickContact(const std::string& title, std::function<void(uint16_t)> cb) : title_(title), cb_(std::move(cb)) {}
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_PERSONA, title_);
-        lv_obj_t* r = row(col, 10);
-        lv_obj_set_size(r, 480, 70);
-        pad(r, 8, 14, 8, 14);
+        lv_obj_t* r = row(col, PX(10, 6));
+        lv_obj_set_size(r, W_SCHERMO, PX(70, 40));
+        pad(r, PX(8, 4), PX(14, 8), PX(8, 4), PX(14, 8));
         label(r, &font_20, GRIGIO3(), "Numero");
-        num_.create(r, 330, 54, false, 5, "scrivi o scegli sotto");
+        num_.create(r, PX(330, 236), PX(54, 32), false, 5, "scrivi o scegli sotto");
         num_.setDigitsOnly(true);
         num_.setFocused(true);
         contacts_ = app::dati().contacts();
-        list_.create(col, 480, 412 - 48 - 70);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO - PX(70, 40));
         for (const auto& c : contacts_) {
-            lv_obj_t* row2 = list_.addRow(58);
-            avatar(row2, c.number, c.name, 40);
+            lv_obj_t* row2 = list_.addRow(PX(58, 36));
+            avatar(row2, c.number, c.name, PX(40, 26));
             List::text(row2, &font_22b, BIANCO(), c.name, true);
             List::text(row2, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
@@ -103,6 +103,9 @@ public:
         cb(n);
     }
     std::vector<Hint> hints() override { return {{"OK", "scegli"}, {"BACK", "annulla"}}; }
+#if TDECK
+    const TextInput* input() const override { return &num_; }
+#endif
 
 private:
     std::string title_;
@@ -122,33 +125,33 @@ class Chats : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         const uint16_t unread = app::dati().unreadTotal();
         header(col, nullptr, "Messaggi", unread ? std::to_string(unread) + " non letti" : "");
-        list_.create(col, 480, 412 - 48);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO);
         items_ = app::dati().summaries();
-        lv_obj_t* nw = list_.addRow(56);
+        lv_obj_t* nw = list_.addRow(PX(56, 34));
         List::text(nw, &icone_22, AMBRA(), IC_PIU);
         List::text(nw, &font_22b, AMBRA(), "Nuovo messaggio", true);
         for (const auto& s : items_) {
-            lv_obj_t* r = list_.addRow(74);
+            lv_obj_t* r = list_.addRow(PX(74, 42));
             const bool group = s.id.kind == app::ChatKind::GROUP;
             if (group) {
                 lv_obj_t* a = box(r);
-                lv_obj_set_size(a, 46, 46);
-                radius(a, 12);
+                lv_obj_set_size(a, PX(46, 30), PX(46, 30));
+                radius(a, PX(12, 8));
                 fill(a, avatarColor(s.id.id));
                 lv_obj_center(label(a, &icone_22, BIANCO(), IC_GRUPPO));
             } else {
-                avatar(r, s.id.id, s.title, 46);
+                avatar(r, s.id.id, s.title, PX(46, 30));
             }
             lv_obj_t* mid = column(r, 2);
             grow(mid);
             lv_obj_set_height(mid, LV_SIZE_CONTENT);
             std::string t = s.title;
             if (!group && s.title != std::to_string(s.id.id)) t += "  " + std::to_string(s.id.id);
-            List::text(mid, &font_22b, BIANCO(), t);
-            lv_obj_t* pv = row(mid, 6);
+            rigaPiena(List::text(mid, &font_22b, BIANCO(), t));
+            lv_obj_t* pv = row(mid, PX(6, 4));
             lv_obj_set_size(pv, lv_pct(100), LV_SIZE_CONTENT);
             if (s.last.out) statusIcon(pv, s.last.status);
             std::string p = preview(s.last);
@@ -158,15 +161,15 @@ public:
                                       s.last.out && s.last.status == pn::Delivery::UNREACHABLE ? "Non raggiungibile" : p,
                                       true);
             (void)pl;
-            lv_obj_t* right = column(r, 6);
+            lv_obj_t* right = column(r, PX(6, 3));
             lv_obj_set_size(right, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_flex_align(right, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
             List::text(right, &mono_16, GRIGIO2(), whenShort(s.last.time));
             if (s.unread) {
                 lv_obj_t* b = label(right, &font_16, NERO(), std::to_string(s.unread).c_str());
                 fill(b, AMBRA());
-                radius(b, 12);
-                pad(b, 1, 8, 1, 8);
+                radius(b, PX(12, 8));
+                pad(b, 1, PX(8, 5), 1, PX(8, 5));
             }
         }
         list_.focus(sel_);
@@ -236,7 +239,7 @@ public:
         g_chatScreen = this;
         app::rete().markRead(id_);
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         if (id_.kind == app::ChatKind::GLOBAL) {
             header(col, IC_GLOBO, "Canale globale", "lo leggono tutti");
         } else if (id_.kind == app::ChatKind::GROUP) {
@@ -247,15 +250,15 @@ public:
             const std::string name = app::dati().nameOf(id_.id);
             header(col, nullptr, name, name == std::to_string(id_.id) ? "cifrato" : std::to_string(id_.id) + " · cifrato");
         }
-        msgsBox_ = column(col, 8);
-        lv_obj_set_size(msgsBox_, 480, 412 - 48 - 64);
-        pad(msgsBox_, 8, 12, 8, 12);
+        msgsBox_ = column(col, PX(8, 5));
+        lv_obj_set_size(msgsBox_, W_SCHERMO, H_AREA - H_TITOLO - PX(64, 40));
+        pad(msgsBox_, PX(8, 4), PX(12, 6), PX(8, 4), PX(12, 6));
         lv_obj_add_flag(msgsBox_, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(msgsBox_, LV_SCROLLBAR_MODE_OFF);
         lv_obj_t* comp = row(col, 0);
-        lv_obj_set_size(comp, 480, 64);
-        pad(comp, 5, 12, 7, 12);
-        in_.create(comp, 456, 52, false, pn::MAX_TEXT_CHARS,
+        lv_obj_set_size(comp, W_SCHERMO, PX(64, 40));
+        pad(comp, PX(5, 3), PX(12, 6), PX(7, 3), PX(12, 6));
+        in_.create(comp, PX(456, 308), PX(52, 34), false, pn::MAX_TEXT_CHARS,
                    id_.kind == app::ChatKind::GLOBAL ? "Scrivi a tutti..." : "Scrivi un messaggio...");
         in_.setFocused(true);
         in_.setText(draft_);
@@ -290,10 +293,10 @@ public:
         const bool sos = m.kind == app::MsgKind::SOS;
         lv_obj_t* b = column(line(m.out ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START), 2);
         lv_obj_set_size(b, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_set_style_max_width(b, 340, 0);
-        pad(b, 8, 12, 6, 12);
+        lv_obj_set_style_max_width(b, PX(340, 236), 0);
+        pad(b, PX(8, 4), PX(12, 8), PX(6, 3), PX(12, 8));
         fill(b, sos ? ROSSO_SCURO() : (m.out ? AMBRA_SCURO() : GRIGIO1()));
-        lv_obj_set_style_radius(b, 14, 0);
+        lv_obj_set_style_radius(b, PX(14, 9), 0);
         lv_obj_set_style_border_color(b, AMBRA(), 0);
         if (!m.out && id_.kind != app::ChatKind::DIRECT)
             label(b, &font_16, AMBRA(), app::dati().nameOf(m.from).c_str());
@@ -322,8 +325,8 @@ public:
         }
         lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(body, LV_SIZE_CONTENT);
-        lv_obj_set_style_max_width(body, 316, 0);
-        lv_obj_t* meta = row(b, 4);
+        lv_obj_set_style_max_width(body, PX(316, 220), 0);
+        lv_obj_t* meta = row(b, PX(4, 3));
         lv_obj_set_size(meta, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
         label(meta, &mono_16, m.out ? BIANCO() : GRIGIO3(), whenShort(m.time).c_str());
         if (m.out && id_.kind == app::ChatKind::DIRECT) statusIcon(meta, m.status);
@@ -336,7 +339,7 @@ public:
         if (sel_ >= 0 && sel_ < int(bubbles_.size())) lv_obj_set_style_border_width(bubbles_[sel_].first, 0, 0);
         sel_ = s;
         if (sel_ >= 0 && sel_ < int(bubbles_.size())) {
-            lv_obj_set_style_border_width(bubbles_[sel_].first, 3, 0);
+            lv_obj_set_style_border_width(bubbles_[sel_].first, PX(3, 2), 0);
             lv_obj_scroll_to_view(bubbles_[sel_].first, LV_ANIM_OFF);
         } else {
             sel_ = -1;
@@ -465,6 +468,9 @@ public:
     }
 
     const app::ChatId& id() const { return id_; }
+#if TDECK
+    const TextInput* input() const override { return &in_; }
+#endif
 
 private:
     app::ChatId id_;

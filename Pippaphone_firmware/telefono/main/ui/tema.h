@@ -6,6 +6,7 @@
 #pragma once
 
 #include "lvgl.h"
+#include "sdkconfig.h"
 
 LV_FONT_DECLARE(font_16);
 LV_FONT_DECLARE(font_18);
@@ -24,7 +25,59 @@ LV_FONT_DECLARE(icone_22);
 LV_FONT_DECLARE(icone_28);
 LV_FONT_DECLARE(icone_44);
 
+// ---- T-Deck Plus (320x240, 2,8") ----
+// Le schermate sono le stesse della PCB; cambiano misure e font. PX(pcb, tdeck) sceglie la misura
+// in pixel, TXT(pcb, tdeck) un testo che nomina i tasti. I nomi dei font della PCB sul T-Deck
+// puntano ai font piu' piccoli generati da strumenti/genera_font_tdeck.sh: il testo resta della
+// stessa grandezza vera (il T-Deck ha ~143 punti per pollice, la PCB ~200).
+#if CONFIG_SCHEDA_TDECK_PLUS
+#define TDECK 1
+#define PX(pcb, tdeck) (tdeck)
+#define TXT(pcb, tdeck) (tdeck)
+LV_FONT_DECLARE(td_12);
+LV_FONT_DECLARE(td_14);
+LV_FONT_DECLARE(td_16);
+LV_FONT_DECLARE(td_16b);
+LV_FONT_DECLARE(td_20b);
+LV_FONT_DECLARE(td_24b);
+LV_FONT_DECLARE(td_34b);
+LV_FONT_DECLARE(tdm_12);
+LV_FONT_DECLARE(tdm_14);
+LV_FONT_DECLARE(tdm_20);
+LV_FONT_DECLARE(tdm_56);
+LV_FONT_DECLARE(tdi_14);
+LV_FONT_DECLARE(tdi_16);
+LV_FONT_DECLARE(tdi_20);
+LV_FONT_DECLARE(tdi_32);
+#define font_16 td_12
+#define font_18 td_14
+#define font_20 td_14
+#define font_22 td_16
+#define font_22b td_16b
+#define font_26b td_20b
+#define font_32b td_24b
+#define font_48b td_34b
+#define mono_16 tdm_12
+#define mono_20 tdm_14
+#define mono_28 tdm_20
+#define mono_104 tdm_56
+#define icone_18 tdi_14
+#define icone_22 tdi_16
+#define icone_28 tdi_20
+#define icone_44 tdi_32
+#else
+#define TDECK 0
+#define PX(pcb, tdeck) (pcb)
+#define TXT(pcb, tdeck) (pcb)
+#endif
+
 namespace ui {
+
+// Misure comuni: schermo, area tra la barra di stato e quella dei tasti, intestazione.
+constexpr int W_SCHERMO = PX(480, 320);
+constexpr int H_SCHERMO = PX(480, 240);
+constexpr int H_AREA = PX(412, 196);
+constexpr int H_TITOLO = PX(48, 28);
 
 // Colori.
 inline lv_color_t NERO() { return lv_color_hex(0x000000); }
@@ -76,6 +129,11 @@ lv_color_t avatarColor(uint16_t number);
 #define IC_AGGIUNGI_PERSONA "\xEF\x88\xB4"  // F234
 #define IC_INFO "\xEF\x81\xAA"        // F06A
 #define IC_SCARICA "\xEF\x80\x99"     // F019
+// Solo nei font del T-Deck:
+#define IC_CANCELLA "\xEF\x95\x9A"    // F55A tasto cancella
+#define IC_MAPPA "\xEF\x89\xB9"       // F279
+#define IC_MIRINO "\xEF\x81\x9B"      // F05B
+#define IC_PUNTINA "\xEF\x89\xB6"     // F276
 
 // Stili comuni (creati una volta).
 void initStyles();
@@ -89,5 +147,27 @@ void fill(lv_obj_t* o, lv_color_t color);                       // sfondo pieno
 void radius(lv_obj_t* o, int r);
 void pad(lv_obj_t* o, int top, int right, int bottom, int left);
 void grow(lv_obj_t* o);                                         // flex-grow 1
+
+// Etichetta su una riga sola, coi puntini se il testo e' troppo lungo. Sul T-Deck le si da'
+// l'altezza di una riga: con l'altezza libera LVGL va a capo e la riga esce dal suo riquadro.
+inline void unaRiga(lv_obj_t* l) {
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+#if TDECK
+    lv_obj_set_height(l, lv_font_get_line_height(lv_obj_get_style_text_font(l, LV_PART_MAIN)));
+#endif
+}
+
+// Solo sul T-Deck: etichetta (un nome) larga quanto il contenitore, su una riga sola coi puntini,
+// eventualmente centrata. Sulla PCB non fa nulla.
+inline lv_obj_t* rigaPiena(lv_obj_t* l, bool centered = false) {
+#if TDECK
+    lv_obj_set_width(l, lv_pct(100));
+    unaRiga(l);
+    if (centered) lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+#else
+    (void)centered;
+#endif
+    return l;
+}
 
 }  // namespace ui

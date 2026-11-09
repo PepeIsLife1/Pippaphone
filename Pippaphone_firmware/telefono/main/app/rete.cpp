@@ -53,7 +53,14 @@ bool Rete::begin() {
     cfg.nss = scheda::PIN_LORA_NSS;
     cfg.busy = scheda::PIN_LORA_BUSY;
     cfg.dio1 = scheda::PIN_LORA_DIO1;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // T-Deck Plus: reset su un GPIO, bus SPI gia' creato da holdPower() (c'e' anche il display).
+    cfg.host = scheda::SPI_HOST_SCHEDA;
+    cfg.reset = scheda::PIN_LORA_RST;
+    cfg.initBus = false;
+#else
     cfg.resetFn = [](bool level) { scheda::expander().set(scheda::Exp::LORA_RST_N, level); };
+#endif
     cfg.dio2AsRfSwitch = true;
     cfg.tcxoVoltage = 1.8f;
     cfg.maxPowerDbm = 22;
@@ -245,7 +252,7 @@ uint32_t Rete::sendVoice(uint16_t to, const std::vector<uint8_t>& codec2, uint16
     f.push_back(uint8_t(durationMs >> 8));
     for (int i = 0; i < 4; i++) f.push_back(0);
     f.insert(f.end(), codec2.begin(), codec2.end());
-    writeFile("/dati/voce/" + std::to_string(file) + ".c2", f);
+    writeFile(DATI_PATH("/voce/") + std::to_string(file) + ".c2", f);
     Message m;
     m.id = id;
     m.from = me;
@@ -578,7 +585,7 @@ void Rete::onVoice(pn::Addr from, pn::Codec codec, const std::vector<uint8_t>& d
     f.push_back(uint8_t(durationMs >> 8));
     for (int i = 0; i < 4; i++) f.push_back(uint8_t(missing >> (8 * i)));
     f.insert(f.end(), data.begin(), data.end());
-    writeFile("/dati/voce/" + std::to_string(file) + ".c2", f);
+    writeFile(DATI_PATH("/voce/") + std::to_string(file) + ".c2", f);
     Message m;
     m.id = 0x20000000u | file;
     m.from = from;

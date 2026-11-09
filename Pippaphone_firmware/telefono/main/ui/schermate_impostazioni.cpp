@@ -41,23 +41,29 @@ const int8_t POWERS[] = {0, 22, 20, 17, 14, 10};
 class PinEdit : public Screen {
 public:
     void build(lv_obj_t* root) override {
-        lv_obj_t* col = column(root, 12);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_t* col = column(root, PX(12, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_LUCCHETTO, "Blocco con PIN");
-        lv_obj_t* body = column(col, 10);
-        lv_obj_set_size(body, 480, LV_SIZE_CONTENT);
-        pad(body, 8, 20, 0, 20);
+        lv_obj_t* body = column(col, PX(10, 4));
+        lv_obj_set_size(body, W_SCHERMO, LV_SIZE_CONTENT);
+        pad(body, PX(8, 4), PX(20, 10), 0, PX(20, 10));
         lv_obj_t* t = label(body, &font_22, BIANCO(),
                             first_.empty() ? "Scrivi il nuovo PIN (da 4 a 8 cifre). Lascia vuoto per togliere il blocco."
                                            : "Scrivi di nuovo il PIN per conferma.");
-        lv_obj_set_width(t, 440);
+        lv_obj_set_width(t, PX(440, 300));
         lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
-        in_.create(body, 260, 56, false, 8, "PIN");
+        in_.create(body, PX(260, 180), PX(56, 32), false, 8, "PIN");
         in_.setDigitsOnly(true);
         in_.setPassword(true);
         in_.setFocused(true);
         msg_ = label(body, &font_20, ROSSO(), "");
+#if TDECK
+        lv_obj_t* h = label(body, &font_16, GRIGIO2(), "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
+        lv_obj_set_width(h, 300);
+        lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP);
+#else
         label(body, &font_16, GRIGIO2(), "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
+#endif
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return false;
@@ -92,6 +98,9 @@ public:
         return in_.key(k, pressed) != TextInput::NONE;
     }
     std::vector<Hint> hints() override { return {{"OK", "conferma"}, {"BACK", "annulla"}}; }
+#if TDECK
+    const TextInput* input() const override { return &in_; }
+#endif
 
 private:
     TextInput in_;
@@ -107,14 +116,16 @@ public:
 
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_IMPOSTAZIONI, "Impostazioni");
-        list_.create(col, 480, 412 - 48);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO);
         rows_.clear();
         values_.clear();
         add(RING, IC_VOLUME, "Suoneria");
         add(VOLUME, IC_VOLUME, "Volume");
-        add(VIBRA, IC_TELEFONO, "Vibrazione");
+#if !TDECK
+        add(VIBRA, IC_TELEFONO, "Vibrazione");  // il T-Deck non ha il motore della vibrazione
+#endif
         add(BRIGHT, IC_INFO, "Luminosità");
         add(SCREEN, IC_OROLOGIO, "Spegni lo schermo dopo");
         add(KEYLIGHT, IC_INFO, "Luce della tastiera");
@@ -129,7 +140,7 @@ public:
         refresh();
     }
     void add(Row r, const char* icon, const char* text) {
-        lv_obj_t* row = list_.addRow(54);
+        lv_obj_t* row = list_.addRow(PX(54, 30));
         const bool red = r == RESET;
         List::text(row, &icone_18, red ? ROSSO() : GRIGIO3(), icon);
         List::text(row, &font_22, red ? ROSSO() : BIANCO(), text, true);
@@ -293,19 +304,19 @@ class Signal : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_TORRE, "Segnale");
-        top_ = column(col, 4);
-        lv_obj_set_size(top_, 480, 120);
-        pad(top_, 10, 20, 10, 20);
+        top_ = column(col, PX(4, 2));
+        lv_obj_set_size(top_, W_SCHERMO, PX(120, 64));
+        pad(top_, PX(10, 4), PX(20, 10), PX(10, 4), PX(20, 10));
         underline(top_);
         list_ = column(col, 0);
-        lv_obj_set_size(list_, 480, 412 - 48 - 120 - 60);
+        lv_obj_set_size(list_, W_SCHERMO, H_AREA - H_TITOLO - PX(120, 64) - PX(60, 36));
         lv_obj_add_flag(list_, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_scrollbar_mode(list_, LV_SCROLLBAR_MODE_OFF);
         foot_ = column(col, 2);
-        lv_obj_set_size(foot_, 480, 60);
-        pad(foot_, 6, 20, 0, 20);
+        lv_obj_set_size(foot_, W_SCHERMO, PX(60, 36));
+        pad(foot_, PX(6, 3), PX(20, 10), 0, PX(20, 10));
         refresh();
     }
     void refresh() {
@@ -313,14 +324,14 @@ public:
         lv_obj_clean(list_);
         lv_obj_clean(foot_);
         const app::Rete::Signal s = app::rete().signal();
-        lv_obj_t* r = row(top_, 14);
+        lv_obj_t* r = row(top_, PX(14, 8));
         lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
         lv_obj_t* bars = box(r);
-        lv_obj_set_size(bars, 50, 40);
+        lv_obj_set_size(bars, PX(50, 30), PX(40, 28));
         for (int i = 0; i < 4; i++) {
             lv_obj_t* b = box(bars);
-            lv_obj_set_size(b, 9, 10 + i * 10);
-            lv_obj_set_pos(b, i * 13, 30 - i * 10);
+            lv_obj_set_size(b, PX(9, 6), PX(10 + i * 10, 7 + i * 7));
+            lv_obj_set_pos(b, PX(i * 13, i * 8), PX(30 - i * 10, 21 - i * 7));
             fill(b, i < s.bars ? VERDE() : GRIGIO1());
         }
         lv_obj_t* t = column(r, 0);
@@ -338,9 +349,9 @@ public:
         const auto reps = app::rete().repeaters();
         label(top_, &font_16, GRIGIO2(), (std::to_string(reps.size()) + " ripetitori sentiti").c_str());
         for (const auto& rp : reps) {
-            lv_obj_t* rr = row(list_, 10);
-            lv_obj_set_size(rr, lv_pct(100), 40);
-            pad(rr, 0, 20, 0, 20);
+            lv_obj_t* rr = row(list_, PX(10, 6));
+            lv_obj_set_size(rr, lv_pct(100), PX(40, 24));
+            pad(rr, 0, PX(20, 10), 0, PX(20, 10));
             underline(rr);
             label(rr, &mono_20, BIANCO(), repeaterName(rp.addr).c_str());
             char b[64];
@@ -351,7 +362,8 @@ public:
         }
         const app::Settings st = app::dati().settings();
         char f[96];
-        snprintf(f, sizeof(f), "Potenza %d dBm%s · in onda per %s s in tutto", app::rete().power(),
+        snprintf(f, sizeof(f), TXT("Potenza %d dBm%s · in onda per %s s in tutto", "Potenza %d dBm%s · in onda %s s"),
+                 app::rete().power(),
                  st.txPower ? "" : " (auto)", comma(std::to_string(app::rete().airtimeMs() / 1000)).c_str());
         label(foot_, &font_18, GRIGIO3(), f);
         label(foot_, &font_16, app::rete().radioOk() ? GRIGIO2() : ROSSO(),
@@ -378,26 +390,26 @@ public:
     ~Ota() override { app::otaStop(); }
     void build(lv_obj_t* root) override {
         const app::OtaStatus st = app::otaStatus();
-        lv_obj_t* col = column(root, 8);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_t* col = column(root, PX(8, 3));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_WIFI, "Aggiorna il firmware", std::string("versione ") + app::firmwareVersion());
-        lv_obj_t* body = column(col, 8);
-        lv_obj_set_size(body, 480, LV_SIZE_CONTENT);
-        pad(body, 4, 20, 0, 20);
+        lv_obj_t* body = column(col, PX(8, 3));
+        lv_obj_set_size(body, W_SCHERMO, LV_SIZE_CONTENT);
+        pad(body, PX(4, 2), PX(20, 10), 0, PX(20, 10));
         auto step = [&](const char* n, const std::string& t) {
-            lv_obj_t* r = row(body, 10);
+            lv_obj_t* r = row(body, PX(10, 6));
             lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
-            label(r, &mono_20, AMBRA(), n);
-            lv_obj_t* l = label(r, &font_20, BIANCO(), t.c_str());
+            label(r, PX(&mono_20, &mono_16), AMBRA(), n);
+            lv_obj_t* l = label(r, PX(&font_20, &font_16), BIANCO(), t.c_str());
             grow(l);
             lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
         };
         step("1", "Col computer collegati alla rete Wi-Fi:");
-        lv_obj_t* box1 = column(body, 2);
-        lv_obj_set_size(box1, 440, LV_SIZE_CONTENT);
+        lv_obj_t* box1 = column(body, PX(2, 1));
+        lv_obj_set_size(box1, PX(440, 300), LV_SIZE_CONTENT);
         fill(box1, GRIGIO1());
-        radius(box1, 10);
-        pad(box1, 8, 14, 10, 14);
+        radius(box1, PX(10, 6));
+        pad(box1, PX(8, 4), PX(14, 8), PX(10, 4), PX(14, 8));
         label(box1, &mono_20, BIANCO(), st.ssid.c_str());
         label(box1, &font_16, GRIGIO3(), "password");
         label(box1, &mono_28, AMBRA(), st.password.c_str());
@@ -406,13 +418,13 @@ public:
         status_ = label(body, &font_22b, BIANCO(), "");
         prog_ = lv_bar_create(body);
         lv_obj_remove_style_all(prog_);
-        lv_obj_set_size(prog_, 440, 12);
+        lv_obj_set_size(prog_, PX(440, 300), PX(12, 8));
         lv_obj_set_style_bg_color(prog_, GRIGIO1(), 0);
         lv_obj_set_style_bg_opa(prog_, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(prog_, 6, 0);
+        lv_obj_set_style_radius(prog_, PX(6, 4), 0);
         lv_obj_set_style_bg_color(prog_, VERDE(), LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(prog_, LV_OPA_COVER, LV_PART_INDICATOR);
-        lv_obj_set_style_radius(prog_, 6, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(prog_, PX(6, 4), LV_PART_INDICATOR);
         lv_bar_set_range(prog_, 0, 1000);
         update();
     }
@@ -456,19 +468,19 @@ class Admin : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_CHIAVE, "Amministrazione");
         lv_obj_t* top = column(col, 2);
-        lv_obj_set_size(top, 480, 96);
-        pad(top, 8, 20, 8, 20);
+        lv_obj_set_size(top, W_SCHERMO, PX(96, 64));
+        pad(top, PX(8, 3), PX(20, 10), PX(8, 3), PX(20, 10));
         underline(top);
         label(top, &font_16, GRIGIO3(), "Il tuo codice (il telefono nuovo mostra lo stesso)");
         label(top, &mono_28, AMBRA(), app::rete().myCode().c_str());
         label(top, &font_16, GRIGIO2(), "Telefoni nuovi qui vicino, che chiedono un numero:");
-        list_.create(col, 480, 412 - 48 - 96);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO - PX(96, 64));
         items_ = app::rete().hellos();
         for (const auto& h : items_) {
-            lv_obj_t* r = list_.addRow(60);
+            lv_obj_t* r = list_.addRow(PX(60, 34));
             List::text(r, &icone_22, AMBRA(), IC_TELEFONO);
             List::text(r, &mono_20, BIANCO(), h.code, true);
             List::text(r, &font_18, GRIGIO3(), std::to_string(h.rssi) + " dBm");
@@ -477,9 +489,9 @@ public:
             lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
                                 "Nessuno. Accendi il telefono nuovo vicino a questo: sul suo schermo compare il "
                                 "suo codice, che comparirà anche qui.");
-            lv_obj_set_width(t, 440);
+            lv_obj_set_width(t, PX(440, 300));
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
-            pad(t, 16, 20, 0, 20);
+            pad(t, PX(16, 6), PX(20, 10), 0, PX(20, 10));
         }
         list_.focus(sel_);
     }

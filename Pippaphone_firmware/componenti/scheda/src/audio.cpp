@@ -10,8 +10,14 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "scheda/expander.h"
 #include "scheda/pins.h"
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: altoparlante su I2S0, microfono (codec ES7210) su I2S1 con MCLK; l'amplificatore
+// non ha il pin di spegnimento.
+#include "tdeck/es7210.h"
+#else
+#include "scheda/expander.h"
+#endif
 
 namespace scheda {
 
@@ -54,7 +60,12 @@ uint32_t g_recMaxMs = 0;
 std::function<void(const int16_t*, size_t)> g_onFrame;
 std::function<void()> g_onEnd;
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+void amp(bool) {}
+constexpr int MIC_DIGITAL_GAIN = 2;  // in piu' dei 24 dB analogici dell'ES7210: da regolare
+#else
 void amp(bool on) { expander().set(Exp::AMP_SD, on); }
+#endif
 
 // Scrive campioni mono a 16 kHz come stereo a 32 bit (canale sinistro).
 void writeMono16k(const int16_t* s, size_t n, int volume) {
@@ -65,7 +76,11 @@ void writeMono16k(const int16_t* s, size_t n, int volume) {
         for (size_t i = 0; i < k; i++) {
             int32_t v = int32_t(s[i]) * gain / 100;
             buf[2 * i] = v << 16;
+#if CONFIG_SCHEDA_TDECK_PLUS
+            buf[2 * i + 1] = v << 16;  // T-Deck: non si sa quale canale ascolta il MAX98357A
+#else
             buf[2 * i + 1] = 0;
+#endif
         }
         size_t written = 0;
         i2s_channel_write(g_tx, buf, k * 8, &written, portMAX_DELAY);
@@ -143,6 +158,65 @@ void playTask(void*) {
     }
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck: 16 bit stereo dall'ES7210, MIC1 a sinistra e MIC2 a destra. Si usa il canale col segnale
+// piu' forte (uno dei due potrebbe non essere montato), scelto con un po' di memoria.
+void recTask(void*) {
+    int16_t raw[FRAME_8K * 2 * 2];  // 640 campioni a 16 kHz, stereo
+    int16_t frame[FRAME_8K];
+    int ch = 0;
+    int32_t levL = 0, levR = 0;
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        g_recording = true;
+        i2s_channel_enable(g_rx);
+        es7210::start();
+        // Scarta i primi 100 ms (il codec e il microfono si assestano).
+        for (int i = 0; i < 3; i++) {
+            size_t got = 0;
+            i2s_channel_read(g_rx, raw, sizeof(raw), &got, pdMS_TO_TICKS(200));
+        }
+        uint32_t elapsed = 0;
+        int32_t dc = 0;
+        while (!g_recStop && elapsed < g_recMaxMs) {
+            size_t got = 0;
+            if (i2s_channel_read(g_rx, raw, sizeof(raw), &got, pdMS_TO_TICKS(200)) != ESP_OK) continue;
+            const size_t samples16k = got / 4;
+            int64_t eL = 0, eR = 0;
+            for (size_t i = 0; i < samples16k; i++) {
+                eL += std::abs(raw[2 * i]);
+                eR += std::abs(raw[2 * i + 1]);
+            }
+            if (samples16k) {
+                levL += int32_t(eL / int64_t(samples16k) - levL) / 8;
+                levR += int32_t(eR / int64_t(samples16k) - levR) / 8;
+                if (levR > levL * 2 + 20) ch = 1;
+                else if (levL > levR * 2 + 20) ch = 0;
+            }
+            size_t n = 0;
+            int32_t peak = 0;
+            for (size_t i = 0; i + 1 < samples16k && n < FRAME_8K; i += 2) {
+                // Media di due campioni = filtro + dimezzamento a 8 kHz.
+                int32_t v = (int32_t(raw[2 * i + ch]) + raw[2 * (i + 1) + ch]) / 2 * MIC_DIGITAL_GAIN;
+                dc += (v - dc) / 64;  // toglie la componente continua
+                v -= dc;
+                if (v > 32767) v = 32767;
+                if (v < -32768) v = -32768;
+                frame[n++] = int16_t(v);
+                peak = std::max(peak, std::abs(v));
+            }
+            audio().level_ = uint8_t(std::min<int32_t>(100, peak * 100 / 12000));
+            if (g_onFrame && n == FRAME_8K) g_onFrame(frame, n);
+            elapsed += 40;
+        }
+        es7210::stop();
+        i2s_channel_disable(g_rx);
+        audio().level_ = 0;
+        g_recording = false;
+        if (g_onEnd) g_onEnd();
+    }
+}
+#else
 void recTask(void*) {
     int32_t raw[FRAME_8K * 2 * 2];  // 640 campioni a 16 kHz, stereo
     int16_t frame[FRAME_8K];
@@ -184,6 +258,7 @@ void recTask(void*) {
         if (g_onEnd) g_onEnd();
     }
 }
+#endif
 }  // namespace
 
 Audio& audio() {
@@ -191,6 +266,55 @@ Audio& audio() {
     return a;
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+bool Audio::begin() {
+    g_lock = xSemaphoreCreateMutex();
+    // Altoparlante: I2S0, 16 kHz, stereo a 32 bit, senza MCLK.
+    i2s_chan_config_t txc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    txc.auto_clear = true;
+    if (i2s_new_channel(&txc, &g_tx, nullptr) != ESP_OK) {
+        ESP_LOGE(TAG, "I2S dell'altoparlante non disponibile");
+        return false;
+    }
+    i2s_std_config_t tx = {};
+    tx.clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(I2S_RATE);
+    tx.slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO);
+    tx.gpio_cfg.mclk = I2S_GPIO_UNUSED;
+    tx.gpio_cfg.bclk = PIN_I2S_BCLK;
+    tx.gpio_cfg.ws = PIN_I2S_WS;
+    tx.gpio_cfg.dout = PIN_I2S_DOUT;
+    tx.gpio_cfg.din = I2S_GPIO_UNUSED;
+    i2s_channel_init_std_mode(g_tx, &tx);
+    i2s_channel_enable(g_tx);
+
+    // Microfono: I2S1, 16 kHz, stereo a 16 bit, MCLK = 256 x 16 kHz verso l'ES7210.
+    i2s_chan_config_t rxc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
+    bool mic = i2s_new_channel(&rxc, nullptr, &g_rx) == ESP_OK;
+    if (mic) {
+        i2s_std_config_t rx = {};
+        rx.clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(I2S_RATE);
+        rx.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
+        rx.slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+        rx.gpio_cfg.mclk = PIN_MIC_MCLK;
+        rx.gpio_cfg.bclk = PIN_MIC_SCK;
+        rx.gpio_cfg.ws = PIN_MIC_LRCK;
+        rx.gpio_cfg.dout = I2S_GPIO_UNUSED;
+        rx.gpio_cfg.din = PIN_MIC_DIN;
+        i2s_channel_init_std_mode(g_rx, &rx);
+        // Il codec si configura con MCLK presente, poi si spegne fino alla prima registrazione.
+        i2s_channel_enable(g_rx);
+        mic = es7210::begin();
+        es7210::stop();
+        i2s_channel_disable(g_rx);
+    } else {
+        ESP_LOGE(TAG, "I2S del microfono non disponibile");
+    }
+    amp(false);
+    xTaskCreatePinnedToCore(playTask, "audio_out", 4096, nullptr, 8, &g_playTask, 1);
+    xTaskCreatePinnedToCore(recTask, "audio_in", 16384, nullptr, 9, &g_recTask, 1);
+    return mic;
+}
+#else
 bool Audio::begin() {
     g_lock = xSemaphoreCreateMutex();
     i2s_chan_config_t chan = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
@@ -215,6 +339,7 @@ bool Audio::begin() {
     xTaskCreatePinnedToCore(recTask, "audio_in", 16384, nullptr, 9, &g_recTask, 1);
     return true;
 }
+#endif
 
 void Audio::play(const std::vector<Note>& notes, bool loop) {
     xSemaphoreTake(g_lock, portMAX_DELAY);

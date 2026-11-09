@@ -54,6 +54,10 @@ public:
     void setPassword(bool p);
     void setFocused(bool f);
     lv_obj_t* obj() const { return wrap_; }
+#if TDECK
+    // Il prossimo tasto 0/microfono e' la cifra 0 (ALT premuto o campo numerico).
+    bool wantsDigit() const { return alt_ || altLock_ || digits_; }
+#endif
 
 private:
     void insert(const char* utf8);

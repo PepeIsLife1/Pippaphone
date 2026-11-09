@@ -19,6 +19,12 @@ namespace ui {
 
 using scheda::Key;
 
+#if TDECK
+class TextInput;
+// Nome di un tasto della PCB ("MENU", "CALL", "PTT"...) come si preme sul T-Deck ("sym+M"...).
+const char* tasto(const char* pcbKey);
+#endif
+
 struct Hint {
     const char* key;
     std::string text;
@@ -39,6 +45,11 @@ public:
     virtual bool showClock() const { return true; }
     // Durante la scrittura END e BACK non chiudono subito la schermata.
     virtual bool capturesEnd() const { return false; }
+#if TDECK
+    // Campo di testo in cui si sta scrivendo (nullptr = nessuno). Sul T-Deck decide se il tasto
+    // 0/microfono e' il PTT o la cifra 0, e se il tasto cancella e' BACK.
+    virtual const TextInput* input() const { return nullptr; }
+#endif
     // Ricostruisce la schermata (dati cambiati).
     void rebuild();
 

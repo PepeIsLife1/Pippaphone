@@ -16,16 +16,16 @@ class Contacts : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         items_ = app::dati().contacts();
         header(col, IC_PERSONA, "Contatti", std::to_string(items_.size()));
-        list_.create(col, 480, 412 - 48);
-        lv_obj_t* nw = list_.addRow(56);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO);
+        lv_obj_t* nw = list_.addRow(PX(56, 34));
         List::text(nw, &icone_22, AMBRA(), IC_AGGIUNGI_PERSONA);
         List::text(nw, &font_22b, AMBRA(), "Nuovo contatto", true);
         for (const auto& c : items_) {
-            lv_obj_t* r = list_.addRow(64);
-            avatar(r, c.number, c.name, 44);
+            lv_obj_t* r = list_.addRow(PX(64, 34));
+            avatar(r, c.number, c.name, PX(44, 26));
             List::text(r, &font_22b, BIANCO(), c.name, true);
             List::text(r, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
@@ -91,23 +91,23 @@ public:
         known_ = app::dati().contact(number_, c);
         name_ = known_ ? c.name : std::to_string(number_);
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
-        lv_obj_t* top = row(col, 16);
-        lv_obj_set_size(top, 480, 110);
-        pad(top, 12, 20, 12, 20);
-        avatar(top, number_, name_, 80);
-        lv_obj_t* txt = column(top, 4);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        lv_obj_t* top = row(col, PX(16, 10));
+        lv_obj_set_size(top, W_SCHERMO, PX(110, 70));
+        pad(top, PX(12, 6), PX(20, 10), PX(12, 6), PX(20, 10));
+        avatar(top, number_, name_, PX(80, 50));
+        lv_obj_t* txt = column(top, PX(4, 1));
         grow(txt);
         lv_obj_set_height(txt, LV_SIZE_CONTENT);
-        lv_obj_t* nl = label(txt, &font_32b, BIANCO(), name_.c_str());
-        lv_label_set_long_mode(nl, LV_LABEL_LONG_DOT);
+        lv_obj_t* nl = label(txt, PX(&font_32b, &font_26b), BIANCO(), name_.c_str());
+        unaRiga(nl);
         lv_obj_set_width(nl, lv_pct(100));
         label(txt, &mono_20, GRIGIO3(), std::to_string(number_).c_str());
         const std::string code = app::rete().codeOf(number_);
         label(txt, &font_16, code.empty() ? GRIGIO2() : VERDE(),
               code.empty() ? "chiave non ancora ricevuta" : (std::string(IC_SCUDO " ") + code).c_str());
         underline(top);
-        list_.create(col, 480, 412 - 110);
+        list_.create(col, W_SCHERMO, H_AREA - PX(110, 70));
         struct Item {
             const char* icon;
             const char* text;
@@ -119,7 +119,7 @@ public:
                               {IC_CESTINO, "Elimina"}};
         const int n = known_ ? 5 : 4;
         for (int i = 0; i < n; i++) {
-            lv_obj_t* r = list_.addRow(56);
+            lv_obj_t* r = list_.addRow(PX(56, 32));
             List::text(r, &icone_22, i == 4 ? ROSSO() : AMBRA(), items[i].icon);
             List::text(r, &font_22, i == 4 ? ROSSO() : BIANCO(), items[i].text, true);
         }
@@ -176,17 +176,17 @@ public:
         if (n && app::dati().contact(n, c)) name0_ = c.name;
     }
     void build(lv_obj_t* root) override {
-        lv_obj_t* col = column(root, 10);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_t* col = column(root, PX(10, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, orig_ ? IC_MATITA : IC_AGGIUNGI_PERSONA, orig_ ? "Modifica contatto" : "Nuovo contatto");
-        lv_obj_t* body = column(col, 8);
-        lv_obj_set_size(body, 480, LV_SIZE_CONTENT);
-        pad(body, 8, 20, 0, 20);
+        lv_obj_t* body = column(col, PX(8, 3));
+        lv_obj_set_size(body, W_SCHERMO, LV_SIZE_CONTENT);
+        pad(body, PX(8, 4), PX(20, 10), 0, PX(20, 10));
         label(body, &font_18, GRIGIO3(), "Nome");
-        name_.create(body, 440, 56, false, 24, "Nome e cognome");
+        name_.create(body, PX(440, 300), PX(56, 32), false, 24, "Nome e cognome");
         name_.setText(nameText_.empty() ? name0_ : nameText_);
         label(body, &font_18, GRIGIO3(), "Numero (1 - 59999)");
-        num_.create(body, 440, 56, false, 5, "Numero");
+        num_.create(body, PX(440, 300), PX(56, 32), false, 5, "Numero");
         num_.setDigitsOnly(true);
         num_.setText(numText_.empty() ? (orig_ ? std::to_string(orig_) : "") : numText_);
         msg_ = label(body, &font_18, ROSSO(), "");
@@ -259,6 +259,9 @@ public:
         return {{"SU/GIÙ", "campo"}, {"CALL", "salva"}, {"BACK", "annulla"}};
     }
     bool capturesEnd() const override { return false; }
+#if TDECK
+    const TextInput* input() const override { return field_ == 0 ? &name_ : &num_; }
+#endif
 
 private:
     uint16_t orig_;
@@ -276,24 +279,24 @@ class Groups : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         items_ = app::dati().groups();
         header(col, IC_GRUPPO, "Gruppi", std::to_string(items_.size()));
-        list_.create(col, 480, 412 - 48);
-        lv_obj_t* nw = list_.addRow(56);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO);
+        lv_obj_t* nw = list_.addRow(PX(56, 34));
         List::text(nw, &icone_22, AMBRA(), IC_PIU);
         List::text(nw, &font_22b, AMBRA(), "Nuovo gruppo", true);
         for (const auto& g : items_) {
-            lv_obj_t* r = list_.addRow(70);
+            lv_obj_t* r = list_.addRow(PX(70, 42));
             lv_obj_t* a = box(r);
-            lv_obj_set_size(a, 44, 44);
-            radius(a, 12);
+            lv_obj_set_size(a, PX(44, 28), PX(44, 28));
+            radius(a, PX(12, 8));
             fill(a, avatarColor(g.id));
             lv_obj_center(label(a, &icone_22, BIANCO(), IC_GRUPPO));
             lv_obj_t* mid = column(r, 2);
             grow(mid);
             lv_obj_set_height(mid, LV_SIZE_CONTENT);
-            List::text(mid, &font_22b, BIANCO(), g.name);
+            rigaPiena(List::text(mid, &font_22b, BIANCO(), g.name));
             std::string names;
             for (auto m : g.members) {
                 if (m == app::rete().number()) continue;
@@ -301,14 +304,14 @@ public:
             }
             lv_obj_t* l = List::text(mid, &font_18, GRIGIO3(), std::to_string(g.members.size()) + " membri · " + names);
             lv_obj_set_width(l, lv_pct(100));
-            lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+            unaRiga(l);
         }
         if (items_.empty()) {
             lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
                                 "Nessun gruppo. Chiunque può creare un gruppo fino a 16 persone.");
-            lv_obj_set_width(t, 440);
+            lv_obj_set_width(t, PX(440, 300));
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
-            pad(t, 16, 20, 0, 20);
+            pad(t, PX(16, 8), PX(20, 10), 0, PX(20, 10));
         }
         list_.focus(sel_);
     }
@@ -362,23 +365,23 @@ class NewGroup : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         contacts_ = app::dati().contacts();
         count_ = header(col, IC_GRUPPO, "Nuovo gruppo", "1/16");
-        lv_obj_t* r = row(col, 10);
-        lv_obj_set_size(r, 480, 70);
-        pad(r, 8, 14, 8, 14);
+        lv_obj_t* r = row(col, PX(10, 6));
+        lv_obj_set_size(r, W_SCHERMO, PX(70, 40));
+        pad(r, PX(8, 4), PX(14, 8), PX(8, 4), PX(14, 8));
         label(r, &font_20, GRIGIO3(), "Nome");
-        name_.create(r, 360, 54, false, 20, "nome del gruppo");
+        name_.create(r, PX(360, 254), PX(54, 32), false, 20, "nome del gruppo");
         name_.setText(nameText_);
-        list_.create(col, 480, 412 - 48 - 70);
+        list_.create(col, W_SCHERMO, H_AREA - H_TITOLO - PX(70, 40));
         checks_.clear();
         for (const auto& c : contacts_) {
-            lv_obj_t* row2 = list_.addRow(58);
+            lv_obj_t* row2 = list_.addRow(PX(58, 34));
             lv_obj_t* ck = List::text(row2, &icone_22, AMBRA(), chosen(c.number) ? IC_OK : "");
-            lv_obj_set_width(ck, 26);
+            lv_obj_set_width(ck, PX(26, 18));
             checks_.push_back(ck);
-            avatar(row2, c.number, c.name, 40);
+            avatar(row2, c.number, c.name, PX(40, 26));
             List::text(row2, &font_22b, BIANCO(), c.name, true);
             List::text(row2, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
@@ -469,6 +472,9 @@ public:
         if (inName_) return {{"GIÙ", "membri"}, {"CALL", "crea"}};
         return {{"OK", "aggiungi/togli"}, {"CALL", "crea"}};
     }
+#if TDECK
+    const TextInput* input() const override { return inName_ ? &name_ : nullptr; }
+#endif
 
 private:
     TextInput name_;

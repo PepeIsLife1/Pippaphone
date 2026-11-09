@@ -18,6 +18,12 @@
 #include "freertos/task.h"
 #include "scheda/scheda.h"
 #include "ui/ui.h"
+#if CONFIG_SCHEDA_TDECK_PLUS
+#include <ctime>
+#include <string>
+
+#include "pippanet/airtime.h"
+#endif
 
 namespace {
 const char* TAG = "pippaphone";
@@ -27,6 +33,9 @@ const char* TAG = "pippaphone";
 // riavvio del solo ESP32 (aggiornamento, watchdog, USB, tasto RESET) il telefono era gia'
 // acceso: niente controllo.
 void checkPowerButton(scheda::Avvio avvio) {
+#if CONFIG_SCHEDA_TDECK_PLUS
+    (void)avvio;  // T-Deck Plus: si accende con l'interruttore, non c'e' un tasto da controllare
+#else
     if (avvio == scheda::Avvio::RIAVVIO) return;
     for (int i = 0; i < 50; i++) {
         if (!(scheda::expander().readButtons() & scheda::Expander::BTN_PWR)) {
@@ -38,6 +47,7 @@ void checkPowerButton(scheda::Avvio avvio) {
     scheda::expander().set(scheda::Exp::VIB_EN, true);
     vTaskDelay(pdMS_TO_TICKS(120));
     scheda::expander().set(scheda::Exp::VIB_EN, false);
+#endif
 }
 
 // Batteria, ogni 5 secondi dal compito dei servizi:
@@ -72,12 +82,66 @@ void checkBattery() {
     scheda::powerOff();
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: informazioni del dispositivo in /pippaphone/info.txt sulla microSD (si leggono
+// sul computer), riscritte all'avvio e ogni 10 minuti.
+void deviceInfo() {
+    if (!app::sdPresente()) return;
+    char b[640];
+    const uint32_t t = app::rete().unixTime();
+    char when[40] = "ora non ancora sincronizzata";
+    if (t) {
+        const time_t tt = time_t(t);
+        std::tm tm{};
+        localtime_r(&tt, &tm);
+        strftime(when, sizeof(when), "%d/%m/%Y %H:%M", &tm);
+    }
+    const uint8_t pc = scheda::batteria().percent();
+    const pn::RadioParams& m = pn::paramsFor(pn::Channel::MAIN);
+    const pn::RadioParams& v = pn::paramsFor(pn::Channel::VOICE);
+    const uint16_t n = app::rete().number();
+    snprintf(b, sizeof(b),
+             "Pippaphone - informazioni del dispositivo\n"
+             "(le scrive il telefono all'accensione e ogni 10 minuti)\n\n"
+             "aggiornato:      %s\n"
+             "firmware:        %s\n"
+             "hardware:        LilyGO T-Deck Plus\n"
+             "numero:          %s%s\n"
+             "codice:          %s\n"
+             "amministratore:  %s\n"
+             "radio:           %s\n"
+             "messaggi:        %.3f MHz, %.0f kHz, SF%d\n"
+             "vocali:          %.3f MHz, %.0f kHz, SF%d\n"
+             "tastiera:        %s\n"
+             "batteria:        %s (%.2f V)\n"
+             "dati:            microSD, cartella /pippaphone\n"
+             "mappe:           microSD, cartella /mappe (tile OpenStreetMap z/x/y.png)\n",
+             when, app::firmwareVersion(), n ? std::to_string(n).c_str() : "nessuno",
+             app::rete().isAdmin() ? " (amministratore)" : "", app::rete().myCode().c_str(),
+             n ? app::rete().adminCode().c_str() : "-", app::rete().radioOk() ? "ok" : "non risponde",
+             double(m.freqMHz), double(m.bwKHz), m.sf, double(v.freqMHz), double(v.bwKHz), v.sf,
+             scheda::tastiera().rawMode() ? "tasti premuti e rilasciati (modo raw)"
+                                          : "solo caratteri (firmware vecchio del C3: ripiego)",
+             pc <= 100 ? (std::to_string(pc) + "%").c_str() : "?", double(scheda::batteria().volts()));
+    app::writeDeviceInfo(b);
+}
+#endif
+
 // GPS: acceso all'avvio finche' non arriva l'ora (al massimo 10 minuti), poi solo quando
 // serve (richiesta di posizione, SOS, schermata della posizione).
 void services() {
     const int64_t bootMs = esp_timer_get_time() / 1000;
     bool gpsOn = false;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    int infoTicks = 0;
+#endif
     for (;;) {
+#if CONFIG_SCHEDA_TDECK_PLUS
+        if (infoTicks-- <= 0) {
+            infoTicks = 120;  // 10 minuti (un giro ogni 5 secondi)
+            deviceInfo();
+        }
+#endif
         const int64_t now = esp_timer_get_time() / 1000;
         const bool boot = !app::rete().timeValid() && now - bootMs < 10 * 60 * 1000;
         const bool want = boot || app::rete().gnssWanted();

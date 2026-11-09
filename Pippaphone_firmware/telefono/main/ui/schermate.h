@@ -54,4 +54,12 @@ Screen* makeSignal();
 Screen* makeOta();
 Screen* makeAdmin();
 
+#if TDECK
+// mappa offline dalla microSD (schermate_mappa.cpp, solo T-Deck)
+Screen* makeMap();
+std::string initialOf(const std::string& name);
+// Ultima posizione ricevuta da un contatto (risposta o SOS); false se non ce n'e'.
+bool lastKnownPosition(uint16_t number, int32_t& latE7, int32_t& lonE7, uint32_t& time);
+#endif
+
 }  // namespace ui

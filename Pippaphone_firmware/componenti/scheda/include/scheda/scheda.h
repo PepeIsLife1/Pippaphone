@@ -6,12 +6,27 @@
 #include "scheda/audio.h"
 #include "scheda/batteria.h"
 #include "scheda/display.h"
+#include "sdkconfig.h"
+#if !CONFIG_SCHEDA_TDECK_PLUS
 #include "scheda/expander.h"
+#endif
 #include "scheda/gnss.h"
 #include "scheda/pins.h"
 #include "scheda/tastiera.h"
 
 namespace scheda {
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: niente expander, vibrazione, LED RGB e autoritenuta. Le funzioni qui sotto ci sono
+// lo stesso: la vibrazione non fa nulla, il LED di notifica lampeggia con la luce della tastiera
+// (solo quando e' spenta), "spegni" e' il sonno profondo con le periferiche spente (si riaccende
+// con l'interruttore laterale). In piu' la microSD sul bus SPI comune.
+constexpr bool HAS_VIBRATION = false;
+// Bus SPI comune gia' pronto (lo crea holdPower()).
+bool spiBusReady();
+#else
+constexpr bool HAS_VIBRATION = true;
+#endif
 
 struct InitResult {
     bool expander = false, tastiera = false, batteria = false, display = false, audio = false, gnss = false;

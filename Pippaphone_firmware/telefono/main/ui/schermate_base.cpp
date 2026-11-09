@@ -15,20 +15,20 @@ class Home : public Screen {
 public:
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
-        pad(col, 16, 20, 12, 20);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        pad(col, PX(16, 6), PX(20, 10), PX(12, 4), PX(20, 10));
         lv_obj_set_flex_align(col, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
         lv_obj_t* top = column(col, 0);
         lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
         clock_ = label(top, &mono_104, BIANCO(), "");
         date_ = label(top, &font_22, GRIGIO3(), "");
-        cards_ = column(col, 8);
+        cards_ = column(col, PX(8, 5));
         lv_obj_set_size(cards_, lv_pct(100), LV_SIZE_CONTENT);
         lv_obj_t* foot = row(col, 0);
         lv_obj_set_size(foot, lv_pct(100), LV_SIZE_CONTENT);
-        me_ = label(foot, &font_18, GRIGIO2(), "");
+        me_ = label(foot, PX(&font_18, &font_16), GRIGIO2(), "");
         grow(me_);
-        sig_ = label(foot, &font_18, GRIGIO2(), "");
+        sig_ = label(foot, PX(&font_18, &font_16), GRIGIO2(), "");
         refresh();
     }
     void refresh() {
@@ -57,15 +57,15 @@ public:
     }
     void card(const char* icon, lv_color_t color, const std::string& text, const std::string& when,
               const app::ChatId& id) {
-        lv_obj_t* c = row(cards_, 12);
-        lv_obj_set_size(c, lv_pct(100), 56);
-        pad(c, 0, 14, 0, 14);
+        lv_obj_t* c = row(cards_, PX(12, 8));
+        lv_obj_set_size(c, lv_pct(100), PX(56, 30));
+        pad(c, 0, PX(14, 8), 0, PX(14, 8));
         fill(c, GRIGIO1());
-        radius(c, 10);
+        radius(c, PX(10, 6));
         label(c, &icone_22, color, icon);
         lv_obj_t* l = label(c, &font_22, BIANCO(), text.c_str());
         grow(l);
-        lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+        unaRiga(l);
         label(c, &mono_16, GRIGIO3(), when.c_str());
         cardChats_.push_back(id);
     }
@@ -75,7 +75,7 @@ public:
         for (uint32_t i = 0; i < n; i++) cardObjs_.push_back(lv_obj_get_child(cards_, int32_t(i)));
         if (sel_ >= int(cardObjs_.size())) sel_ = -1;
         for (int i = 0; i < int(cardObjs_.size()); i++) {
-            lv_obj_set_style_border_width(cardObjs_[i], i == sel_ ? 3 : 0, 0);
+            lv_obj_set_style_border_width(cardObjs_[i], i == sel_ ? PX(3, 2) : 0, 0);
             lv_obj_set_style_border_color(cardObjs_[i], AMBRA(), 0);
         }
     }
@@ -129,6 +129,94 @@ Screen* makeHome() { return new Home(); }
 
 // ================================================================ menu
 
+#if TDECK
+// T-Deck: dieci voci (in piu' c'e' la mappa) in due file da cinque, solo icone; sotto, il nome
+// della voce scelta.
+class Menu : public Screen {
+public:
+    void build(lv_obj_t* root) override {
+        lv_obj_t* col = column(root, 6);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        pad(col, 10, 8, 6, 8);
+        lv_obj_t* grid = box(col);
+        lv_obj_set_size(grid, lv_pct(100), LV_SIZE_CONTENT);
+        lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
+        lv_obj_set_style_pad_row(grid, 6, 0);
+        lv_obj_set_style_pad_column(grid, 5, 0);
+        tiles_.clear();
+        for (int i = 0; i < N; i++) {
+            lv_obj_t* t = column(grid, 0);
+            lv_obj_set_size(t, 56, 66);
+            lv_obj_set_flex_align(t, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+            radius(t, 8);
+            lv_obj_set_style_border_width(t, 2, 0);
+            lv_obj_set_style_border_color(t, GRIGIO1(), 0);
+            label(t, &icone_44, ITEMS[i].red ? ROSSO() : BIANCO(), ITEMS[i].icon);
+            tiles_.push_back(t);
+        }
+        name_ = label(col, &font_26b, BIANCO(), "");
+        lv_obj_set_width(name_, lv_pct(100));
+        lv_obj_set_style_text_align(name_, LV_TEXT_ALIGN_CENTER, 0);
+        focus();
+    }
+    void focus() {
+        for (int i = 0; i < N; i++) {
+            const bool on = i == sel_;
+            fill(tiles_[i], on ? AMBRA() : NERO());
+            lv_obj_set_style_border_width(tiles_[i], on ? 0 : 2, 0);
+            lv_obj_set_style_text_color(lv_obj_get_child(tiles_[i], 0),
+                                        on ? NERO() : (ITEMS[i].red ? ROSSO() : BIANCO()), 0);
+        }
+        lv_label_set_text(name_, ITEMS[sel_].text);
+        lv_obj_set_style_text_color(name_, ITEMS[sel_].red ? ROSSO() : BIANCO(), 0);
+    }
+    bool onKey(Key k, bool pressed) override {
+        if (!pressed) return false;
+        switch (k) {
+            case Key::LEFT: sel_ = (sel_ + N - 1) % N; break;
+            case Key::RIGHT: sel_ = (sel_ + 1) % N; break;
+            case Key::UP:
+            case Key::DOWN: sel_ = (sel_ + 5) % N; break;
+            case Key::OK: open(); return true;
+            case Key::CALL: push(makeChats()); return true;
+            default: return false;
+        }
+        focus();
+        return true;
+    }
+    void open() {
+        switch (sel_) {
+            case 0: push(makeChats()); break;
+            case 1: push(makeWalkie(0)); break;
+            case 2: push(makeContacts()); break;
+            case 3: push(makeGroups()); break;
+            case 4: push(makeChat({app::ChatKind::GLOBAL, 0})); break;
+            case 5: push(makePosition()); break;
+            case 6: push(makeMap()); break;
+            case 7: push(makeSosActive(false)); break;
+            case 8: push(makeSettings()); break;
+            case 9: push(makeSignal()); break;
+        }
+    }
+    std::vector<Hint> hints() override { return {{"NAV", "muovi"}, {"OK", "apri"}, {"END", "home"}}; }
+
+private:
+    struct Item {
+        const char* icon;
+        const char* text;
+        bool red;
+    };
+    static constexpr int N = 10;
+    static constexpr Item ITEMS[N] = {
+        {IC_BUSTA, "Messaggi", false},    {IC_MICROFONO, "Walkie-talkie", false}, {IC_PERSONA, "Contatti", false},
+        {IC_GRUPPO, "Gruppi", false},     {IC_GLOBO, "Canale globale", false},    {IC_PUNTO, "Posizione", false},
+        {IC_MAPPA, "Mappa", false},       {IC_ATTENZIONE, "SOS", true},           {IC_IMPOSTAZIONI, "Impostazioni", false},
+        {IC_TORRE, "Segnale", false}};
+    std::vector<lv_obj_t*> tiles_;
+    lv_obj_t* name_ = nullptr;
+    int sel_ = 0;
+};
+#else
 class Menu : public Screen {
 public:
     void build(lv_obj_t* root) override {
@@ -208,6 +296,7 @@ private:
     std::vector<lv_obj_t*> tiles_;
     int sel_ = 0;
 };
+#endif
 
 Screen* makeMenu() { return new Menu(); }
 
@@ -220,13 +309,13 @@ public:
     Lock() { g_lockOpen = true; }
     ~Lock() override { g_lockOpen = false; }
     void build(lv_obj_t* root) override {
-        lv_obj_t* col = column(root, 18);
-        lv_obj_set_size(col, 480, 480);
+        lv_obj_t* col = column(root, PX(18, 5));
+        lv_obj_set_size(col, W_SCHERMO, H_SCHERMO);
         lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         label(col, &icone_44, AMBRA(), IC_LUCCHETTO);
         label(col, &mono_104, BIANCO(), timeHM(app::rete().unixTime()).c_str());
         label(col, &font_22, GRIGIO3(), "Scrivi il PIN e premi OK");
-        in_.create(col, 260, 56, false, 8, "PIN");
+        in_.create(col, PX(260, 180), PX(56, 32), false, 8, "PIN");
         in_.setDigitsOnly(true);
         in_.setPassword(true);
         in_.setFocused(true);
@@ -251,6 +340,9 @@ public:
     }
     bool fullscreen() const override { return true; }
     bool capturesEnd() const override { return true; }
+#if TDECK
+    const TextInput* input() const override { return &in_; }
+#endif
 
 private:
     TextInput in_;
@@ -267,52 +359,68 @@ public:
     FirstBoot() { app::rete().setProvisioning(true); }
     ~FirstBoot() override { app::rete().setProvisioning(false); }
     void build(lv_obj_t* root) override {
-        lv_obj_t* col = column(root, 14);
-        lv_obj_set_size(col, 480, 412);
-        pad(col, 18, 22, 12, 22);
+        lv_obj_t* col = column(root, PX(14, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        pad(col, PX(18, 6), PX(22, 10), PX(12, 4), PX(22, 10));
+#if TDECK
+        // Sul T-Deck "in attesa" sta accanto al titolo: non c'e' spazio per una riga in piu'.
+        lv_obj_t* tr = row(col, 8);
+        lv_obj_set_size(tr, lv_pct(100), LV_SIZE_CONTENT);
+        label(tr, &font_26b, BIANCO(), "Benvenuto");
+        lv_obj_t* trs = box(tr);
+        grow(trs);
+        lv_obj_set_height(trs, 1);
+        waitLbl_ = label(tr, &font_16, GRIGIO2(), "");
+#else
         label(col, &font_32b, BIANCO(), "Benvenuto");
+#endif
         pn::Cert cert;
         std::string admin;
         if (app::rete().offer(cert, admin)) {
             // L'amministratore ha mandato un numero: si confrontano i codici.
             lv_obj_t* t = label(col, &font_22, GRIGIO3(), "L'amministratore ti assegna il numero");
-            lv_obj_set_width(t, 436);
+            lv_obj_set_width(t, PX(436, 300));
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
             label(col, &font_48b, AMBRA(), std::to_string(cert.number).c_str());
-            lv_obj_t* b = column(col, 4);
-            lv_obj_set_size(b, 436, LV_SIZE_CONTENT);
+            lv_obj_t* b = column(col, PX(4, 2));
+            lv_obj_set_size(b, PX(436, 300), LV_SIZE_CONTENT);
             fill(b, GRIGIO1());
-            radius(b, 10);
-            pad(b, 10, 14, 12, 14);
+            radius(b, PX(10, 6));
+            pad(b, PX(10, 5), PX(14, 8), PX(12, 5), PX(14, 8));
             lv_obj_t* hint = label(b, &font_16, GRIGIO3(), "Codice dell'amministratore: deve essere uguale a quello sul suo schermo");
-            lv_obj_set_width(hint, 408);
+            lv_obj_set_width(hint, PX(408, 284));
             lv_label_set_long_mode(hint, LV_LABEL_LONG_WRAP);
             label(b, &mono_28, BIANCO(), admin.c_str());
             offer_ = true;
             return;
         }
         offer_ = false;
-        lv_obj_t* t = label(col, &font_22, GRIGIO3(),
-                            "Questo telefono non ha ancora un numero. Chiedilo all'amministratore:");
-        lv_obj_set_width(t, 436);
+        lv_obj_t* t = label(col, PX(&font_22, &font_20), GRIGIO3(),
+                            TXT("Questo telefono non ha ancora un numero. Chiedilo all'amministratore:",
+                                "Non hai ancora un numero: chiedilo all'amministratore."));
+        lv_obj_set_width(t, PX(436, 300));
         lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
         const char* steps[] = {"avvicina il suo telefono a questo",
                                "lui sceglie Impostazioni > Amministrazione",
                                "controllate che il codice sia uguale"};
         for (int i = 0; i < 3; i++) {
-            lv_obj_t* r = row(col, 10);
-            lv_obj_set_size(r, 436, LV_SIZE_CONTENT);
+            lv_obj_t* r = row(col, PX(10, 6));
+            lv_obj_set_size(r, PX(436, 300), LV_SIZE_CONTENT);
             label(r, &mono_20, AMBRA(), std::to_string(i + 1).c_str());
             label(r, &font_20, BIANCO(), steps[i]);
         }
-        lv_obj_t* b = column(col, 4);
-        lv_obj_set_size(b, 436, LV_SIZE_CONTENT);
+        lv_obj_t* b = column(col, PX(4, 2));
+        lv_obj_set_size(b, PX(436, 300), LV_SIZE_CONTENT);
         fill(b, GRIGIO1());
-        radius(b, 10);
-        pad(b, 10, 14, 12, 14);
+        radius(b, PX(10, 6));
+        pad(b, PX(10, 5), PX(14, 8), PX(12, 5), PX(14, 8));
         label(b, &font_16, GRIGIO3(), "Codice di questo telefono");
         label(b, &mono_28, AMBRA(), app::rete().myCode().c_str());
+#if TDECK
+        lv_label_set_text(waitLbl_, "in attesa del numero...");
+#else
         label(col, &font_18, GRIGIO2(), "In attesa del numero...");
+#endif
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return false;
@@ -360,6 +468,9 @@ public:
 
 private:
     bool offer_ = false;
+#if TDECK
+    lv_obj_t* waitLbl_ = nullptr;
+#endif
 };
 
 Screen* makeFirstBoot() { return new FirstBoot(); }

@@ -6,6 +6,11 @@
 #pragma once
 
 #include "driver/gpio.h"
+#include "sdkconfig.h"
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+#include "scheda/pins_tdeck.h"
+#else
 
 namespace scheda {
 
@@ -21,6 +26,7 @@ constexpr gpio_num_t PIN_LORA_DIO1 = GPIO_NUM_6;
 // ---- I2C: AW9523B 0x58, MAX17048 0x36, TCA8418 0x34 (PCB 2) ----
 constexpr gpio_num_t PIN_I2C_SDA = GPIO_NUM_15;
 constexpr gpio_num_t PIN_I2C_SCL = GPIO_NUM_16;
+constexpr bool I2C_PULLUP_INTERNE = false;  // pull-up da 4,7k sulla scheda
 constexpr gpio_num_t PIN_INT_N = GPIO_NUM_5;  // interruzione condivisa, open drain, sveglia dal deep sleep
 constexpr uint8_t ADDR_AW9523 = 0x58;
 constexpr uint8_t ADDR_MAX17048 = 0x36;
@@ -76,3 +82,5 @@ enum class Exp : uint8_t {
 };
 
 }  // namespace scheda
+
+#endif  // CONFIG_SCHEDA_TDECK_PLUS

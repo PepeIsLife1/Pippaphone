@@ -1,0 +1,6 @@
+# LilyGO T-Deck Plus: da aggiungere a sdkconfig.defaults (vedi LEGGIMI.md, "T-Deck Plus").
+# ESP32-S3FN16R8: 16 MB di flash e 8 MB di PSRAM octal, come la PCB: partizioni uguali.
+CONFIG_SCHEDA_TDECK_PLUS=y
+
+# Mappe offline: tile PNG dalla microSD.
+CONFIG_LV_USE_LODEPNG=y

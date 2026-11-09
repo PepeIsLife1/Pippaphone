@@ -27,7 +27,7 @@ lv_obj_t* bigCircle(lv_obj_t* parent, int size, lv_obj_t** icon) {
     lv_obj_t* c = box(parent);
     lv_obj_set_size(c, size, size);
     radius(c, LV_RADIUS_CIRCLE);
-    lv_obj_set_style_border_width(c, 4, 0);
+    lv_obj_set_style_border_width(c, PX(4, 3), 0);
     *icon = label(c, &icone_44, BIANCO(), IC_MICROFONO);
     lv_obj_center(*icon);
     return c;
@@ -48,6 +48,14 @@ lv_obj_t* bar(lv_obj_t* parent, int w, int h, lv_color_t color) {
 
 class Walkie;
 Walkie* g_walkie = nullptr;
+
+#if TDECK
+// Testi col tasto del PTT: sul T-Deck e' il tasto 0/microfono (tenuto premuto), oppure, col
+// firmware vecchio della tastiera, SHIFT + microfono premuto una volta per cominciare e una per finire.
+std::string ptt(const char* raw, const char* chars) {
+    return scheda::tastiera().rawMode() ? raw : chars;
+}
+#endif
 }  // namespace
 
 // ================================================================ walkie-talkie
@@ -66,25 +74,25 @@ public:
     void build(lv_obj_t* root) override {
         name_ = app::dati().nameOf(number_);
         lv_obj_t* col = column(root, 0);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_MICROFONO, "Walkie-talkie", name_);
-        lv_obj_t* mid = column(col, 12);
-        lv_obj_set_size(mid, 480, 412 - 48 - 70);
+        lv_obj_t* mid = column(col, PX(12, 4));
+        lv_obj_set_size(mid, W_SCHERMO, H_AREA - H_TITOLO - PX(70, 30));
         lv_obj_set_flex_align(mid, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        circle_ = bigCircle(mid, 150, &icon_);
+        circle_ = bigCircle(mid, PX(150, 70), &icon_);
         title_ = label(mid, &font_26b, BIANCO(), "");
         sub_ = label(mid, &font_20, GRIGIO3(), "");
-        lv_obj_set_width(sub_, 440);
+        lv_obj_set_width(sub_, PX(440, 300));
         lv_obj_set_style_text_align(sub_, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_long_mode(sub_, LV_LABEL_LONG_WRAP);
-        time_ = bar(mid, 360, 10, ROSSO());
+        time_ = bar(mid, PX(360, 240), PX(10, 6), ROSSO());
         lv_bar_set_range(time_, 0, app::VOICE_MAX_MS / 100);
-        vu_ = bar(mid, 360, 6, VERDE());
+        vu_ = bar(mid, PX(360, 240), PX(6, 4), VERDE());
         lv_bar_set_range(vu_, 0, 100);
         // Ultimo vocale ricevuto da questo contatto.
-        lv_obj_t* foot = row(col, 10);
-        lv_obj_set_size(foot, 480, 70);
-        pad(foot, 0, 20, 0, 20);
+        lv_obj_t* foot = row(col, PX(10, 6));
+        lv_obj_set_size(foot, W_SCHERMO, PX(70, 30));
+        pad(foot, 0, PX(20, 10), 0, PX(20, 10));
         lv_obj_set_style_border_side(foot, LV_BORDER_SIDE_TOP, 0);
         lv_obj_set_style_border_color(foot, GRIGIO1(), 0);
         lv_obj_set_style_border_width(foot, 1, 0);
@@ -102,7 +110,7 @@ public:
                              lastFile_ ? ("Ultimo vocale ricevuto · " + durationMS(lastMs_) + " · " + whenShort(lastTime_)).c_str()
                                        : "Nessun vocale ricevuto");
         grow(fl);
-        lv_label_set_long_mode(fl, LV_LABEL_LONG_DOT);
+        unaRiga(fl);
         show();
         if (startNow_) {
             startNow_ = false;
@@ -118,14 +126,16 @@ public:
         lv_obj_add_flag(time_, LV_OBJ_FLAG_HIDDEN);
         switch (state_) {
             case IDLE:
-                t = "Tieni premuto PTT";
-                s = "parla e poi lascia il tasto: il vocale parte da solo (massimo " +
+                t = TXT("Tieni premuto PTT", ptt("Tieni premuto " IC_MICROFONO, "Premi shift+" IC_MICROFONO));
+                s = TXT("parla e poi lascia il tasto: il vocale parte da solo (massimo ",
+                        ptt("parla e poi lascia il tasto: il vocale parte da solo (massimo ",
+                            "parla e poi ripremilo: il vocale parte da solo (massimo ")) +
                     std::to_string(app::VOICE_MAX_MS / 1000) + " secondi)";
                 ring = AMBRA();
                 break;
             case REC:
                 t = "Registrazione " + durationMS(app::voce().recordedMs());
-                s = "lascia PTT per inviare";
+                s = TXT("lascia PTT per inviare", ptt("lascia " IC_MICROFONO " per inviare", "ripremi shift+" IC_MICROFONO " per inviare"));
                 ring = ROSSO();
                 inside = ROSSO_SCURO();
                 lv_obj_clear_flag(vu_, LV_OBJ_FLAG_HIDDEN);
@@ -198,7 +208,13 @@ public:
         if (ms < MIN_VOICE_MS || data.empty()) {
             state_ = IDLE;
             show();
+#if TDECK
+            lv_label_set_text(sub_, ptt("troppo corto: tieni premuto " IC_MICROFONO " mentre parli",
+                                        "troppo corto: parla prima di ripremere")
+                                        .c_str());
+#else
             lv_label_set_text(sub_, "troppo corto: tieni premuto PTT mentre parli");
+#endif
             return;
         }
         sentId_ = app::rete().sendVoice(number_, data, ms);
@@ -343,19 +359,19 @@ public:
     void build(lv_obj_t* root) override {
         const bool mine = from_ == app::rete().number();
         const std::string name = mine ? "Tu" : app::dati().nameOf(from_);
-        lv_obj_t* col = column(root, 14);
-        lv_obj_set_size(col, 480, 412);
+        lv_obj_t* col = column(root, PX(14, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
         header(col, IC_MICROFONO, "Vocale", mine ? "inviato da te" : "da " + name);
-        lv_obj_t* mid = column(col, 14);
-        lv_obj_set_size(mid, 480, 412 - 48 - 14);
+        lv_obj_t* mid = column(col, PX(14, 4));
+        lv_obj_set_size(mid, W_SCHERMO, H_AREA - H_TITOLO - PX(14, 4));
         lv_obj_set_flex_align(mid, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        if (!mine) avatar(mid, from_, app::dati().nameOf(from_), 90);
-        label(mid, &font_32b, BIANCO(), name.c_str());
-        circle_ = bigCircle(mid, 96, &icon_);
-        lv_obj_t* r = row(mid, 12);
-        lv_obj_set_size(r, 420, LV_SIZE_CONTENT);
+        if (!mine) avatar(mid, from_, app::dati().nameOf(from_), PX(90, 36));
+        rigaPiena(label(mid, &font_32b, BIANCO(), name.c_str()), true);
+        circle_ = bigCircle(mid, PX(96, 48), &icon_);
+        lv_obj_t* r = row(mid, PX(12, 8));
+        lv_obj_set_size(r, PX(420, 290), LV_SIZE_CONTENT);
         pos_ = label(r, &mono_20, BIANCO(), "0:00");
-        prog_ = bar(r, 300, 10, VERDE());
+        prog_ = bar(r, PX(300, 190), PX(10, 6), VERDE());
         lv_bar_set_range(prog_, 0, std::max<int>(1, ms_ / 100));
         label(r, &mono_20, GRIGIO3(), durationMS(ms_).c_str());
         if (lost_)

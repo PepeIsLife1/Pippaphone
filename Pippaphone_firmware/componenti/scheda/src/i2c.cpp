@@ -18,7 +18,7 @@ i2c_master_bus_handle_t i2cBus() {
     cfg.scl_io_num = PIN_I2C_SCL;
     cfg.clk_source = I2C_CLK_SRC_DEFAULT;
     cfg.glitch_ignore_cnt = 7;
-    cfg.flags.enable_internal_pullup = false;  // pull-up da 4,7k sulla scheda
+    cfg.flags.enable_internal_pullup = I2C_PULLUP_INTERNE;  // PCB: pull-up da 4,7k sulla scheda
     ESP_ERROR_CHECK(i2c_new_master_bus(&cfg, &g_bus));
     return g_bus;
 }
@@ -60,6 +60,10 @@ bool I2cDev::readReg16be(uint8_t reg, uint16_t& out) {
     if (!readReg(reg, b, 2)) return false;
     out = uint16_t((b[0] << 8) | b[1]);
     return true;
+}
+
+bool I2cDev::read(uint8_t* out, size_t len) {
+    return dev_ && i2c_master_receive(dev_, out, len, TIMEOUT_MS) == ESP_OK;
 }
 
 }  // namespace scheda

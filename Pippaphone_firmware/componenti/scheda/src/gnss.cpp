@@ -10,8 +10,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "scheda/expander.h"
 #include "scheda/pins.h"
+#if !CONFIG_SCHEDA_TDECK_PLUS
+#include "scheda/expander.h"
+#endif
 
 namespace scheda {
 
@@ -19,6 +21,67 @@ namespace {
 constexpr uart_port_t PORT = UART_NUM_1;
 SemaphoreHandle_t g_lock = nullptr;
 Fix g_fix;
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck Plus: GPS u-blox M10Q (38400 baud) oppure Quectel L76K (9600), sempre alimentato. La
+// velocita' si riconosce dalle frasi NMEA valide; lo standby si fa solo sull'u-blox (comando
+// UBX-RXM-PMREQ, si risveglia con un byte sulla seriale). L'L76K resta acceso.
+const char* TAG_GNSS = "gnss";
+bool g_ublox = false;
+bool g_standby = false;
+
+// Aspetta una frase NMEA con il checksum giusto per al massimo ms millisecondi.
+bool nmeaWithin(int ms) {
+    NmeaParser p;
+    Fix f;
+    uint8_t b[64];
+    const int64_t end = esp_timer_get_time() / 1000 + ms;
+    while (esp_timer_get_time() / 1000 < end) {
+        const int n = uart_read_bytes(PORT, b, sizeof(b), pdMS_TO_TICKS(100));
+        for (int i = 0; i < n; i++)
+            if (p.feed(char(b[i]), f, 0)) return true;
+    }
+    return false;
+}
+
+void ubx(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len) {
+    uint8_t head[6] = {0xB5, 0x62, cls, id, uint8_t(len), uint8_t(len >> 8)};
+    uint8_t ca = 0, cb = 0;
+    for (int i = 2; i < 6; i++) {
+        ca += head[i];
+        cb += ca;
+    }
+    for (uint16_t i = 0; i < len; i++) {
+        ca += payload[i];
+        cb += ca;
+    }
+    const uint8_t tail[2] = {ca, cb};
+    uart_write_bytes(PORT, head, sizeof(head));
+    if (len) uart_write_bytes(PORT, payload, len);
+    uart_write_bytes(PORT, tail, sizeof(tail));
+}
+
+// Prima 38400 (u-blox M10Q), poi 9600 (L76K); nel compito del GPS, per non rallentare l'avvio.
+// Un u-blox lasciato in standby da un giro precedente si sveglia col primo byte.
+void detectBaud() {
+    for (int round = 0; round < 3; round++) {
+        uart_set_baudrate(PORT, 38400);
+        const uint8_t wake = 0xFF;
+        uart_write_bytes(PORT, &wake, 1);
+        if (nmeaWithin(1500)) {
+            g_ublox = true;
+            ESP_LOGI(TAG_GNSS, "GPS u-blox (38400 baud)");
+            return;
+        }
+        uart_set_baudrate(PORT, 9600);
+        if (nmeaWithin(1500)) {
+            ESP_LOGI(TAG_GNSS, "GPS L76K (9600 baud)");
+            return;
+        }
+    }
+    ESP_LOGW(TAG_GNSS, "GPS muto: nessuna frase NMEA a 38400 o 9600 baud (resta a 9600)");
+}
+#endif
 
 int hexVal(char c) { return (c >= '0' && c <= '9') ? c - '0' : (c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1; }
 
@@ -56,6 +119,9 @@ int64_t daysFromCivil(int y, unsigned m, unsigned d) {
 void gnssTask(void*) {
     uint8_t buf[128];
     NmeaParser parser;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    detectBaud();
+#endif
     for (;;) {
         int n = uart_read_bytes(PORT, buf, sizeof(buf), pdMS_TO_TICKS(500));
         if (n <= 0) continue;
@@ -138,6 +204,39 @@ Gnss& gnss() {
     return g;
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+bool Gnss::begin() {
+    g_lock = xSemaphoreCreateMutex();
+    uart_config_t c = {};
+    c.baud_rate = 38400;
+    c.data_bits = UART_DATA_8_BITS;
+    c.parity = UART_PARITY_DISABLE;
+    c.stop_bits = UART_STOP_BITS_1;
+    c.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    c.source_clk = UART_SCLK_DEFAULT;
+    if (uart_driver_install(PORT, 2048, 0, 0, nullptr, 0) != ESP_OK) return false;
+    uart_param_config(PORT, &c);
+    uart_set_pin(PORT, PIN_GNSS_TX, PIN_GNSS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    xTaskCreatePinnedToCore(gnssTask, "gnss", 4096, nullptr, 4, nullptr, 0);  // riconosce la velocita'
+    on_ = true;
+    return true;
+}
+
+void Gnss::power(bool on) {
+    on_ = on;
+    if (!g_ublox || on == !g_standby) return;
+    if (on) {
+        const uint8_t wake = 0xFF;  // un fronte sulla seriale lo sveglia
+        uart_write_bytes(PORT, &wake, 1);
+        g_standby = false;
+    } else {
+        // UBX-RXM-PMREQ: durata 0 = finche' non arriva un byte, flag backup, sveglia da UART RX.
+        const uint8_t pm[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0x08, 0, 0, 0};
+        ubx(0x02, 0x41, pm, sizeof(pm));
+        g_standby = true;
+    }
+}
+#else
 bool Gnss::begin() {
     g_lock = xSemaphoreCreateMutex();
     uart_config_t c = {};
@@ -159,6 +258,7 @@ void Gnss::power(bool on) {
     on_ = on;
     expander().set(Exp::GNSS_EN, on);
 }
+#endif
 
 Fix Gnss::fix() const {
     if (!g_lock) return Fix();
