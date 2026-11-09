@@ -22,6 +22,7 @@ struct Recorder : pn::PhoneListener {
     std::vector<Msg> texts, globals;
     std::vector<std::pair<uint16_t, Msg>> groupTexts;
     std::map<uint32_t, pn::Delivery> delivery;
+    std::vector<std::pair<uint32_t, pn::Delivery>> deliveryLog;  // tutti gli stati, in ordine
     std::vector<std::pair<pn::Addr, uint32_t>> posRequests;
     std::vector<std::pair<pn::Addr, pn::PosResponse>> positions;
     std::vector<std::pair<pn::Addr, pn::SosPayload>> sos;
@@ -44,8 +45,17 @@ struct Recorder : pn::PhoneListener {
         globals.push_back({from, id, t.text});
     }
     void onDelivery(pn::Addr, uint32_t id, pn::Delivery d) override {
+        deliveryLog.push_back({id, d});
         auto it = delivery.find(id);
-        if (it == delivery.end() || d > it->second || d == pn::Delivery::UNREACHABLE) delivery[id] = d;
+        const bool failing = d == pn::Delivery::UNREACHABLE || d == pn::Delivery::RETRYING;
+        const bool failed = it != delivery.end() &&
+                            (it->second == pn::Delivery::UNREACHABLE || it->second == pn::Delivery::RETRYING);
+        if (it == delivery.end() || failing || failed || d > it->second) delivery[id] = d;
+    }
+    bool sawDelivery(uint32_t id, pn::Delivery d) const {
+        for (const auto& x : deliveryLog)
+            if (x.first == id && x.second == d) return true;
+        return false;
     }
     void onPositionRequest(pn::Addr from, uint32_t id) override { posRequests.push_back({from, id}); }
     void onPosition(pn::Addr from, const pn::PosResponse& p) override { positions.push_back({from, p}); }
@@ -57,6 +67,35 @@ struct Recorder : pn::PhoneListener {
         voiceMissing.push_back(missing);
     }
     void onVoiceState(pn::Addr, uint32_t id, pn::VoiceSendState s) override { voiceState[id] = s; }
+    // Chiamate.
+    struct CallEv { pn::Addr peer; pn::CallState state; pn::CallResult result; };
+    std::vector<CallEv> calls;
+    struct CallPkt { uint8_t turn, index, frames; std::vector<uint8_t> data; bool last, copy; };
+    std::vector<CallPkt> callVoice;
+    pn::CallResult lastCallResult() const {
+        for (auto it = calls.rbegin(); it != calls.rend(); ++it)
+            if (it->state == pn::CallState::IDLE) return it->result;
+        return pn::CallResult::NONE;
+    }
+    bool callReached(pn::CallState s) const {
+        for (const auto& c : calls)
+            if (c.state == s) return true;
+        return false;
+    }
+    // Pacchetti di voce diversi arrivati in un turno (contando anche le copie della ridondanza).
+    size_t callPackets(uint8_t turn) const {
+        std::set<int> seen;
+        for (const auto& p : callVoice)
+            if (p.turn == turn && p.frames) seen.insert(p.index);
+        return seen.size();
+    }
+    void onCallState(pn::Addr peer, pn::CallState s, pn::CallResult r) override { calls.push_back({peer, s, r}); }
+    void onCallVoice(pn::Addr, uint8_t turn, uint8_t index, const uint8_t* data, size_t len, uint8_t frames,
+                     const uint8_t* prev, size_t prevLen, uint8_t prevFrames, bool last) override {
+        if (prevFrames && index > 0)
+            callVoice.push_back({turn, uint8_t(index - 1), prevFrames, std::vector<uint8_t>(prev, prev + prevLen), false, true});
+        callVoice.push_back({turn, index, frames, std::vector<uint8_t>(data, data + len), last, false});
+    }
     void onCertLearned(const pn::Cert& c) override { certs.push_back(c); }
     void onProvisionOffer(const pn::Cert& c, const pn::Key32& a) override {
         offerReceived = true;

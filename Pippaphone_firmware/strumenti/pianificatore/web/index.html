@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pianificatore PippaNet</title>
+  <link rel="stylesheet" href="/lib/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="stile.css">
+</head>
+<body>
+<header>
+  <div class="titolo">Pianificatore <b>PippaNet</b></div>
+  <label>Profilo radio
+    <select id="profilo"></select>
+  </label>
+  <label>Terreno
+    <select id="fonte">
+      <option value="tinitaly">TINITALY 10 m (INGV)</option>
+      <option value="aws">AWS Terrain 30 m (più veloce)</option>
+    </select>
+  </label>
+  <label>Mappa
+    <select id="mappa-base">
+      <option value="topo">Topografica</option>
+      <option value="osm">OpenStreetMap</option>
+    </select>
+  </label>
+  <div class="spazio"></div>
+  <div class="menu-scenario">
+    <button id="btn-esempio" title="Carica un esempio a Siena">Esempio</button>
+    <button id="btn-salva" title="Salva lo scenario in un file">Salva</button>
+    <button id="btn-apri" title="Apri uno scenario salvato">Apri</button>
+    <button id="btn-nuovo" title="Togli tutti i dispositivi">Nuovo</button>
+    <input type="file" id="file-apri" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<main>
+  <aside id="sinistra">
+    <section>
+      <h2>Dispositivi</h2>
+      <div id="tavolozza"></div>
+      <p class="nota" id="nota-piazza">Scegli un dispositivo e poi clicca sulla mappa. Trascinali per spostarli.</p>
+    </section>
+    <section>
+      <h2>Sulla mappa <span id="conta-nodi" class="conta"></span></h2>
+      <ul id="lista-nodi"></ul>
+    </section>
+    <section id="proprieta" hidden>
+      <h2>Proprietà</h2>
+      <div id="form-proprieta"></div>
+    </section>
+  </aside>
+
+  <div id="mappa"></div>
+
+  <aside id="destra">
+    <nav id="schede">
+      <button data-scheda="collegamento" class="attiva">Collegamento</button>
+      <button data-scheda="copertura">Copertura</button>
+      <button data-scheda="rete">Rete</button>
+      <button data-scheda="simulazione">Simulazione</button>
+      <button data-scheda="impostazioni">Impostazioni</button>
+    </nav>
+
+    <div class="scheda attiva" id="s-collegamento">
+      <p class="nota">Seleziona un dispositivo, poi <b>Maiusc + clic</b> su un altro (o clic su una linea della rete).</p>
+      <div id="collegamento-vuoto" class="vuoto">Nessun collegamento scelto.</div>
+      <div id="collegamento" hidden>
+        <h3 id="col-titolo"></h3>
+        <canvas id="grafico-profilo" width="400" height="210"></canvas>
+        <div class="legenda-profilo">
+          <span class="l-terra">terreno</span><span class="l-ed">edifici</span><span class="l-bosco">bosco</span>
+          <span class="l-vista">linea di vista</span><span class="l-fresnel">zona di Fresnel</span>
+        </div>
+        <table class="tabella" id="col-perdite"></table>
+        <table class="tabella" id="col-bilancio"></table>
+        <h3>Bit rate e tempi</h3>
+        <table class="tabella" id="col-bitrate"></table>
+      </div>
+    </div>
+
+    <div class="scheda" id="s-copertura">
+      <div class="campo"><span>Trasmette</span>
+        <select id="cop-tx"></select>
+      </div>
+      <div class="campo"><span>Riceve</span>
+        <select id="cop-rx">
+          <option value="mano">T-Deck in mano (1,5 m)</option>
+          <option value="tasca">T-Deck in tasca (1,2 m, −10 dB)</option>
+          <option value="casa">Ripetitore da casa (1° piano)</option>
+          <option value="esterno">Ripetitore da esterno (8 m)</option>
+        </select>
+      </div>
+      <label class="spunta"><input type="checkbox" id="cop-muri" checked> Chi è dentro un edificio ha i muri (<span id="cop-muri-db"></span> dB)</label>
+      <div class="campo"><span>Canale</span>
+        <select id="cop-canale">
+          <option value="msg">Messaggi</option>
+          <option value="voce">Voce</option>
+        </select>
+      </div>
+      <div class="campo"><span>Raggio</span>
+        <input type="range" id="cop-raggio" min="1" max="30" step="1" value="5"><b id="cop-raggio-v">5 km</b>
+      </div>
+      <div class="campo"><span>Dettaglio</span>
+        <select id="cop-dettaglio">
+          <option value="1">Normale</option>
+          <option value="0.6">Fine (più lento)</option>
+          <option value="2">Rapido</option>
+        </select>
+      </div>
+      <div class="bottoni">
+        <button id="cop-calcola" class="primario">Calcola copertura</button>
+        <button id="cop-togli">Togli</button>
+      </div>
+      <div class="barra" id="cop-barra" hidden><div></div><span></span></div>
+      <div class="campo"><span>Opacità</span><input type="range" id="cop-opacita" min="0.2" max="1" step="0.05" value="0.65"></div>
+      <div class="legenda-copertura">
+        <div><i style="background:#0b7a3b"></i>margine ≥ 15 dB</div>
+        <div><i style="background:#22a04a"></i>10–15 dB</div>
+        <div><i style="background:#84cc16"></i>5–10 dB</div>
+        <div><i style="background:#facc15"></i>0–5 dB</div>
+        <div><i style="background:#f97316"></i>−5–0 dB (spesso perso)</div>
+      </div>
+      <p class="nota" id="cop-esito"></p>
+    </div>
+
+    <div class="scheda" id="s-rete">
+      <div class="bottoni">
+        <button id="rete-calcola" class="primario">Calcola chi sente chi</button>
+        <label class="spunta"><input type="checkbox" id="rete-tutti"> mostra anche quelli che non passano</label>
+      </div>
+      <div class="barra" id="rete-barra" hidden><div></div><span></span></div>
+      <p class="nota">Linee: verde = passa bene, giallo = al limite, arancio = spesso perso. Tratteggio = la voce non passa. I telefoni non ripetono: ripetono solo i ripetitori.</p>
+      <h3>Percorso tra due telefoni</h3>
+      <div class="campo"><span>Da</span><select id="per-da"></select></div>
+      <div class="campo"><span>A</span><select id="per-a"></select></div>
+      <div class="bottoni"><button id="per-trova">Trova percorso</button></div>
+      <div id="per-esito"></div>
+      <h3>Collegamenti</h3>
+      <table class="tabella" id="rete-tabella"></table>
+    </div>
+
+    <div class="scheda" id="s-simulazione">
+      <p class="nota">Il protocollo vero (<code>componenti/pippanet</code>) compilato in WebAssembly. I collegamenti vengono dalla mappa: chi sente chi, con che segnale e con che probabilità.</p>
+      <div class="bottoni">
+        <button id="sim-avvia" class="primario">Accendi la rete</button>
+        <label class="spunta"><input type="checkbox" id="sim-cert" checked> certificati già scambiati</label>
+        <label class="spunta" title="Ogni collegamento pesca quanto il posto vero è meglio o peggio della mappa (σ delle impostazioni). Togli la spunta per simulare la mappa esatta."><input type="checkbox" id="sim-varia" checked> posti più o meno fortunati della mappa</label>
+      </div>
+      <div id="sim-pannello" hidden>
+        <div class="campo"><span>Da</span><select id="sim-da"></select></div>
+        <div class="campo"><span>A</span><select id="sim-a"></select></div>
+        <div class="campo"><span>Testo</span><input id="sim-testo" maxlength="160" value="Ciao, mi senti? Sono al rifugio"></div>
+        <div class="bottoni">
+          <button id="sim-msg">Messaggio</button>
+          <button id="sim-voce">Vocale 10 s</button>
+          <button id="sim-tutti">A tutti</button>
+          <button id="sim-sos">SOS</button>
+        </div>
+        <h3>Chiamata in diretta</h3>
+        <p class="nota">La chiamata del firmware (a turni, Codec 2 700C). "Da" chiama "A", che risponde dopo 4 s.
+          Chiamata, squillo e risposta passano dai ripetitori come i messaggi; la voce va sul canale voce lungo la
+          strada della risposta, senza nuovi tentativi. Con 0 o 1 ripetitore un pacchetto ogni 0,4 s che porta anche
+          il precedente; con 2 o più un pacchetto ogni 0,48 s, senza.</p>
+        <label class="spunta"><input type="checkbox" id="ch-copione" checked> conversazione di prova: 4 turni da 10 s, poi riattacca</label>
+        <div class="bottoni">
+          <button id="ch-chiama">Chiama</button>
+          <button id="ch-parla-da" title="Parla chi chiama (premi ancora per smettere)">Parla Da</button>
+          <button id="ch-parla-a" title="Parla chi risponde (premi ancora per smettere)">Parla A</button>
+          <button id="ch-riattacca">Riattacca</button>
+        </div>
+        <table class="tabella" id="ch-stat"></table>
+        <div class="campo"><span>Velocità</span>
+          <select id="sim-velocita">
+            <option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="3">3×</option>
+            <option value="10">10×</option>
+          </select>
+          <button id="sim-pausa">Pausa</button>
+        </div>
+        <div id="sim-orologio" class="orologio">0,0 s</div>
+        <table class="tabella" id="sim-stat"></table>
+        <h3>Cosa succede</h3>
+        <ol id="sim-log"></ol>
+      </div>
+      <p class="nota" id="sim-nota"></p>
+    </div>
+
+    <div class="scheda" id="s-impostazioni">
+      <div id="form-impostazioni"></div>
+      <h3>Come calcola</h3>
+      <p class="nota">Perdita = spazio libero + diffrazione (Deygout, fino a 3 spigoli, su terreno ed edifici, con la curvatura terrestre)
+        + vegetazione (Weissberger, oppure diffrazione sulle chiome se costa meno) + muri (ITU-R P.2109 a 869 MHz)
+        + corpo e cavo. Margine = SNR − SNR minimo dello SF. La probabilità di arrivo tiene conto di un fading di ±σ dB.
+        Errore tipico ±6–10 dB: i colori dicono "passa / al limite / non passa", non il dBm esatto.</p>
+      <p class="nota">Dati: TINITALY/1.1 (Tarquini et al. 2023, INGV, CC BY 4.0, doi:10.13127/tinitaly/1.1), AWS Terrain Tiles,
+        edifici e boschi © OpenStreetMap (ODbL) via OpenFreeMap / OpenMapTiles, mappe © OpenStreetMap e OpenTopoMap (CC-BY-SA).</p>
+      <div id="stato-cache" class="nota"></div>
+    </div>
+  </aside>
+</main>
+<div id="stato"></div>
+
+<script src="/lib/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="radio.js"></script>
+<script src="terreno.js"></script>
+<script src="app.js"></script>
+<script src="pippanet.js"></script>
+<script src="sim.js"></script>
+</body>
+</html>

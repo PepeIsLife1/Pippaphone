@@ -40,6 +40,25 @@ public:
     pn::GroupInfo createGroup(const std::string& name, const std::vector<uint16_t>& members);
     uint32_t sendVoice(uint16_t to, const std::vector<uint8_t>& codec2, uint16_t durationMs);
 
+    // ---- chiamata in diretta (a turni) ----
+    bool call(uint16_t to);
+    void answerCall();
+    void endCall();  // riattacca, rifiuta o annulla
+    // PTT nella chiamata: false se adesso parla l'altro (o la chiamata non e' in corso).
+    bool callTalk(bool on);
+    struct CallInfo {
+        pn::CallState state = pn::CallState::IDLE;
+        uint16_t peer = 0;
+        bool outgoing = false;
+        uint32_t elapsedMs = 0;  // da quando ci si sente
+        uint32_t leftMs = 0;     // alla durata massima
+        uint8_t hops = 0;        // ripetitori sul percorso
+        bool talking = false;    // parlo io
+        bool hearing = false;    // si sente l'altro
+        uint8_t lostPct = 0;     // voce persa nell'ultimo turno dell'altro
+    };
+    CallInfo callInfo();
+
     // ---- numero e amministrazione ----
     void setProvisioning(bool on);
     bool offer(pn::Cert& cert, std::string& adminCode);
@@ -102,6 +121,9 @@ public:
     void onVoice(pn::Addr from, pn::Codec codec, const std::vector<uint8_t>& data, uint16_t durationMs,
                  uint32_t missing) override;
     void onVoiceState(pn::Addr to, uint32_t id, pn::VoiceSendState s) override;
+    void onCallState(pn::Addr peer, pn::CallState s, pn::CallResult result) override;
+    void onCallVoice(pn::Addr from, uint8_t turn, uint8_t index, const uint8_t* data, size_t len, uint8_t frames,
+                     const uint8_t* prev, size_t prevLen, uint8_t prevFrames, bool last) override;
     void onCertLearned(const pn::Cert& c) override;
     void onProvisionOffer(const pn::Cert& c, const pn::Key32& adminPublic) override;
     void onProvisionHello(uint64_t shortId, const pn::ProvHello& h, const pn::RxInfo& info) override;
@@ -129,6 +151,11 @@ private:
         uint32_t id = 0;
         uint16_t to = 0;
     } voiceOut_;
+    // Chiamata in corso (per la riga nella chat quando finisce).
+    bool callOut_ = false;
+    pn::Millis callConnectedAt_ = 0;
+    uint32_t callLogSeq_ = 0;
+    void callVoice(const uint8_t* data, size_t len, uint8_t frames, bool last);
 };
 
 Rete& rete();

@@ -6,6 +6,7 @@
 
 #include "app/eventi.h"
 #include "app/memoria.h"
+#include "app/voce.h"
 #include "esp_log.h"
 #include "scheda/pins.h"
 #include "scheda/scheda.h"
@@ -353,10 +354,12 @@ Rete::Signal Rete::signal() {
     s.snr = h.snr;
     s.agoS = uint32_t((now - h.at) / 1000);
     unlock();
+    // Tacche dal margine sopra il limite di ricezione dello SF (con SF10: SNR 5 / 0 / -7 dB).
+    const float margine = s.snr - pn::snrLimit(pn::MAIN_PARAMS);
     if (!s.heard) s.bars = 0;
-    else if (s.snr >= 5) s.bars = 4;
-    else if (s.snr >= 0) s.bars = 3;
-    else if (s.snr >= -7) s.bars = 2;
+    else if (margine >= 20) s.bars = 4;
+    else if (margine >= 15) s.bars = 3;
+    else if (margine >= 8) s.bars = 2;
     else s.bars = 1;
     return s;
 }
@@ -426,9 +429,11 @@ void Rete::service() {
     int8_t p = 22;
     const bool recentFail = lastFailMs_ && now - lastFailMs_ < 10 * 60 * 1000;
     if (s.heard && s.agoS < 600 && !recentFail) {
-        if (s.snr >= 10) p = 10;
-        else if (s.snr >= 7) p = 14;
-        else if (s.snr >= 4) p = 17;
+        // Si abbassa solo se restano almeno 13-14 dB di margine (con SF10: SNR 10 / 7 / 4 dB).
+        const float margine = s.snr - pn::snrLimit(pn::MAIN_PARAMS);
+        if (margine >= 25) p = 10;
+        else if (margine >= 22) p = 14;
+        else if (margine >= 19) p = 17;
     }
     if (p != radio_.power()) {
         ESP_LOGI(TAG, "potenza automatica: %d dBm (SNR %.1f)", p, double(s.snr));
@@ -509,7 +514,7 @@ void Rete::onDelivery(pn::Addr to, uint32_t msgId, pn::Delivery d) {
             if (m.out && m.id <= msgId && m.status == pn::Delivery::DELIVERED) dati().setStatus(c, m.id, d);
     }
     dati().setStatus(c, msgId, d);
-    if (d == pn::Delivery::UNREACHABLE) lastFailMs_ = uint32_t(pippa::RadioLink::nowMs());
+    if (d == pn::Delivery::UNREACHABLE || d == pn::Delivery::RETRYING) lastFailMs_ = uint32_t(pippa::RadioLink::nowMs());
     post({Ev::DELIVERY, c, to, msgId, int32_t(d)});
 }
 
@@ -611,6 +616,135 @@ void Rete::onVoiceState(pn::Addr to, uint32_t id, pn::VoiceSendState s) {
     }
     if (d != pn::Delivery::PENDING) dati().setStatus(c, id, d);
     post({Ev::VOICE_STATE, c, to, id, int32_t(s)});
+}
+
+// ---------------------------------------------------------------- chiamate
+
+bool Rete::call(uint16_t to) {
+    lock();
+    const bool ok = phone_->call(to, pippa::RadioLink::nowMs());
+    unlock();
+    radio_.wake();
+    return ok;
+}
+
+void Rete::answerCall() {
+    lock();
+    phone_->answerCall(pippa::RadioLink::nowMs());
+    unlock();
+    radio_.wake();
+}
+
+void Rete::endCall() {
+    voce().callTalk(false, 0);
+    lock();
+    phone_->endCall(pippa::RadioLink::nowMs());
+    unlock();
+    radio_.wake();
+}
+
+bool Rete::callTalk(bool on) {
+    const pn::Millis now = pippa::RadioLink::nowMs();
+    if (!on) {
+        // L'ultimo pacchetto (anche vuoto) lo manda il microfono quando si ferma: dice all'altro
+        // che tocca a lui.
+        voce().callTalk(false, 0);
+        return true;
+    }
+    lock();
+    bool ok = phone_->callTalk(true, now);
+    const uint8_t frames = phone_->callFramesPerPacket();
+    unlock();
+    if (!ok) return false;
+    if (!voce().callTalk(true, frames)) {
+        lock();
+        phone_->callTalk(false, now);
+        unlock();
+        radio_.wake();
+        return false;
+    }
+    return true;
+}
+
+// Dal compito del microfono: un pacchetto di voce pronto.
+void Rete::callVoice(const uint8_t* data, size_t len, uint8_t frames, bool last) {
+    lock();
+    phone_->callSendVoice(data, len, frames, last, pippa::RadioLink::nowMs());
+    unlock();
+    radio_.wake();
+}
+
+Rete::CallInfo Rete::callInfo() {
+    CallInfo ci;
+    lock();
+    const pn::Millis now = pippa::RadioLink::nowMs();
+    ci.state = phone_->callState();
+    ci.peer = phone_->callPeer();
+    ci.outgoing = callOut_;
+    ci.elapsedMs = uint32_t(phone_->callElapsedMs(now));
+    ci.leftMs = ci.elapsedMs < pn::CALL_MAX_MS ? pn::CALL_MAX_MS - ci.elapsedMs : 0;
+    ci.hops = phone_->callHops();
+    ci.talking = phone_->callTalking() || voce().callTalking();
+    unlock();
+    ci.hearing = voce().callHearing();
+    ci.lostPct = voce().callLostPct();
+    return ci;
+}
+
+void Rete::onCallState(pn::Addr peer, pn::CallState s, pn::CallResult result) {
+    const pn::Millis now = pippa::RadioLink::nowMs();
+    if (s == pn::CallState::DIALING) callOut_ = true;
+    if (s == pn::CallState::INCOMING) callOut_ = false;
+    if (s == pn::CallState::ACTIVE) {
+        callConnectedAt_ = now;
+        voce().callStart([this](const uint8_t* d, size_t n, uint8_t frames, bool last) { callVoice(d, n, frames, last); });
+    }
+    if (s == pn::CallState::IDLE) {
+        voce().callStop();
+        // Una riga nella chat: chiamata fatta, ricevuta, persa o non riuscita.
+        const uint32_t ms = callConnectedAt_ ? uint32_t(now - callConnectedAt_) : 0;
+        const bool talked = callConnectedAt_ != 0;
+        callConnectedAt_ = 0;
+        char dur[16];
+        snprintf(dur, sizeof(dur), "%u:%02u", unsigned(ms / 60000), unsigned(ms / 1000 % 60));
+        std::string text;
+        if (talked) {
+            text = std::string(callOut_ ? "Chiamata fatta · " : "Chiamata ricevuta · ") + dur;
+            if (result == pn::CallResult::DROPPED) text += " · caduta";
+            if (result == pn::CallResult::TOO_LONG) text += " · durata massima";
+        } else if (result == pn::CallResult::MISSED) {
+            text = "Chiamata persa";
+        } else if (callOut_) {
+            switch (result) {
+                case pn::CallResult::BUSY: text = "Chiamata non riuscita · occupato"; break;
+                case pn::CallResult::NO_ANSWER: text = "Chiamata non riuscita · non risponde"; break;
+                case pn::CallResult::UNREACHABLE: text = "Chiamata non riuscita · non raggiungibile"; break;
+                case pn::CallResult::REFUSED: text = "Chiamata rifiutata"; break;
+                case pn::CallResult::DROPPED: text = "Chiamata non riuscita · collegamento perso"; break;
+                default: text = "Chiamata annullata"; break;
+            }
+        } else {
+            text = result == pn::CallResult::ENDED ? "Chiamata rifiutata" : "Chiamata non riuscita";
+        }
+        Message m;
+        m.id = 0x30000000u | (++callLogSeq_ & 0xFFFF) | ((now32() & 0xFFF) << 16);
+        m.from = callOut_ ? phone_->address() : peer;
+        m.out = callOut_;
+        m.status = pn::Delivery::SENT;
+        m.time = now32();
+        m.kind = MsgKind::INFO;
+        m.text = text;
+        const ChatId c{ChatKind::DIRECT, peer};
+        dati().addMessage(c, m, result == pn::CallResult::MISSED);  // persa: conta come da leggere
+    }
+    post({Ev::CALL, {ChatKind::DIRECT, peer}, peer, uint32_t(result), int32_t(s)});
+    radio_.wake();
+}
+
+void Rete::onCallVoice(pn::Addr from, uint8_t turn, uint8_t index, const uint8_t* data, size_t len, uint8_t frames,
+                       const uint8_t* prev, size_t prevLen, uint8_t prevFrames, bool last) {
+    (void)from;
+    voce().callReceived(turn, index, data, len, frames, prev, prevLen, prevFrames, last, phone_->callRedundant());
 }
 
 void Rete::onCertLearned(const pn::Cert& c) { saveCert(c); }

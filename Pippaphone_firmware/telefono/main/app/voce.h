@@ -1,4 +1,4 @@
-// Vocali: registrazione con codifica Codec2 700C (700 bit/s) e riproduzione.
+// Vocali: registrazione con codifica Codec2 700C (700 bit/s) e riproduzione; audio delle chiamate.
 #pragma once
 
 #include <cstdint>
@@ -26,6 +26,24 @@ public:
     bool playing() const;
     uint32_t playedMs() const;
     uint32_t playingFile() const;
+
+    // ---- chiamata in diretta ----
+    // Riceve ogni pacchetto di voce pronto: frame Codec2 700C uno dietro l'altro, senza buchi;
+    // last = fine del turno (puo' essere vuoto).
+    using CallSink = std::function<void(const uint8_t* data, size_t len, uint8_t frames, bool last)>;
+    // Apre l'audio della chiamata (altoparlante sempre pronto) e lo chiude.
+    void callStart(CallSink sink);
+    void callStop();
+    // PTT: comincia a registrare e mandare (framesPerPacket frame per pacchetto) o smette.
+    bool callTalk(bool on, uint8_t framesPerPacket);
+    bool callTalking() const;
+    uint32_t callTalkMs() const;
+    // Voce dall'altro (dal compito della radio). redundant: i pacchetti portano anche il precedente.
+    void callReceived(uint8_t turn, uint8_t index, const uint8_t* data, size_t len, uint8_t frames,
+                      const uint8_t* prev, size_t prevLen, uint8_t prevFrames, bool last, bool redundant);
+    // Si sta sentendo l'altro; voce persa nel suo ultimo turno (%).
+    bool callHearing() const;
+    uint8_t callLostPct() const;
 };
 
 Voce& voce();

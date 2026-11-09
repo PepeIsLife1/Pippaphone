@@ -242,4 +242,89 @@ bool decodeVoiceEnd(const uint8_t* in, size_t len, VoiceEnd& p) {
     return r.ok();
 }
 
+size_t encodeCallReq(const CallReq& p, uint8_t* out, size_t cap) {
+    Writer w(out, cap);
+    w.u16(p.session);
+    w.u8(uint8_t(p.codec));
+    return w.ok() ? w.len() : 0;
+}
+
+bool decodeCallReq(const uint8_t* in, size_t len, CallReq& p) {
+    Reader r(in, len);
+    p.session = r.u16();
+    p.codec = Codec(r.u8());
+    return r.ok() && p.session != 0;
+}
+
+size_t encodeCallRing(const CallRing& p, uint8_t* out, size_t cap) {
+    Writer w(out, cap);
+    w.u16(p.session);
+    w.u8(uint8_t(p.status));
+    return w.ok() ? w.len() : 0;
+}
+
+bool decodeCallRing(const uint8_t* in, size_t len, CallRing& p) {
+    Reader r(in, len);
+    p.session = r.u16();
+    p.status = CallRingStatus(r.u8());
+    return r.ok();
+}
+
+size_t encodeCallAnswer(const CallAnswer& p, uint8_t* out, size_t cap) {
+    Writer w(out, cap);
+    w.u16(p.session);
+    return w.ok() ? w.len() : 0;
+}
+
+bool decodeCallAnswer(const uint8_t* in, size_t len, CallAnswer& p) {
+    Reader r(in, len);
+    p.session = r.u16();
+    return r.ok();
+}
+
+size_t encodeCallEnd(const CallEndMsg& p, uint8_t* out, size_t cap) {
+    Writer w(out, cap);
+    w.u16(p.session);
+    w.u8(uint8_t(p.reason));
+    return w.ok() ? w.len() : 0;
+}
+
+bool decodeCallEnd(const uint8_t* in, size_t len, CallEndMsg& p) {
+    Reader r(in, len);
+    p.session = r.u16();
+    p.reason = CallEndReason(r.u8());
+    return r.ok();
+}
+
+size_t encodeCallVoice(const CallVoice& p, uint8_t* out, size_t cap) {
+    if (p.frames > 15 || p.prevFrames > 15) return 0;
+    Writer w(out, cap);
+    w.u16(p.session);
+    w.u8(p.turn);
+    w.u8(p.index);
+    w.u8(p.flags);
+    w.u8(uint8_t(p.frames | (p.prevFrames << 4)));
+    w.put(p.prev, p.prevFrames ? p.prevLen : 0);
+    w.put(p.data, p.frames ? p.len : 0);
+    return w.ok() ? w.len() : 0;
+}
+
+bool decodeCallVoice(const uint8_t* in, size_t len, Codec codec, CallVoice& p) {
+    Reader r(in, len);
+    p.session = r.u16();
+    p.turn = r.u8();
+    p.index = r.u8();
+    p.flags = r.u8();
+    const uint8_t f = r.u8();
+    if (!r.ok()) return false;
+    p.frames = f & 0x0F;
+    p.prevFrames = f >> 4;
+    p.prevLen = p.prevFrames ? codecBytes(codec, p.prevFrames) : 0;
+    p.len = p.frames ? codecBytes(codec, p.frames) : 0;
+    if (r.remaining() != p.prevLen + p.len) return false;
+    p.prev = p.prevLen ? r.ptr() : nullptr;
+    p.data = p.len ? r.ptr() + p.prevLen : nullptr;
+    return true;
+}
+
 }  // namespace pn

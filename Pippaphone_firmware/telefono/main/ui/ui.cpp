@@ -315,6 +315,16 @@ void handleEvent(const app::Event& e) {
                 scheda::vibratePattern(3, 200, 150);
             }
             break;
+        case Ev::CALL: {
+            const auto s = pn::CallState(e.a);
+            if (s == pn::CallState::INCOMING && !callScreenOpen()) {
+                wake();
+                push(makeIncomingCall(e.from));  // squilla la schermata stessa
+            } else if (s == pn::CallState::IDLE && pn::CallResult(e.id) == pn::CallResult::MISSED && !callScreenOpen()) {
+                toast("Chiamata persa", name(e.from), ROSSO());
+            }
+            break;
+        }
         case Ev::VOICE_INCOMING:
             wake();
             toast("Walkie-talkie", name(e.from) + " sta parlando...", VERDE());

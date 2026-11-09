@@ -67,6 +67,11 @@ public:
     virtual void onTransmitted(const uint8_t* data, size_t len, Millis now) { (void)data; (void)len; (void)now; }
     // Millisecondi al prossimo evento (per dormire); 0 = subito.
     Millis msUntilNextEvent(Millis now) const;
+    // Canale occupato (CAD): fra quanto riprovare. Di solito 100-700 ms; durante una chiamata
+    // 10-30 ms, perche' un pezzo di voce che aspetta troppo non serve piu'.
+    Millis busyBackoffMs(Millis now, Channel ch) const;
+    // C'e' voce in diretta su questo canale (chiamata in corso che passa da questo nodo).
+    virtual bool liveVoice(Millis now, Channel ch) const { (void)now; (void)ch; return false; }
 
     // Statistiche.
     uint32_t rxCount = 0, rxDropped = 0, txCount = 0;
@@ -80,8 +85,10 @@ protected:
     // Il nodo puo' trattenere un pacchetto pronto (per distanziare i propri invii).
     virtual bool mayTransmit(const Frame& f, Millis now) const { (void)f; (void)now; return true; }
 
-    // Accoda un pacchetto; tag serve per poterlo togliere dalla coda (0 = nessuno).
-    void enqueue(const uint8_t* data, size_t len, Priority prio, Millis notBefore, Channel ch, uint64_t tag = 0);
+    // Accoda un pacchetto; tag serve per poterlo togliere dalla coda (0 = nessuno). Se expires non
+    // e' 0, il pacchetto ancora in coda a quell'ora si butta (voce in diretta).
+    void enqueue(const uint8_t* data, size_t len, Priority prio, Millis notBefore, Channel ch, uint64_t tag = 0,
+                 Millis expires = 0);
     bool cancelQueued(uint64_t tag);
     bool isQueued(uint64_t tag) const;
     void clearQueue(Channel ch);
@@ -89,7 +96,7 @@ protected:
     uint32_t nextSeq();
     // Costruisce e accoda un pacchetto con il carico utile gia' pronto (eventualmente cifrato).
     uint32_t sendRaw(Header h, const uint8_t* payload, size_t len, Millis now, Millis delay = 0,
-                     Channel ch = Channel::MAIN, uint64_t tag = 0);
+                     Channel ch = Channel::MAIN, uint64_t tag = 0, Millis ttl = 0);
 
     Addr self_;
     DedupCache dedup_;
@@ -103,7 +110,10 @@ private:
         Channel ch;
         uint64_t tag;
         uint32_t order;
+        Millis expires;
     };
+    static bool expired(const TxItem& t, Millis now) { return t.expires != 0 && now > t.expires; }
+    void dropExpired(Millis now);
     std::vector<TxItem> queue_;
     uint32_t order_ = 0;
     uint32_t seq_ = 1;

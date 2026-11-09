@@ -56,7 +56,12 @@ uint32_t Node::nextSeq() {
     return s;
 }
 
+Millis Node::busyBackoffMs(Millis now, Channel ch) const {
+    return liveVoice(now, ch) ? 10 + randomBelow(20) : 100 + randomBelow(600);
+}
+
 void Node::onReceive(const uint8_t* data, size_t len, const RxInfo& info, Millis now) {
+    dropExpired(now);
     Header h;
     if (!decodeHeader(data, len, h)) {
         rxDropped++;
@@ -78,7 +83,13 @@ void Node::onReceive(const uint8_t* data, size_t len, const RxInfo& info, Millis
 
 void Node::tick(Millis now) { (void)now; }
 
-void Node::enqueue(const uint8_t* data, size_t len, Priority prio, Millis notBefore, Channel ch, uint64_t tag) {
+void Node::dropExpired(Millis now) {
+    queue_.erase(std::remove_if(queue_.begin(), queue_.end(), [now](const TxItem& t) { return expired(t, now); }),
+                 queue_.end());
+}
+
+void Node::enqueue(const uint8_t* data, size_t len, Priority prio, Millis notBefore, Channel ch, uint64_t tag,
+                   Millis expires) {
     if (len == 0 || len > MAX_FRAME) return;
     TxItem it;
     std::memcpy(it.frame.data, data, len);
@@ -88,6 +99,7 @@ void Node::enqueue(const uint8_t* data, size_t len, Priority prio, Millis notBef
     it.ch = ch;
     it.tag = tag;
     it.order = order_++;
+    it.expires = expires;
     queue_.push_back(it);
 }
 
@@ -111,11 +123,12 @@ void Node::clearQueue(Channel ch) {
 
 bool Node::hasTx(Millis now, Channel ch) const {
     for (const auto& t : queue_)
-        if (t.ch == ch && t.notBefore <= now && mayTransmit(t.frame, now)) return true;
+        if (t.ch == ch && t.notBefore <= now && !expired(t, now) && mayTransmit(t.frame, now)) return true;
     return false;
 }
 
 bool Node::popTx(Millis now, Channel ch, Frame& out) {
+    dropExpired(now);
     int best = -1;
     for (size_t i = 0; i < queue_.size(); i++) {
         const auto& t = queue_[i];
@@ -136,6 +149,7 @@ Millis Node::msUntilNextEvent(Millis now) const {
     Millis next = nextWake_ > now ? nextWake_ - now : 0;
     if (nextWake_ == 0) next = 60000;
     for (const auto& t : queue_) {
+        if (expired(t, now)) continue;
         Millis d = t.notBefore > now ? t.notBefore - now : 0;
         next = std::min(next, d);
     }
@@ -143,7 +157,7 @@ Millis Node::msUntilNextEvent(Millis now) const {
 }
 
 uint32_t Node::sendRaw(Header h, const uint8_t* payload, size_t len, Millis now, Millis delay, Channel ch,
-                       uint64_t tag) {
+                       uint64_t tag, Millis ttl) {
     if (HEADER_SIZE + len > MAX_FRAME) return 0;
     if (h.seq == 0) h.seq = nextSeq();
     h.lastHop = self_;
@@ -152,7 +166,7 @@ uint32_t Node::sendRaw(Header h, const uint8_t* payload, size_t len, Millis now,
     std::memcpy(buf + HEADER_SIZE, payload, len);
     // I propri pacchetti non vanno rielaborati se tornano indietro ripetuti.
     if (h.src != ADDR_NONE) dedup_.checkAndInsert(h.src, h.seq, now);
-    enqueue(buf, HEADER_SIZE + len, priorityOf(h.type), now + delay, ch, tag);
+    enqueue(buf, HEADER_SIZE + len, priorityOf(h.type), now + delay, ch, tag, ttl ? now + delay + ttl : 0);
     return h.seq;
 }
 

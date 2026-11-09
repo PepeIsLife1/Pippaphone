@@ -1,5 +1,5 @@
 // PippaNet: logica del telefono (messaggi, gruppi, canale globale, posizione, SOS, vocali,
-// certificati e assegnazione del numero).
+// chiamate in diretta, certificati e assegnazione del numero).
 //
 // Il telefono non ripete i pacchetti degli altri: parla con il ripetitore piu' vicino o
 // direttamente con un altro telefono a portata.
@@ -22,9 +22,33 @@ enum class Delivery : uint8_t {
     DELIVERED = 2,    // ✓ consegnato
     READ = 3,         // ✓✓ letto
     UNREACHABLE = 4,  // non raggiungibile
+    RETRYING = 5,     // non raggiungibile per ora: riprova fra qualche minuto (poi UNREACHABLE o DELIVERED)
 };
 
 enum class VoiceSendState : uint8_t { REQUESTING, SENDING, DELIVERED, PARTIAL, BUSY, UNREACHABLE };
+
+// Chiamata in diretta, a turni (si parla tenendo premuto il PTT).
+enum class CallState : uint8_t {
+    IDLE = 0,
+    DIALING = 1,     // chiamo: aspetto che squilli
+    RINGBACK = 2,    // squilla dall'altra parte
+    INCOMING = 3,    // mi chiamano
+    CONNECTING = 4,  // risposto: si apre la strada sul canale voce
+    ACTIVE = 5,      // in chiamata
+};
+// Perche' una chiamata e' finita (con CallState::IDLE).
+enum class CallResult : uint8_t {
+    NONE = 0,
+    ENDED = 1,        // ho riattaccato (o annullato, o rifiutato) io
+    HUNG_UP = 2,      // ha riattaccato l'altro
+    REFUSED = 3,      // l'altro ha rifiutato
+    BUSY = 4,         // l'altro e' occupato
+    NO_ANSWER = 5,    // squillava ma non ha risposto
+    UNREACHABLE = 6,  // non squilla
+    DROPPED = 7,      // caduta: non si sente piu' l'altro
+    TOO_LONG = 8,     // arrivata alla durata massima
+    MISSED = 9,       // chiamata in arrivo a cui non ho risposto
+};
 
 struct GroupInfo {
     uint16_t id = 0;
@@ -51,6 +75,13 @@ public:
     virtual void onVoice(Addr from, Codec codec, const std::vector<uint8_t>& data, uint16_t durationMs,
                          uint32_t missing) {}
     virtual void onVoiceState(Addr to, uint32_t id, VoiceSendState s) {}
+    // Stato della chiamata cambiato (result vale solo con CallState::IDLE).
+    virtual void onCallState(Addr peer, CallState s, CallResult result) {}
+    // Voce dall'altro: 'frames' frame del pacchetto 'index' del turno 'turn' (Codec2 700C, frame
+    // uno dietro l'altro senza buchi). prev/prevFrames: il pacchetto prima, se viaggia anche questo
+    // (ridondanza). last: l'altro ha finito di parlare.
+    virtual void onCallVoice(Addr from, uint8_t turn, uint8_t index, const uint8_t* data, size_t len,
+                             uint8_t frames, const uint8_t* prev, size_t prevLen, uint8_t prevFrames, bool last) {}
     virtual void onCertLearned(const Cert& c) {}
     virtual void onProvisionOffer(const Cert& c, const Key32& adminPublic) {}
     virtual void onProvisionHello(uint64_t shortId, const ProvHello& h, const RxInfo& info) {}
@@ -101,6 +132,31 @@ public:
     // Vocale gia' codificato (Codec2).
     uint32_t sendVoice(Addr to, Codec codec, const std::vector<uint8_t>& data, uint16_t durationMs, Millis now);
 
+    // ---- chiamata in diretta (a turni) ----
+    // Chiama un telefono; false se c'e' gia' una chiamata o un vocale in corso.
+    bool call(Addr to, Millis now);
+    void answerCall(Millis now);
+    // Riattacca, rifiuta o annulla.
+    void endCall(Millis now);
+    // PTT premuto (true) o lasciato. false se adesso parla l'altro.
+    bool callTalk(bool on, Millis now);
+    // Un pacchetto di voce: callFramesPerPacket() frame Codec2 700C uno dietro l'altro (meno solo
+    // nell'ultimo). last = ultimo del turno (si smette di parlare; puo' essere vuoto).
+    bool callSendVoice(const uint8_t* data, size_t len, uint8_t frames, bool last, Millis now);
+    CallState callState() const { return call_.state; }
+    Addr callPeer() const { return call_.peer; }
+    bool callTalking() const { return call_.talking; }
+    // Si sta ricevendo la voce dell'altro.
+    bool callPeerTalking(Millis now) const;
+    // Ripetitori sul percorso e se i pacchetti portano anche il precedente (con 0 o 1 ripetitore).
+    uint8_t callHops() const { return call_.hops; }
+    bool callRedundant() const { return call_.redundant; }
+    // Frame di voce in ogni pacchetto (dipende dai ripetitori sul percorso) e ogni quanto parte.
+    uint8_t callFramesPerPacket() const { return callFrames(call_.hops); }
+    Millis callPacketMs() const { return Millis(callFramesPerPacket()) * 40; }
+    // Millisecondi da quando ci si sente (0 se non ancora).
+    Millis callElapsedMs(Millis now) const { return call_.connectedAt ? now - call_.connectedAt : 0; }
+
     // Dati aggiornati dall'applicazione.
     Position position;       // ultima posizione GPS
     uint8_t battery = 255;
@@ -110,6 +166,7 @@ public:
     void tick(Millis now) override;
     Channel activeChannel(Millis now) const override;
     void onTransmitted(const uint8_t* data, size_t len, Millis now) override;
+    bool liveVoice(Millis now, Channel ch) const override { (void)now; return ch == Channel::VOICE && callOnVoice(); }
 
     // Segnale dell'ultimo ripetitore sentito.
     struct Heard { Addr addr = ADDR_NONE; int16_t rssi = 0; float snr = 0; Millis at = 0; };
@@ -142,6 +199,8 @@ private:
         Millis nextTry;
         bool waitingCert;
         Channel ch;
+        int laterRounds = 0;  // giri di tentativi gia' rimandati a piu' tardi
+        bool later = false;   // in attesa del giro piu' tardi
     };
     struct PendingIn {  // pacchetto ricevuto da qualcuno di cui non ho ancora il certificato
         std::vector<uint8_t> raw;
@@ -191,6 +250,31 @@ private:
         uint16_t round = 0;
         Millis next = 0;
     };
+    struct Call {
+        CallState state = CallState::IDLE;
+        Addr peer = ADDR_NONE;
+        uint16_t session = 0;
+        bool caller = false;
+        bool ringing = false;    // (chi chiama) l'altro squilla
+        bool flood = false;      // (chi chiama) la strada imparata non andava: si chiama a tutti
+        bool answered = false;   // (chi risponde) ho risposto
+        bool confirmed = false;  // ho sentito l'altro sul canale voce
+        bool talking = false;
+        bool listenMain = false; // (chi risponde) di nuovo sul canale messaggi: la voce non arrivava
+        bool closing = false;    // riattacco: mando la fine sul canale voce e poi chiudo
+        CallResult closeResult = CallResult::ENDED;
+        CallEndReason closeReason = CallEndReason::HANGUP;
+        int endsLeft = 0;        // copie della fine ancora da trasmettere
+        Addr via = ADDR_NONE;    // primo salto della voce (ripetitore, o l'altro telefono)
+        uint8_t hops = 0;
+        bool redundant = false;
+        int attempts = 0, certTries = 0, waits = 0, pings = 0;
+        Millis started = 0, nextReq = 0, deadline = 0, lastReqHeard = 0, voiceWaitUntil = 0, nextPing = 0;
+        Millis lastRx = 0, lastTx = 0, connectedAt = 0, peerVoiceAt = 0, closeUntil = 0, talkStarted = 0;
+        uint8_t turn = 0, index = 0;
+        std::vector<uint8_t> prev;  // voce del mio pacchetto prima (ridondanza)
+        uint8_t prevFrames = 0;
+    };
 
     Key32 keyFor(Addr peer);
     uint32_t sendPairwise(Addr to, Type t, uint32_t msgId, const uint8_t* body, size_t len, bool wantAck, Millis now,
@@ -208,6 +292,20 @@ private:
     void finishVoiceIn(Millis now);
     void sendBeacon(Millis now);
     void sendSosRound(Millis now);
+    // chiamate
+    uint64_t callTag() const { return 0xCA11000000000000ULL | call_.session; }
+    uint32_t sendCallPacket(Addr to, Type t, const uint8_t* body, size_t len, Channel ch, Addr via, bool wantAck,
+                            bool forceFlood, Millis ttl, uint64_t tag, Millis now);
+    void sendCallEnd(CallEndReason why, Channel ch, uint64_t tag, Millis now);
+    void sendCallAnswer(Millis now);
+    void beginClose(CallResult r, CallEndReason why, Millis now);
+    void sendCallVoice(uint8_t flags, const uint8_t* data, size_t len, uint8_t frames, Millis now);
+    void handleCall(const Header& h, const uint8_t* body, size_t len, Millis now);
+    void handleCallVoice(const Header& h, const uint8_t* body, size_t len, Millis now);
+    void callTick(Millis now);
+    void setCallState(CallState s, Millis now);
+    void closeCall(CallResult r, Millis now);
+    bool callOnVoice() const;
     bool learnCert(const Cert& c);
     bool alreadyHandled(Addr from, uint32_t msgId);
 
@@ -233,6 +331,7 @@ private:
     VoiceOut vOut_;
     VoiceIn vIn_;
     SosState sos_;
+    Call call_;
     Addr lastVoiceFrom_ = ADDR_NONE;   // ultimo vocale ricevuto completo (per rispondere se il
     uint16_t lastVoiceSession_ = 0;    // mittente non ha sentito il resoconto)
     Millis nextBeacon_ = 0;

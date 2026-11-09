@@ -1,0 +1,4 @@
+# oggetti intermedi della compilazione WebAssembly
+wasm/build/
+# cache dei dati (di solito sta in %LOCALAPPDATA%, ma se qualcuno la mette qui)
+cache/

@@ -210,6 +210,7 @@ void fillData() {
     msg(marco, 100, 40, MsgKind::INFO, "Posizione inviata");
     msg(marco, 101, 12, MsgKind::POSITION, "454652000,91950000,130,9,30");
     msg(marco, 101, 2, MsgKind::TEXT, "Siamo quasi arrivati, ci vediamo su", pn::Delivery::READ, true);
+    msg(marco, 100, 1, MsgKind::TEXT, "Vi vedo, arrivo!", pn::Delivery::RETRYING);
     msg(giulia, 102, 75, MsgKind::SOS, "454610000,91800000,118,12,40,63");
     msg(giulia, 102, 30, MsgKind::TEXT, "Hai visto il messaggio nel gruppo?", pn::Delivery::READ, true);
     msg(giulia, 102, 25, MsgKind::TEXT, "Chiamami quando puoi", pn::Delivery::READ, true);
@@ -423,6 +424,39 @@ void script() {
         sim::tap(Key::OK);  // silenzia e mostra la posizione
     });
 #endif
+    // Chiamata in diretta: arriva, si risponde, si parla a turni, si riattacca; poi una in uscita.
+    sim::step(6000, [] { ui::goHome(); });  // le notifiche di prima spariscono
+    shot("40_chiamata_in_arrivo", [] {
+        auto& s = sim::state();
+        s.call = uint8_t(pn::CallState::INCOMING);
+        s.callPeer = 101;
+        s.callOut = false;
+        s.callHops = 2;
+        app::post({app::Ev::CALL, {ChatKind::DIRECT, 101}, 101, 0, int32_t(pn::CallState::INCOMING)});
+    });
+    sim::step(600, [] { sim::tap(Key::CALL); });  // risponde (il tasto arriva all'interfaccia dopo)
+    shot("41_chiamata_in_corso", [] {
+        sim::state().callHearing = 0;
+        sim::state().callT0 = sim::nowMs() - 83000;
+    });
+    shot("42_chiamata_parli", [] { sim::key(Key::PTT, true); });
+    shot("43_chiamata_parla_lui", [] {
+        sim::key(Key::PTT, false);
+        sim::state().callHearing = 1;
+    });
+    shot("44_chiamata_quasi_finita", [] {
+        sim::state().callHearing = 0;
+        sim::state().callT0 = sim::nowMs() - 158000;
+    });
+    shot("45_chiamata_finita", [] { sim::tap(Key::END); });
+    shot("46_chiamata_in_uscita", [] {
+        ui::goHome();
+        sim::state().callHearing = -1;
+        sim::state().callHops = 0;
+        ui::push(ui::makeContact(102));
+        sim::tap(Key::DOWN);
+        sim::tap(Key::OK);  // "Chiama"
+    });
 }
 
 }  // namespace

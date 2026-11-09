@@ -20,6 +20,7 @@ void statusIcon(lv_obj_t* parent, pn::Delivery d) {
         case pn::Delivery::DELIVERED: label(parent, &icone_18, BIANCO(), IC_OK); break;
         case pn::Delivery::READ: label(parent, &icone_18, BLU(), IC_DOPPIO_OK); break;
         case pn::Delivery::UNREACHABLE: label(parent, &icone_18, ROSSO(), IC_ATTENZIONE); break;
+        case pn::Delivery::RETRYING: label(parent, &icone_18, AMBRA(), IC_OROLOGIO); break;
     }
 }
 
@@ -156,10 +157,10 @@ public:
             if (s.last.out) statusIcon(pv, s.last.status);
             std::string p = preview(s.last);
             if (group && !s.last.out && s.last.kind == app::MsgKind::TEXT) p = app::dati().nameOf(s.last.from) + ": " + p;
-            lv_obj_t* pl = List::text(pv, &font_18,
-                                      s.last.out && s.last.status == pn::Delivery::UNREACHABLE ? ROSSO() : GRIGIO3(),
-                                      s.last.out && s.last.status == pn::Delivery::UNREACHABLE ? "Non raggiungibile" : p,
-                                      true);
+            const bool fail = s.last.out && s.last.status == pn::Delivery::UNREACHABLE;
+            const bool retry = s.last.out && s.last.status == pn::Delivery::RETRYING;
+            lv_obj_t* pl = List::text(pv, &font_18, fail ? ROSSO() : retry ? AMBRA() : GRIGIO3(),
+                                      fail ? "Non raggiungibile" : retry ? "Non raggiungibile: riprovo" : p, true);
             (void)pl;
             lv_obj_t* right = column(r, PX(6, 3));
             lv_obj_set_size(right, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -332,6 +333,8 @@ public:
         if (m.out && id_.kind == app::ChatKind::DIRECT) statusIcon(meta, m.status);
         if (m.out && m.status == pn::Delivery::UNREACHABLE)
             label(b, &font_16, ROSSO(), "Non raggiungibile");
+        if (m.out && m.status == pn::Delivery::RETRYING)
+            label(b, &font_16, AMBRA(), "Non raggiungibile: riprovo");  // fra 3,5 minuti
         return b;
     }
 

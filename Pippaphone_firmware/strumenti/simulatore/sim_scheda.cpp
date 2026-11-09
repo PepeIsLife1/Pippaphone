@@ -29,6 +29,7 @@ const std::vector<Note> INVIO_OK = {{1760, 60}, {2349, 90}};
 const std::vector<Note> ERRORE = {{440, 180}, {0, 40}, {330, 260}};
 const std::vector<Note> PTT_INIZIO = {{1200, 60}, {1800, 60}};
 const std::vector<Note> PTT_FINE = {{1800, 60}, {1200, 60}};
+const std::vector<Note> SQUILLO_USCITA = {{425, 1000}, {0, 3000}};
 }  // namespace suoni
 
 // ---------------------------------------------------------------- display

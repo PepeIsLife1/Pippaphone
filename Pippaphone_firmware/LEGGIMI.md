@@ -1,8 +1,8 @@
 # Pippaphone: firmware
 
 Firmware del telefono LoRa **Pippaphone** (PCB in `Pippaphone pcb/`) e dei **ripetitori** della
-rete PippaNet: LoRa a 868 MHz con SF10, messaggi cifrati end-to-end, gruppi, canale globale,
-walkie-talkie, posizione su richiesta e SOS.
+rete PippaNet: LoRa a 868 MHz con SF7, messaggi cifrati end-to-end, gruppi, canale globale,
+walkie-talkie, chiamate in diretta a turni, posizione su richiesta e SOS.
 
 > La cartella si chiama `Pippaphone_firmware` (senza spazio) perché ESP-IDF non compila in
 > percorsi che contengono spazi.
@@ -255,18 +255,36 @@ Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non anc
 Da una chat: su/giù scorre i messaggi, OK apre un vocale o una posizione, PTT registra un
 vocale, MENU mostra le opzioni (chiedi la posizione, walkie-talkie, scheda contatto...).
 
+**Chiamate in diretta.** Dalla scheda del contatto: **Chiama**. Chi è chiamato sente lo squillo e
+risponde con **CALL** (o OK), rifiuta con **END**. In chiamata si parla **a turni**: tieni premuto
+**PTT** e parla, poi lascia; quando l'altro ha finito si sente un bip. Mentre parla l'altro il PTT
+non parte. **END** riattacca. La voce arriva dopo circa 0,6–1,1 secondi. Una chiamata dura al
+massimo **3 minuti**: chi è in chiamata, e i ripetitori sul percorso, non ricevono messaggi. Chi
+ti scrive in quel momento vede "Non raggiungibile: riprovo" e il telefono rimanda il messaggio da
+solo 3,5 minuti dopo (o appena sente il tuo telefono).
+Un SOS chiude la chiamata. In chat resta una riga: chiamata fatta, ricevuta, persa o non riuscita.
+
 ## Parametri radio
 
 | | Messaggi (canale principale) | Vocali (canale voce) |
 |---|---|---|
 | Frequenza | 869,525 MHz | 869,850 MHz |
-| Banda | 125 kHz | 250 kHz |
-| SF / CR | 10 / 4:5 | 10 / 4:5 |
+| Banda | 62,5 kHz | 125 kHz |
+| SF / CR | 7 / 4:5 | 7 / 4:5 |
+| Bit rate | circa 2,7 kbit/s | circa 5,5 kbit/s |
+| Sensibilità | circa −127,5 dBm | circa −124,5 dBm |
 | Sync word | 0x6C (rete privata) | 0x6C |
 | Potenza | fino a 22 dBm, **automatica** sul telefono | 22 dBm |
 
-Tempi in aria indicativi: SMS di 160 caratteri circa 1,7 s, conferma di consegna circa 0,6 s,
-vocale di 15 secondi circa 7 pacchetti da 1,2 s per ogni salto.
+Tempi in aria indicativi: SMS di 160 caratteri circa 0,6 s, conferma di consegna circa 0,2 s,
+vocale di 15 secondi circa 7 pacchetti da 0,4 s per ogni salto, chiamata un pacchetto da 0,13–0,18
+s ogni 0,4 s di voce (0,14 s ogni 0,48 s con 2 o più ripetitori).
+
+Fino al 9 novembre 2026 la rete usava SF10 (125 kHz per i messaggi, 250 kHz per la voce): i
+pacchetti erano circa 3 volte più lunghi e la portata maggiore (4,5 dB in più). Telefoni e
+ripetitori con il firmware vecchio **non si sentono** con quelli nuovi: vanno aggiornati tutti
+insieme. Per decidere dove mettere i ripetitori c'è il pianificatore in
+`strumenti/pianificatore`.
 
 **Nota legale.** Come richiesto, il firmware non impone limiti di duty cycle né di potenza.
 In Italia e nell'UE la sottobanda 869,40–869,65 MHz permette 500 mW ERP con un duty cycle del
@@ -281,7 +299,7 @@ persi, collisioni, nodi nascosti):
 ```sh
 cd Pippaphone_firmware
 cmake -S test -B build-test && cmake --build build-test
-./build-test/pippanet_test                  # 20 test
+./build-test/pippanet_test                  # 30 test
 PN_SEED=7 ./build-test/pippanet_test        # altro seme casuale
 PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
 ```
@@ -289,8 +307,8 @@ PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
 ### Simulatore dell'interfaccia
 
 `strumenti/simulatore` compila sul PC le schermate vere, i dati veri e LVGL, con una scheda, una
-rete e un GPS finti, e salva uno screenshot di ogni schermata (34 per la PCB, 39 per il T-Deck,
-mappe comprese). Controlla anche che nessuna scritta esca dal suo riquadro. Su Windows serve
+rete e un GPS finti, e salva uno screenshot di ogni schermata (41 per la PCB, 46 per il T-Deck,
+mappe e chiamata comprese). Controlla anche che nessuna scritta esca dal suo riquadro. Su Windows serve
 MSYS2 (gcc e ninja), su Linux basta gcc:
 
 ```sh
@@ -331,8 +349,21 @@ il collegamento col browser, `rete_web.cpp` la rete finta).
 - protocollo PippaNet completo: SMS con conferme di consegna e lettura, "non raggiungibile",
   gruppi fino a 16 persone, canale globale firmato, certificati firmati dall'amministratore,
   posizione con conferma, SOS ripetuto ai contatti, vocali sul canale voce con pezzi mancanti
-  richiesti di nuovo, beacon ogni 5 minuti, assegnazione del numero via radio. I 20 test
-  passano con 40 semi diversi (reti con pacchetti persi e nodi nascosti);
+  richiesti di nuovo, beacon ogni 5 minuti, assegnazione del numero via radio. I 21 test
+  passano con 120 semi diversi a SF7 e con 40 a SF10 (reti con pacchetti persi e nodi
+  nascosti);
+- **chiamate in diretta a turni** (9 novembre 2026): protocollo (`CALL_*`, `PROTOCOLLO.md`),
+  ripetitori, audio continuo (`scheda::Audio::stream*`, `app::Voce::call*`) e schermata
+  (`ui/schermate_chiamata.cpp`). I 7 test delle chiamate (diretta, tre ripetitori, rifiutata,
+  occupato, persa, non raggiungibile, caduta, durata massima, SOS, ripetitori in parallelo, strada
+  cambiata) passano con 120 semi insieme agli altri. Il simulatore del pianificatore usa lo
+  stesso codice: con una rete ben fatta (10 dB di margine in più) in diretta 114 chiamate buone
+  su 120, con un ripetitore 98 su 112, con 2 o 3 ripetitori circa 50 buone e 35 "si capisce"
+  su 110 (7–8% di voce persa); i numeri sono in `strumenti/pianificatore/LEGGIMI.md`;
+- **messaggi rimandati più tardi**: un SMS (o un invito a un gruppo) senza conferma dopo 4
+  tentativi diventa "Non raggiungibile: riprovo" e fa un altro giro 3,5 minuti dopo, o subito se
+  si sente quel telefono; poi "Non raggiungibile". Due test (messaggio a chi è in chiamata, nuovo
+  tentativo appena si sente l'altro); i 30 test passano con 120 semi;
 - telefono e ripetitore compilano con ESP-IDF 5.5 senza avvisi nel nostro codice;
 - l'interfaccia è stata provata sul PC con una scheda e una rete finte (LVGL con
   AddressSanitizer): tutte le schermate si aprono e si usano con i tasti senza errori di
@@ -350,6 +381,12 @@ una PCB vera):
    SX1262). All'avvio il log dice se la radio risponde;
 4. **audio**: volume dell'altoparlante e sensibilità del microfono (guadagni in
    `scheda/src/audio.cpp`) e qualità di Codec2 700C;
+   **chiamate**: altoparlante sempre acceso durante la chiamata (`streamStart`), microfono e
+   altoparlante insieme sullo stesso I2S della PCB, tempo di Codec2 per decodificare 10–12 frame,
+   margine contro i ritardi (`CALL_JITTER_MS` in `app/voce.cpp`) e ritardo vero dalla bocca
+   all'orecchio. Nel simulatore la radio passa dalla ricezione alla trasmissione all'istante: sulla
+   radio vera ci vogliono alcuni millisecondi, ed è per questo che con 2 o più ripetitori i
+   pacchetti sono da 480 ms;
 5. **GPS**: velocità della seriale (9600) e frasi NMEA;
 6. **batteria**: indicatore MAX17048. Il segnale di carica ora viene dalla variazione misurata
    (`Batteria::charging()` in `scheda/src/batteria.cpp`: sì sopra 1 %/h, no sotto 0,2 %/h).

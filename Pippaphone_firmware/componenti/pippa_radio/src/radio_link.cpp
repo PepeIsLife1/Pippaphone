@@ -162,7 +162,8 @@ void RadioLink::loop() {
         if (!txBusy_ && now >= backoffUntil_ && node_->hasTx(now, channel_)) {
             const int16_t cad = g_radio->scanChannel();
             if (cad == RADIOLIB_LORA_DETECTED) {
-                backoffUntil_ = now + 100 + pn::randomBelow(600);
+                // Di solito 100-700 ms; durante una chiamata 10-30 ms (la voce non puo' aspettare).
+                backoffUntil_ = now + node_->busyBackoffMs(now, channel_);
                 startRx();
             } else if (node_->popTx(now, channel_, txFrame_)) {
                 const int16_t st = g_radio->startTransmit(txFrame_.data, txFrame_.len);

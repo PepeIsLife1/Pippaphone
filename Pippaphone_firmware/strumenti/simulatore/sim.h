@@ -33,6 +33,14 @@ struct State {
     int64_t recStartMs = 0;
     int64_t playStartMs = 0;
     uint32_t playLenMs = 0;
+    // Chiamata finta (pn::CallState): chi chiamo risponde dopo 4 s, poi parla 4 s ogni 12.
+    uint8_t call = 0;
+    uint16_t callPeer = 0;
+    bool callOut = false;
+    bool callTalking = false;
+    int64_t callT0 = 0;    // inizio (o, in chiamata, quando ci si e' sentiti)
+    int callHearing = -1;  // -1 = come capita; 0/1 = forzato (screenshot)
+    uint8_t callHops = 1;
 };
 
 State& state();

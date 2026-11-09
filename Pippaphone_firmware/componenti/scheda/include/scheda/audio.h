@@ -29,6 +29,15 @@ public:
     void stop();
     bool busy() const;
 
+    // Riproduzione continua (chiamate): i campioni a 8 kHz si aggiungono man mano con streamPush;
+    // quando mancano l'altoparlante suona silenzio. Finche' e' aperta, melodie e playPcm non partono.
+    void streamStart();
+    void streamPush(const int16_t* pcm, size_t n);
+    void streamStop();
+    bool streaming() const;
+    // Millisecondi di voce in attesa di essere suonati.
+    uint32_t streamQueuedMs() const;
+
     // Registra dal microfono a 8 kHz fino a maxMs o fino a stopRecording().
     // onFrame riceve blocchi di 320 campioni (40 ms, un frame di Codec2 700C).
     void startRecording(uint32_t maxMs, std::function<void(const int16_t*, size_t)> onFrame,
@@ -56,6 +65,7 @@ extern const std::vector<Note> INVIO_OK;    // messaggio consegnato
 extern const std::vector<Note> ERRORE;
 extern const std::vector<Note> PTT_INIZIO;  // si parla
 extern const std::vector<Note> PTT_FINE;
+extern const std::vector<Note> SQUILLO_USCITA;  // chiamata: sta squillando dall'altra parte
 }  // namespace suoni
 
 }  // namespace scheda

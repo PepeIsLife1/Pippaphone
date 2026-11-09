@@ -18,6 +18,7 @@ enum class Ev : uint8_t {
     VOICE_INCOMING,  // sta arrivando un vocale (from)
     VOICE_READY,     // vocale arrivato (from, id = file)
     VOICE_STATE,     // stato del mio vocale (id, a = pn::VoiceSendState)
+    CALL,            // chiamata in diretta (from, a = pn::CallState, id = pn::CallResult se finita)
     PROV_OFFER,      // l'amministratore mi offre un numero
     PROV_HELLO,      // (amministratore) un telefono nuovo chiede un numero
     TIME,            // ora sincronizzata

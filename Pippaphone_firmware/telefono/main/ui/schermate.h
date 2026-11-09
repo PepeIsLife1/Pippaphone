@@ -35,6 +35,14 @@ Screen* makeVoicePlayer(uint16_t from, uint32_t file, bool autoplay);
 bool walkieTakesVoice(uint16_t from);
 bool walkieRecording();
 
+// chiamata in diretta (schermate_chiamata.cpp)
+// Chiama un contatto (0 = scegli chi); la schermata resta finche' la chiamata non finisce.
+Screen* makeCall(uint16_t number);
+// Chiamata in arrivo (gia' squillante nel nodo).
+Screen* makeIncomingCall(uint16_t from);
+// C'e' una schermata di chiamata aperta (non quella che mostra l'esito di una chiamata finita).
+bool callScreenOpen();
+
 // posizione (schermate_posizione.cpp)
 Screen* makePosition();
 Screen* makePositionRequest(uint16_t from, uint32_t requestId);

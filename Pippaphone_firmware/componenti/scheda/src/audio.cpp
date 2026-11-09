@@ -2,7 +2,10 @@
 
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
+
+#include "esp_heap_caps.h"
 
 #include "driver/i2s_std.h"
 #include "esp_log.h"
@@ -34,6 +37,7 @@ const std::vector<Note> INVIO_OK = {{1760, 60}, {2349, 90}};
 const std::vector<Note> ERRORE = {{440, 180}, {0, 40}, {330, 260}};
 const std::vector<Note> PTT_INIZIO = {{1200, 60}, {1800, 60}};
 const std::vector<Note> PTT_FINE = {{1800, 60}, {1200, 60}};
+const std::vector<Note> SQUILLO_USCITA = {{425, 1000}, {0, 3000}};  // come il tono di chiamata italiano
 }  // namespace suoni
 
 namespace {
@@ -52,6 +56,12 @@ std::vector<int16_t> g_pcm;
 std::function<void()> g_pcmDone;
 std::atomic<bool> g_stop{false};
 std::atomic<bool> g_playing{false};
+
+// Riproduzione continua (chiamate): coda circolare a 8 kHz, protetta da g_lock.
+constexpr size_t STREAM_CAP = 8000 * 2;  // 2 secondi
+int16_t* g_ring = nullptr;
+size_t g_ringHead = 0, g_ringLen = 0;
+std::atomic<bool> g_streaming{false};
 
 // Stato della registrazione.
 std::atomic<bool> g_recording{false};
@@ -96,6 +106,31 @@ void playTask(void*) {
         amp(true);
         vTaskDelay(pdMS_TO_TICKS(5));
         for (;;) {
+            if (g_streaming) {
+                // Chiamata: 20 ms alla volta dalla coda, silenzio se e' vuota. La scrittura sul DMA
+                // aspetta, quindi il passo lo da' l'I2S.
+                int16_t s8[160], up[320];
+                int16_t last = 0;
+                while (g_streaming) {
+                    size_t k = 0;
+                    xSemaphoreTake(g_lock, portMAX_DELAY);
+                    while (k < 160 && g_ringLen) {
+                        s8[k++] = g_ring[g_ringHead];
+                        g_ringHead = (g_ringHead + 1) % STREAM_CAP;
+                        g_ringLen--;
+                    }
+                    xSemaphoreGive(g_lock);
+                    for (size_t j = k; j < 160; j++) s8[j] = 0;
+                    for (size_t j = 0; j < 160; j++) {
+                        // 8 kHz -> 16 kHz: il campione di mezzo e' la media con il precedente.
+                        up[2 * j] = int16_t((int32_t(last) + s8[j]) / 2);
+                        up[2 * j + 1] = s8[j];
+                        last = s8[j];
+                    }
+                    writeMono16k(up, 320, audio().volume());
+                }
+                continue;
+            }
             xSemaphoreTake(g_lock, portMAX_DELAY);
             std::vector<Note> notes = g_notes;
             std::vector<int16_t> pcm;
@@ -146,7 +181,7 @@ void playTask(void*) {
                 }
             } while (loop && !g_stop && !notes.empty());
             xSemaphoreTake(g_lock, portMAX_DELAY);
-            const bool more = !g_notes.empty() || !g_pcm.empty();
+            const bool more = !g_notes.empty() || !g_pcm.empty() || g_streaming;
             xSemaphoreGive(g_lock);
             if (!more) break;
         }
@@ -310,7 +345,7 @@ bool Audio::begin() {
         ESP_LOGE(TAG, "I2S del microfono non disponibile");
     }
     amp(false);
-    xTaskCreatePinnedToCore(playTask, "audio_out", 4096, nullptr, 8, &g_playTask, 1);
+    xTaskCreatePinnedToCore(playTask, "audio_out", 6144, nullptr, 8, &g_playTask, 1);
     xTaskCreatePinnedToCore(recTask, "audio_in", 16384, nullptr, 9, &g_recTask, 1);
     return mic;
 }
@@ -335,13 +370,14 @@ bool Audio::begin() {
     i2s_channel_init_std_mode(g_rx, &std);
     i2s_channel_enable(g_tx);
     amp(false);
-    xTaskCreatePinnedToCore(playTask, "audio_out", 4096, nullptr, 8, &g_playTask, 1);
+    xTaskCreatePinnedToCore(playTask, "audio_out", 6144, nullptr, 8, &g_playTask, 1);
     xTaskCreatePinnedToCore(recTask, "audio_in", 16384, nullptr, 9, &g_recTask, 1);
     return true;
 }
 #endif
 
 void Audio::play(const std::vector<Note>& notes, bool loop) {
+    if (g_streaming) return;  // durante una chiamata si sente solo la chiamata
     xSemaphoreTake(g_lock, portMAX_DELAY);
     g_stop = true;  // interrompe cio' che sta suonando
     g_notes = notes;
@@ -351,6 +387,10 @@ void Audio::play(const std::vector<Note>& notes, bool loop) {
 }
 
 void Audio::playPcm(std::vector<int16_t> pcm, std::function<void()> done) {
+    if (g_streaming) {
+        if (done) done();
+        return;
+    }
     xSemaphoreTake(g_lock, portMAX_DELAY);
     g_stop = true;
     g_pcm = std::move(pcm);
@@ -371,6 +411,47 @@ void Audio::stop() {
 }
 
 bool Audio::busy() const { return g_playing; }
+
+void Audio::streamStart() {
+    if (!g_ring) {
+        g_ring = static_cast<int16_t*>(heap_caps_malloc(STREAM_CAP * sizeof(int16_t), MALLOC_CAP_SPIRAM));
+        if (!g_ring) g_ring = static_cast<int16_t*>(malloc(STREAM_CAP * sizeof(int16_t)));
+        if (!g_ring) {
+            ESP_LOGE(TAG, "niente memoria per l'audio della chiamata");
+            return;
+        }
+    }
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    g_ringHead = g_ringLen = 0;
+    g_stop = true;  // interrompe squilli e melodie
+    g_loop = false;
+    g_notes.clear();
+    g_pcm.clear();
+    g_streaming = true;
+    xSemaphoreGive(g_lock);
+    xTaskNotifyGive(g_playTask);
+}
+
+void Audio::streamPush(const int16_t* pcm, size_t n) {
+    if (!g_streaming || !g_ring) return;
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    for (size_t i = 0; i < n && g_ringLen < STREAM_CAP; i++) {
+        g_ring[(g_ringHead + g_ringLen) % STREAM_CAP] = pcm[i];
+        g_ringLen++;
+    }
+    xSemaphoreGive(g_lock);
+}
+
+void Audio::streamStop() {
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    g_streaming = false;
+    g_ringHead = g_ringLen = 0;
+    xSemaphoreGive(g_lock);
+}
+
+bool Audio::streaming() const { return g_streaming; }
+
+uint32_t Audio::streamQueuedMs() const { return uint32_t(g_ringLen / (RATE / 1000)); }
 
 void Audio::startRecording(uint32_t maxMs, std::function<void(const int16_t*, size_t)> onFrame,
                            std::function<void()> onEnd) {

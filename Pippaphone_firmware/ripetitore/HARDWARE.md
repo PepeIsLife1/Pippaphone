@@ -207,8 +207,9 @@ quando torna la corrente, chiudi il ponticello JP3 (sempre acceso).
 
 ## Dove metterli
 
-- In alto: tetti, pali, colline. La portata a SF10 dipende quasi solo dalla vista libera tra le
-  antenne. Tra due ripetitori in vista si possono coprire diversi km.
+- In alto: tetti, pali, colline. La portata a SF7 dipende quasi solo dalla vista libera tra le
+  antenne. Tra due ripetitori in vista si possono coprire diversi km; in città, dietro i
+  palazzi, molto meno. Prima di montarli prova i punti con `strumenti/pianificatore`.
 - Ogni ripetitore deve sentire almeno un altro ripetitore. Sulle schede con lo schermo lo dice
   la pagina "vicini diretti"; dalla console, `strade` e `info`.
 - Numerali a mano (`numero 1`, `numero 2`...) così sul telefono il nome del ripetitore dice

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pianificatore",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["strumenti/pianificatore/server.js"],
+      "port": 8787
+    }
+  ]
+}

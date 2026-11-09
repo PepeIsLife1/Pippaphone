@@ -7,6 +7,7 @@
 
 #include "app/aggiorna.h"
 #include "app/dati.h"
+#include "app/eventi.h"
 #include "app/memoria.h"
 #include "app/rete.h"
 #include "app/voce.h"
@@ -259,10 +260,77 @@ void Rete::onGroupInvite(const pn::GroupInfo&, pn::Addr) {}
 void Rete::onVoiceIncoming(pn::Addr, const pn::VoiceReq&) {}
 void Rete::onVoice(pn::Addr, pn::Codec, const std::vector<uint8_t>&, uint16_t, uint32_t) {}
 void Rete::onVoiceState(pn::Addr, uint32_t, pn::VoiceSendState) {}
+void Rete::onCallState(pn::Addr, pn::CallState, pn::CallResult) {}
+void Rete::onCallVoice(pn::Addr, uint8_t, uint8_t, const uint8_t*, size_t, uint8_t, const uint8_t*, size_t, uint8_t, bool) {}
 void Rete::onCertLearned(const pn::Cert&) {}
 void Rete::onProvisionOffer(const pn::Cert&, const pn::Key32&) {}
 void Rete::onProvisionHello(uint64_t, const pn::ProvHello&, const pn::RxInfo&) {}
 void Rete::onTimeSync(uint32_t) {}
+
+// ---------------------------------------------------------------- chiamata (finta)
+
+bool Rete::call(uint16_t to) {
+    auto& s = sim::state();
+    if (s.call) return false;
+    s.call = uint8_t(pn::CallState::DIALING);
+    s.callPeer = to;
+    s.callOut = true;
+    s.callTalking = false;
+    s.callT0 = sim::nowMs();
+    return true;
+}
+
+void Rete::answerCall() {
+    auto& s = sim::state();
+    if (s.call != uint8_t(pn::CallState::INCOMING)) return;
+    s.call = uint8_t(pn::CallState::ACTIVE);
+    s.callT0 = sim::nowMs() + 800;  // la strada si apre in meno di un secondo
+}
+
+void Rete::endCall() {
+    auto& s = sim::state();
+    if (!s.call) return;
+    const uint16_t peer = s.callPeer;
+    s.call = 0;
+    s.callTalking = false;
+    post({Ev::CALL, {ChatKind::DIRECT, peer}, peer, uint32_t(pn::CallResult::ENDED), int32_t(pn::CallState::IDLE)});
+}
+
+bool Rete::callTalk(bool on) {
+    auto& s = sim::state();
+    if (s.call != uint8_t(pn::CallState::ACTIVE)) return false;
+    if (on && callInfo().hearing) return false;
+    s.callTalking = on;
+    return true;
+}
+
+Rete::CallInfo Rete::callInfo() {
+    auto& s = sim::state();
+    const int64_t now = sim::nowMs();
+    // Chi chiama: squilla dopo 1 s, risponde dopo 4, ci si sente dopo 4,8.
+    if (s.callOut && s.call && s.call != uint8_t(pn::CallState::ACTIVE)) {
+        const int64_t t = now - s.callT0;
+        s.call = uint8_t(t < 1000 ? pn::CallState::DIALING
+                         : t < 4000 ? pn::CallState::RINGBACK
+                         : t < 4800 ? pn::CallState::CONNECTING
+                                    : pn::CallState::ACTIVE);
+        if (s.call == uint8_t(pn::CallState::ACTIVE)) s.callT0 += 4800;
+    }
+    CallInfo ci;
+    ci.state = pn::CallState(s.call);
+    ci.peer = s.callPeer;
+    ci.outgoing = s.callOut;
+    ci.hops = s.callHops;
+    if (ci.state == pn::CallState::ACTIVE) {
+        ci.elapsedMs = now > s.callT0 ? uint32_t(now - s.callT0) : 0;
+        ci.leftMs = ci.elapsedMs < pn::CALL_MAX_MS ? pn::CALL_MAX_MS - ci.elapsedMs : 0;
+        ci.talking = s.callTalking;
+        ci.hearing = !s.callTalking && (s.callHearing >= 0 ? s.callHearing == 1 : ci.elapsedMs % 12000 >= 2000 &&
+                                                                                      ci.elapsedMs % 12000 < 6000);
+        ci.lostPct = ci.elapsedMs > 6000 ? 3 : 0;
+    }
+    return ci;
+}
 
 // Uguali a quelle di rete.cpp.
 std::string formatLatLon(int32_t latE7, int32_t lonE7) {

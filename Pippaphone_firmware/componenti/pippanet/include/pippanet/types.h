@@ -45,6 +45,11 @@ enum class Type : uint8_t {
     VOICE_ACCEPT = 0x21,  // il destinatario accetta: si passa al canale voce
     VOICE_DATA = 0x22,    // pezzo di vocale (canale voce)
     VOICE_END = 0x23,     // fine vocale / pezzi mancanti (canale voce)
+    CALL_REQ = 0x24,      // chiamata in diretta: "ti chiamo" (canale messaggi)
+    CALL_RING = 0x25,     // "squilla" oppure "occupato" (canale messaggi)
+    CALL_ANSWER = 0x26,   // "ho risposto": chi lo ripete passa al canale voce
+    CALL_VOICE = 0x27,    // voce della chiamata (canale voce)
+    CALL_END = 0x28,      // fine o rifiuto della chiamata (su tutti e due i canali)
     ADMIN_FIRST = 0x30,   // 0x30..0x3F riservati al programma di amministrazione dei ripetitori
     ADMIN_LAST = 0x3F,
 };
@@ -56,7 +61,10 @@ inline Priority priorityOf(Type t) {
     switch (t) {
         case Type::SOS: return Priority::Emergency;
         case Type::DM_ACK:
-        case Type::VOICE_ACCEPT: return Priority::Urgent;  // VOICE_END no: deve uscire dopo i dati
+        case Type::VOICE_ACCEPT:
+        case Type::CALL_RING:
+        case Type::CALL_ANSWER:
+        case Type::CALL_VOICE: return Priority::Urgent;  // VOICE_END no: deve uscire dopo i dati
         case Type::BEACON:
         case Type::PROV_HELLO: return Priority::Background;
         default: return Priority::Normal;
@@ -75,10 +83,18 @@ inline bool isPairwise(Type t) {
         case Type::VOICE_REQ:
         case Type::VOICE_ACCEPT:
         case Type::VOICE_DATA:
-        case Type::VOICE_END: return true;
+        case Type::VOICE_END:
+        case Type::CALL_REQ:
+        case Type::CALL_RING:
+        case Type::CALL_ANSWER:
+        case Type::CALL_VOICE:
+        case Type::CALL_END: return true;
         default: return false;
     }
 }
+
+// Pacchetti della chiamata in diretta.
+inline bool isCall(Type t) { return uint8_t(t) >= uint8_t(Type::CALL_REQ) && uint8_t(t) <= uint8_t(Type::CALL_END); }
 
 // Pacchetti che i ripetitori non ritrasmettono mai (solo vicini diretti).
 inline bool isLocalOnly(Type t) {

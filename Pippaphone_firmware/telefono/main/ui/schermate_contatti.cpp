@@ -113,15 +113,16 @@ public:
             const char* text;
         };
         const Item items[] = {{IC_BUSTA, "Scrivi un messaggio"},
+                              {IC_TELEFONO, "Chiama"},
                               {IC_MICROFONO, "Walkie-talkie"},
                               {IC_PUNTO, "Chiedi la posizione"},
                               {IC_MATITA, known_ ? "Modifica" : "Aggiungi alla rubrica"},
                               {IC_CESTINO, "Elimina"}};
-        const int n = known_ ? 5 : 4;
+        const int n = known_ ? 6 : 5;
         for (int i = 0; i < n; i++) {
             lv_obj_t* r = list_.addRow(PX(56, 32));
-            List::text(r, &icone_22, i == 4 ? ROSSO() : AMBRA(), items[i].icon);
-            List::text(r, &font_22, i == 4 ? ROSSO() : BIANCO(), items[i].text, true);
+            List::text(r, &icone_22, i == 5 ? ROSSO() : AMBRA(), items[i].icon);
+            List::text(r, &font_22, i == 5 ? ROSSO() : BIANCO(), items[i].text, true);
         }
         list_.focus(sel_);
     }
@@ -137,13 +138,14 @@ public:
         sel_ = list_.focused();
         switch (sel_) {
             case 0: push(makeChat({app::ChatKind::DIRECT, number_})); break;
-            case 1: push(makeWalkie(number_)); break;
-            case 2:
+            case 1: push(makeCall(number_)); break;
+            case 2: push(makeWalkie(number_)); break;
+            case 3:
                 app::rete().requestPosition(number_);
                 toast("Posizione chiesta", name_ + " deve accettare");
                 break;
-            case 3: push(makeEditContact(number_)); break;
-            case 4: {
+            case 4: push(makeEditContact(number_)); break;
+            case 5: {
                 const uint16_t n = number_;
                 ask("Eliminare " + name_ + "?", "La conversazione resta.", {"Elimina", "Annulla"}, [n](int i) {
                     if (i != 0) return;
