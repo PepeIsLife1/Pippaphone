@@ -14,7 +14,7 @@ Pippaphone_firmware/
 ├── telefono/            firmware del telefono (ESP32-S3R8, display 480×480, tastiera)
 │   ├── main/app/        rete, dati, vocali, aggiornamento via Wi-Fi
 │   └── main/ui/         interfaccia grafica (LVGL): schermate, widget, font
-├── ripetitore/          firmware del ripetitore (+ HARDWARE.md: scheda proposta)
+├── ripetitore/          firmware del ripetitore (+ HARDWARE.md: le schede su cui gira)
 ├── componenti/
 │   ├── pippanet/        protocollo di rete (indipendente dall'hardware, testato sul PC)
 │   ├── pippa_radio/     SX1262 con RadioLib, CAD prima di trasmettere, cambio canale
@@ -44,8 +44,8 @@ idf.py build
 idf.py -p /dev/ttyACM0 flash monitor   # su Windows: -p COM5
 
 cd ../ripetitore
-idf.py menuconfig                  # "Pippaphone ripetitore": PCB del telefono oppure scheda E22
-idf.py build flash monitor
+idf.py build flash monitor         # ripetitore sulla PCB del telefono; per Heltec WiFi LoRa 32 V3,
+                                   # LilyGO T3-S3 e scheda E22 vedi ripetitore/HARDWARE.md
 ```
 
 La porta USB-C della PCB è collegata alla USB interna dell'ESP32-S3: non servono adattatori.
@@ -207,10 +207,13 @@ Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non anc
    potenza 22      → dBm dell'SX1262 (con l'E22-900M30S escono circa 30 dBm)
    info            → stato, batteria, pacchetti ripetuti
    strade          → telefoni che sa raggiungere e da che parte
+   schermo 120     → (Heltec, T3-S3) secondi di schermo acceso; 0 = sempre; "gira" = capovolto
    riavvia
    ```
 
    I ripetitori non hanno bisogno di chiavi: ripetono pacchetti che non possono leggere.
+   Sulla Heltec V3 e sulla LilyGO T3-S3 lo schermo mostra stato, vicini diretti e radio (tasto
+   PRG o BOOT): per scegliere dove montarli non serve il computer.
 
 ## Uso del telefono
 
@@ -326,7 +329,12 @@ una PCB vera):
   vera;
 - il **programma di amministrazione dei ripetitori** (a parte, come deciso): i tipi di
   pacchetto 0x30–0x3F sono già riservati e il ripetitore li passa a una funzione apposita;
-- la **scheda del ripetitore** (proposta in `ripetitore/HARDWARE.md`).
+- **ripetitori su Heltec WiFi LoRa 32 V3** (in casa) **e LilyGO T3-S3** (solari, fuori): il
+  firmware è scritto dagli schemi dei produttori e compila, ma non è ancora stato provato sulle
+  schede vere. Da provare: radio (TCXO e commutatore d'antenna), schermo (orientamento, se serve
+  `schermo gira`), tasto, console (UART col CP2102 sulla Heltec), tensione della batteria e sonno
+  per batteria scarica sulla T3-S3, consumi. Poi, per i ripetitori solari, il light sleep
+  dell'ESP32-S3. La scheda con l'E22-900M30S (1 W) resta una proposta (`ripetitore/HARDWARE.md`).
 
 ## Licenze
 

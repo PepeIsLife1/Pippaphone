@@ -1,0 +1,6 @@
+# Heltec WiFi LoRa 32 V3 (e cloni): si aggiunge a sdkconfig.defaults, vedi HARDWARE.md.
+CONFIG_RIPETITORE_SCHEDA_HELTEC_V3=y
+# La USB-C e' collegata a un convertitore CP2102 sulla UART0, non alla USB interna dell'ESP32-S3.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+# ESP32-S3FN8: 8 MB di flash.
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y

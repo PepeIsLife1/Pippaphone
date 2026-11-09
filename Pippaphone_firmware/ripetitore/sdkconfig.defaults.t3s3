@@ -1,0 +1,5 @@
+# LilyGO T3-S3 V1.2 con SX1262: si aggiunge a sdkconfig.defaults, vedi HARDWARE.md.
+# (USB interna dell'ESP32-S3 come la PCB; flash da 4 MB.)
+CONFIG_RIPETITORE_SCHEDA_T3S3=y
+# Va a pannello solare: con la CPU a 80 MHz consuma qualche mA in meno, e al ripetitore bastano.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_80=y
