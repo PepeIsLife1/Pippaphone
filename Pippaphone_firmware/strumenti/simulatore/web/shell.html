@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pippaphone T-Deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Banco di prova: il T-Deck a sinistra, il manuale dei tasti a destra (sotto, sugli schermi stretti).
+   Caratteri e colori vengono dal firmware: Atkinson Hyperlegible, IBM Plex Mono, AMBRA e ROSSO. */
+:root {
+  --bg: #e7ebee;
+  --panel: #f6f8f9;
+  --ink: #161a1e;
+  --muted: #56616b;
+  --line: #cbd3d9;
+  --accent: #946000;
+  --accent-soft: #ffb00030;
+  --danger: #b92525;
+  --ok: #17803a;
+  --kbd-bg: #ffffff;
+  --kbd-line: #b6c0c8;
+  /* il telefono e' un oggetto: uguale nei due temi */
+  --case-hi: #3b4047;
+  --case-lo: #1b1e22;
+  --case-edge: #0d0f11;
+  --keycap: #1c1f23;
+  --legend: #eef1f3;
+  --legend-alt: #ffb000;
+  --glass: #050607;
+  --sos: #ff4040;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101317; --panel: #171b20; --ink: #e6eaee; --muted: #9ba6b0; --line: #2a3138;
+    --accent: #ffb000; --accent-soft: #ffb0001f; --danger: #ff6b6b; --ok: #45cf74;
+    --kbd-bg: #222830; --kbd-line: #3a434c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101317; --panel: #171b20; --ink: #e6eaee; --muted: #9ba6b0; --line: #2a3138;
+  --accent: #ffb000; --accent-soft: #ffb0001f; --danger: #ff6b6b; --ok: #45cf74;
+  --kbd-bg: #222830; --kbd-line: #3a434c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { max-width: 1440px; margin: 0 auto 18px; display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: flex-end; justify-content: space-between; }
+h1 { font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lead { margin: 6px 0 0; color: var(--muted); max-width: 64ch; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: .92rem; display: inline-flex; gap: 8px; align-items: center; }
+.pill[aria-pressed="false"] { color: var(--muted); }
+.pill:hover { border-color: var(--accent); }
+
+.page { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 28px; align-items: start; }
+@media (max-width: 1000px) { .page { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------- il T-Deck */
+.bench { min-width: 0; display: grid; gap: 10px; justify-items: center; position: sticky; top: max(12px, env(safe-area-inset-top, 0px)); }
+@media (max-width: 1000px) { .bench { position: static; } }
+.device { container: dev / inline-size; width: min(100%, 880px); position: relative; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.case {
+  --u: calc(100cqw / 118);
+  position: relative; display: grid; justify-items: center;
+  padding: calc(var(--u) * 5) calc(var(--u) * 6) calc(var(--u) * 5.5);
+  border-radius: calc(var(--u) * 7);
+  background: linear-gradient(160deg, var(--case-hi), var(--case-lo) 58%);
+  box-shadow: inset 0 calc(var(--u) * .4) 0 #ffffff14, inset 0 calc(var(--u) * -.6) 0 #00000066,
+              0 calc(var(--u) * 2) calc(var(--u) * 5) #00000059, 0 0 0 calc(var(--u) * .5) var(--case-edge);
+}
+@container dev (max-width: 559px) {
+  .case { --u: calc(100cqw / 80); padding: calc(var(--u) * 4) calc(var(--u) * 3) calc(var(--u) * 4.5); border-radius: calc(var(--u) * 5); }
+}
+.bezel {
+  width: calc(var(--u) * 66); padding: calc(var(--u) * 3.2) calc(var(--u) * 4.2);
+  background: var(--glass); border-radius: calc(var(--u) * 2.6); position: relative;
+  box-shadow: inset 0 0 0 calc(var(--u) * .35) #2a2e33, 0 calc(var(--u) * .3) 0 #ffffff12;
+}
+@container dev (max-width: 559px) { .bezel { width: calc(var(--u) * 74); padding: calc(var(--u) * 1.6); } }
+.lcd { position: relative; aspect-ratio: 4 / 3; width: 100%; background: #000; overflow: hidden; border-radius: calc(var(--u) * .4); }
+.lcd canvas { display: block; width: 100%; height: 100%; transition: opacity .3s, filter .3s; }
+.lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(125deg, #ffffff12 0%, #ffffff05 34%, transparent 35%); }
+.lcd .msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 1em; color: #9aa3ab; font: 600 calc(var(--u) * 2) / 1.4 var(--font-mono); }
+.grille { position: absolute; top: calc(var(--u) * 1.3); left: 50%; translate: -50% 0; display: flex; gap: calc(var(--u) * .7); }
+.grille i { width: calc(var(--u) * .6); height: calc(var(--u) * .6); border-radius: 50%; background: #0a0b0c; box-shadow: 0 calc(var(--u) * .1) 0 #ffffff14; }
+
+.ballzone { position: relative; width: calc(var(--u) * 32); height: calc(var(--u) * 15); display: grid; place-items: center; }
+.ring { width: calc(var(--u) * 9); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, #0c0e10 55%, #2b3036 100%);
+  box-shadow: inset 0 calc(var(--u) * .3) calc(var(--u) * .6) #000a, 0 calc(var(--u) * .2) 0 #ffffff14; }
+.ball { width: calc(var(--u) * 6.4); aspect-ratio: 1; border-radius: 50%; border: 0; padding: 0; cursor: grab; touch-action: none;
+  background: radial-gradient(circle at 36% 30%, #f4f6f8 0 6%, #a3abb2 22%, #4a5158 56%, #1d2125 100%);
+  box-shadow: 0 calc(var(--u) * .25) calc(var(--u) * .5) #000c; transition: transform .08s; }
+.ball:active { cursor: grabbing; }
+.ball.press { transform: scale(.92); }
+.ball.r0 { transform: translateY(calc(var(--u) * -.25)); } .ball.r1 { transform: translateY(calc(var(--u) * .25)); }
+.ball.r2 { transform: translateX(calc(var(--u) * -.25)); } .ball.r3 { transform: translateX(calc(var(--u) * .25)); }
+.tb { position: absolute; border: 0; background: none; padding: 0; cursor: pointer; display: grid; place-items: center;
+  width: calc(var(--u) * 5); height: calc(var(--u) * 3); color: #ffffff4d; touch-action: manipulation; }
+.tb svg { width: calc(var(--u) * 1.6); height: calc(var(--u) * 1.6); }
+.tb:hover, .tb.on { color: var(--legend-alt); }
+.tb.d0 { top: 0; left: 50%; translate: -50% 0; } .tb.d1 { bottom: 0; left: 50%; translate: -50% 0; }
+.tb.d2 { left: calc(50% - var(--u) * 10.5); top: 50%; translate: 0 -50%; height: calc(var(--u) * 5); width: calc(var(--u) * 4); }
+.tb.d3 { right: calc(50% - var(--u) * 10.5); top: 50%; translate: 0 -50%; height: calc(var(--u) * 5); width: calc(var(--u) * 4); }
+
+.kbd { --kb: 0; width: calc(var(--u) * 70.1); display: grid; grid-template-columns: repeat(10, 1fr); gap: calc(var(--u) * 1.15) calc(var(--u) * .9); position: relative; }
+@container dev (max-width: 559px) { .kbd { width: calc(var(--u) * 74); } }
+.kbd::before { content: ""; position: absolute; inset: calc(var(--u) * -1.6); border-radius: calc(var(--u) * 2.6); pointer-events: none;
+  background: radial-gradient(ellipse at 50% 55%, #ffffff30, transparent 72%); opacity: var(--kb); transition: opacity .25s; }
+.key { position: relative; height: calc(var(--u) * 5.4); border: 0; padding: 0; cursor: pointer; touch-action: manipulation;
+  border-radius: calc(var(--u) * 1.4) calc(var(--u) * 1.4) calc(var(--u) * 1.9) calc(var(--u) * 1.9);
+  background: linear-gradient(#2f3339, var(--keycap) 62%); color: var(--legend);
+  box-shadow: 0 calc(var(--u) * .35) 0 #08090a, inset 0 calc(var(--u) * .2) 0 #ffffff1a;
+  font: 700 calc(var(--u) * 2.3) / 1 var(--font-ui); display: grid; place-items: center;
+  transition: transform .05s, box-shadow .05s, background .05s; }
+.key .m { transition: opacity .15s; text-shadow: 0 0 calc(var(--u) * 1.4 * var(--kb)) rgb(255 255 255 / calc(.9 * var(--kb))); }
+.key .m.s { font: 600 calc(var(--u) * 1.6) / 1 var(--font-mono); letter-spacing: .03em; }
+.key .m svg { width: calc(var(--u) * 2.3); height: calc(var(--u) * 2.3); display: block; filter: drop-shadow(0 0 calc(var(--u) * .8 * var(--kb)) #fff); }
+.key .a { position: absolute; top: calc(var(--u) * .45); right: calc(var(--u) * .65); font: 600 calc(var(--u) * 1.45) / 1 var(--font-mono); color: var(--legend-alt); transition: color .15s; }
+.key.down { transform: translateY(calc(var(--u) * .3)); background: linear-gradient(#25292e, #16181b);
+  box-shadow: 0 calc(var(--u) * .05) 0 #08090a, inset 0 0 0 calc(var(--u) * .22) #ffffff2e; }
+.key.latched { box-shadow: 0 0 0 calc(var(--u) * .35) var(--legend-alt), 0 calc(var(--u) * .05) 0 #08090a; }
+.key.space { grid-column: span 6; }
+.key .fn, .tb .fn { position: absolute; left: 50%; bottom: calc(100% + var(--u) * .5); translate: -50% 0; z-index: 2; pointer-events: none;
+  padding: calc(var(--u) * .35) calc(var(--u) * .6); border-radius: calc(var(--u) * .6); white-space: nowrap;
+  background: var(--legend-alt); color: #1d1400; font: 700 calc(var(--u) * 1.35) / 1 var(--font-mono);
+  opacity: 0; transform: translateY(calc(var(--u) * .6)); transition: opacity .12s, transform .12s; }
+.tb.d1 .fn { bottom: auto; top: calc(100% - var(--u) * .2); }
+.case.sym-on .fn { opacity: 1; transform: none; }
+.case.alt-on .key .a { color: #fff2c2; text-shadow: 0 0 calc(var(--u) * .9) var(--legend-alt); }
+.case.alt-on .key .m { opacity: .4; }
+.case.sos-on .key.shift { box-shadow: 0 0 0 calc(var(--u) * .4) var(--sos), 0 calc(var(--u) * .05) 0 #08090a; }
+.sosbar { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 3; pointer-events: none; padding: calc(var(--u) * .7) calc(var(--u) * 1.8);
+  border-radius: 999px; background: var(--sos); color: #fff; font: 700 calc(var(--u) * 1.6) / 1 var(--font-mono); white-space: nowrap; }
+
+.switch { position: absolute; left: calc(var(--u) * -1.2); top: calc(var(--u) * 18); width: calc(var(--u) * 2.2); height: calc(var(--u) * 8);
+  border: 0; padding: 0; border-radius: calc(var(--u) * .8); background: #0b0c0e; cursor: pointer; box-shadow: inset 0 0 0 calc(var(--u) * .25) #2d3237; }
+.switch::after { content: ""; position: absolute; left: calc(var(--u) * .35); right: calc(var(--u) * .35); top: calc(var(--u) * .4);
+  height: calc(var(--u) * 3.4); border-radius: calc(var(--u) * .5); background: linear-gradient(#d3d9de, #7b848c); transition: top .15s; }
+.switch[aria-pressed="false"]::after { top: calc(var(--u) * 4.2); }
+.engr { position: absolute; color: #ffffff47; font: 600 calc(var(--u) * 1.15) / 1 var(--font-mono); letter-spacing: .08em; pointer-events: none; }
+.engr.on { left: calc(var(--u) * 1.6); top: calc(var(--u) * 18.6); } .engr.off { left: calc(var(--u) * 1.6); top: calc(var(--u) * 24.4); }
+@container dev (max-width: 559px) { .engr.on, .engr.off { display: none; } }
+.rst { position: absolute; top: calc(var(--u) * 1.4); left: calc(var(--u) * 8); width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2);
+  border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: radial-gradient(circle, #3c4248, #121417); box-shadow: inset 0 0 0 calc(var(--u) * .2) #000; }
+.engr.rst-l { top: calc(var(--u) * 1.95); left: calc(var(--u) * 11); }
+.usb { position: absolute; bottom: calc(var(--u) * -.5); left: 50%; translate: -50% 0; width: calc(var(--u) * 9); height: calc(var(--u) * 1); border-radius: calc(var(--u) * .5); background: #050607; }
+
+.bench-help { margin: 0; max-width: 880px; font-size: .9rem; color: var(--muted); text-align: center; text-wrap: balance; }
+.bench-help b { color: var(--ink); font-weight: 700; }
+.status { margin: 0; font: 600 .85rem var(--font-mono); color: var(--muted); min-height: 1.4em; text-align: center; }
+.status.warn { color: var(--danger); }
+
+/* ---------------------------------------------------------------- il manuale */
+.manual { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 16px; min-width: 0; }
+.card h2 { font-size: 1.08rem; margin: 0 0 4px; letter-spacing: .005em; }
+.card > p { margin: 4px 0 8px; color: var(--muted); font-size: .93rem; }
+table.keys { width: 100%; border-collapse: collapse; font-size: .94rem; }
+table.keys th { text-align: left; font: 600 .72rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 0 6px; }
+table.keys td { padding: 7px 8px 7px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+table.keys td.act { padding-right: 0; text-align: right; white-space: nowrap; }
+td.fn { font-weight: 700; }
+td.fn small { display: block; font-weight: 400; color: var(--muted); font-size: .82rem; line-height: 1.3; }
+td.how { color: var(--muted); font-size: .9rem; line-height: 1.7; }
+kbd.ic svg { width: .95em; height: .95em; vertical-align: -0.12em; }
+kbd { font: 600 .8rem / 1 var(--font-mono); background: var(--kbd-bg); color: var(--ink); border: 1px solid var(--kbd-line); border-bottom-width: 2px; border-radius: 5px; padding: 3px 6px; white-space: nowrap; }
+.try { border: 1px solid var(--line); background: transparent; border-radius: 7px; padding: 4px 10px; cursor: pointer; font: 600 .8rem var(--font-mono); color: var(--accent); }
+.try:hover { border-color: var(--accent); background: var(--accent-soft); }
+.try:active, .try.held { background: var(--accent); color: #1d1400; border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 2.1rem; align-content: flex-start; }
+.chip { font: 600 .82rem / 1 var(--font-mono); padding: 6px 9px; border-radius: 7px; background: var(--accent-soft); border: 1px solid var(--accent); color: var(--ink); }
+.chip.up { background: transparent; border-color: var(--line); color: var(--muted); }
+.chips .empty { color: var(--muted); font-size: .9rem; }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 380px) { .actions { grid-template-columns: minmax(0, 1fr); } }
+.actions button { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 8px 10px; cursor: pointer; font-size: .9rem; line-height: 1.3; }
+.actions button:hover { border-color: var(--accent); }
+.actions button.danger { color: var(--danger); }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: .92rem; }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--accent); width: 1rem; height: 1rem; }
+.note { font-size: .86rem; color: var(--muted); margin: 10px 0 0; }
+footer { max-width: 1440px; margin: 22px auto 0; font-size: .85rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Pippaphone su T-Deck Plus</h1>
+    <p class="lead">Il firmware vero del telefono, compilato per il browser: interfaccia, dati e tastiera sono lo stesso codice che caricherai sul T-Deck. La rete, il GPS e la batteria sono finti.</p>
+  </div>
+  <div class="tools">
+    <button class="pill" id="sound" type="button" aria-pressed="true">Suono acceso</button>
+    <button class="pill" id="reboot" type="button">Ricomincia da capo</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="bench" aria-label="T-Deck Plus simulato">
+    <div class="device">
+      <div class="case" id="case">
+        <button class="switch" id="sw" type="button" aria-pressed="true" aria-label="Interruttore di accensione" title="Interruttore: acceso / spento"></button>
+        <span class="engr on">ON</span><span class="engr off">OFF</span>
+        <button class="rst" id="rst" type="button" aria-label="RST: riavvia" title="RST: riavvia"></button>
+        <span class="engr rst-l">RST</span>
+        <div class="bezel">
+          <div class="grille" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="lcd" id="lcdbox">
+            <canvas id="lcd" width="320" height="240" aria-label="Schermo del telefono"></canvas>
+            <div class="msg" id="lcdmsg">accensione…</div>
+          </div>
+        </div>
+        <div class="ballzone">
+          <button class="tb d0" type="button" data-dir="0" aria-label="Trackball su"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 2 9 8H1z" fill="currentColor"/></svg><span class="fn">VOL+</span></button>
+          <button class="tb d1" type="button" data-dir="1" aria-label="Trackball giù"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8 1 2h8z" fill="currentColor"/></svg><span class="fn">VOL−</span></button>
+          <button class="tb d2" type="button" data-dir="2" aria-label="Trackball a sinistra"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5 8 1v8z" fill="currentColor"/></svg></button>
+          <button class="tb d3" type="button" data-dir="3" aria-label="Trackball a destra"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M8 5 2 9V1z" fill="currentColor"/></svg></button>
+          <div class="ring"><button class="ball" id="ball" type="button" aria-label="Trackball: trascina per muovere, clic per OK"></button></div>
+        </div>
+        <div class="kbd" id="kbd"></div>
+        <div class="usb" aria-hidden="true"></div>
+      </div>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+    <p class="bench-help"><b>Clic</b> su un tasto: lo premi. <b>Clic destro</b>: resta premuto finché non lo riclicchi, per le combinazioni (sul telefono: due dita insieme). <b>Trackball</b>: trascinalo, usa la rotella o le frecce; clic = OK. Interruttore a sinistra: accende e spegne.</p>
+  </section>
+
+  <aside class="manual">
+    <section class="card">
+      <h2>Tasti e combinazioni</h2>
+      <p>I tasti del Pippaphone che il T-Deck non ha. La barra in basso sullo schermo mostra sempre quelli giusti.</p>
+      <table class="keys">
+        <thead><tr><th>Pippaphone</th><th>Sul T-Deck</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="fn">MENU</td><td class="how"><kbd>sym</kbd> + <kbd>M</kbd></td><td class="act"><button class="try" type="button" data-try="menu">Prova</button></td></tr>
+          <tr><td class="fn">CALL<small>messaggi, scrivi al contatto</small></td><td class="how"><kbd>sym</kbd> + <kbd>C</kbd></td><td class="act"><button class="try" type="button" data-try="call">Prova</button></td></tr>
+          <tr><td class="fn">END<small>schermata principale</small></td><td class="how"><kbd>sym</kbd> + <kbd>H</kbd></td><td class="act"><button class="try" type="button" data-try="end">Prova</button></td></tr>
+          <tr><td class="fn">BACK<small>indietro</small></td><td class="how"><kbd>⌫</kbd> quando non c’è testo da cancellare</td><td class="act"><button class="try" type="button" data-try="back">Prova</button></td></tr>
+          <tr><td class="fn">OK</td><td class="how">clic del trackball</td><td class="act"><button class="try" type="button" data-try="ok">Prova</button></td></tr>
+          <tr><td class="fn">Frecce</td><td class="how">trackball</td><td class="act"><button class="try" type="button" data-try="down">Giù</button></td></tr>
+          <tr><td class="fn">PTT<small>walkie-talkie, vocali</small></td><td class="how">tieni premuto <kbd class="ic" aria-label="microfono"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg></kbd></td><td class="act"><button class="try" type="button" id="ptt">Tieni premuto</button></td></tr>
+          <tr><td class="fn">VOL+ / VOL−</td><td class="how"><kbd>sym</kbd> + trackball su / giù</td><td class="act"><button class="try" type="button" data-try="volup">+</button> <button class="try" type="button" data-try="voldn">−</button></td></tr>
+          <tr><td class="fn">SOS</td><td class="how">i due <kbd>⇧</kbd> insieme per 3 secondi</td><td class="act"><button class="try" type="button" data-try="sos">Prova</button></td></tr>
+          <tr><td class="fn">PWR<small>schermo spento / acceso</small></td><td class="how"><kbd>sym</kbd> + <kbd>spazio</kbd></td><td class="act"><button class="try" type="button" data-try="pwr">Prova</button></td></tr>
+          <tr><td class="fn">PWR tenuto<small>spegni il telefono</small></td><td class="how"><kbd>sym</kbd> + <kbd>spazio</kbd> per 1,5 secondi</td><td class="act"><button class="try" type="button" data-try="off">Prova</button></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Scrivere</h2>
+      <table class="keys">
+        <tbody>
+          <tr><td class="fn">Maiuscola</td><td class="how"><kbd>⇧</kbd>, due volte per tutto maiuscolo</td><td class="act"><button class="try" type="button" data-try="shift">Prova</button></td></tr>
+          <tr><td class="fn">Numeri e simboli<small>quelli gialli sui tasti</small></td><td class="how"><kbd>alt</kbd> + tasto, due volte <kbd>alt</kbd> per bloccarlo</td><td class="act"><button class="try" type="button" data-try="alt1">alt+W = 1</button></td></tr>
+          <tr><td class="fn">Accenti e altri simboli</td><td class="how"><kbd>sym</kbd> da solo, poi trackball e OK</td><td class="act"><button class="try" type="button" data-try="sym">Prova</button></td></tr>
+          <tr><td class="fn">Lo zero</td><td class="how"><kbd>alt</kbd> + <kbd class="ic" aria-label="microfono"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg></kbd>; nei campi di soli numeri basta <kbd class="ic" aria-label="microfono"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg></kbd></td><td class="act"></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Cosa riceve il telefono</h2>
+      <p>I tasti come li passa all’interfaccia il codice della tastiera del T-Deck: <kbd>sym</kbd> + <kbd>M</kbd> arriva come MENU.</p>
+      <div class="chips" id="chips"><span class="empty">Premi un tasto…</span></div>
+    </section>
+
+    <section class="card">
+      <h2>Fai succedere qualcosa</h2>
+      <p>La rete finta risponde da sola: conferme di consegna e di lettura, risposte ai messaggi e ai vocali, posizioni, conferme dell’SOS. Luca Verdi è fuori portata: i messaggi per lui non arrivano.</p>
+      <div class="actions">
+        <button type="button" data-cmd="1">Messaggio da Marco</button>
+        <button type="button" data-cmd="2">Messaggio nel gruppo</button>
+        <button type="button" data-cmd="3">Messaggio sul canale globale</button>
+        <button type="button" data-cmd="7">Vocale da Marco</button>
+        <button type="button" data-cmd="4">Giulia chiede dove sei</button>
+        <button type="button" data-cmd="8">Ti aggiungono a un gruppo</button>
+        <button type="button" data-cmd="5" class="danger">SOS da Giulia</button>
+        <button type="button" data-cmd="6">Giulia annulla l’SOS</button>
+        <button type="button" data-cmd="9">Batteria quasi scarica</button>
+        <button type="button" data-cmd="10">Batteria di nuovo al 76%</button>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="tg-carica" data-cmd="11"> In carica</label>
+        <label><input type="checkbox" id="tg-gps" data-cmd="12" checked> GPS agganciato</label>
+        <label><input type="checkbox" id="tg-rip" data-cmd="13" checked> Ripetitore in vista</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Dalla tastiera del computer</h2>
+      <table class="keys">
+        <tbody>
+          <tr><td class="fn">Lettere, spazio, <kbd>⌫</kbd></td><td class="how">gli stessi tasti; le maiuscole con <kbd>⇧</kbd></td></tr>
+          <tr><td class="fn">Numeri e simboli</td><td class="how">scrivili: il simulatore preme <kbd>alt</kbd> per te</td></tr>
+          <tr><td class="fn">Frecce, Invio</td><td class="how">trackball e suo clic (OK)</td></tr>
+          <tr><td class="fn">Tab tenuto</td><td class="how"><kbd>sym</kbd>: Tab+M è MENU, Tab+C è CALL, Tab+H è END, Tab+spazio è PWR, Tab+frecce il volume</td></tr>
+          <tr><td class="fn">Ctrl tenuto</td><td class="how"><kbd class="ic" aria-label="microfono"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg></kbd>: parli col walkie-talkie</td></tr>
+          <tr><td class="fn">I due Shift</td><td class="how">tenuti insieme 3 secondi: SOS</td></tr>
+        </tbody>
+      </table>
+      <div class="toggles"><label><input type="checkbox" id="tg-pc" checked> Usa la tastiera del computer</label></div>
+    </section>
+  </aside>
+</main>
+
+<footer>Il corpo del T-Deck è disegnato a memoria: le proporzioni sono indicative. Interfaccia, dati e tastiera sono il codice del ramo tdeck-plus compilato in WebAssembly; i vocali durano davvero ma sono muti.</footer>
+
+<script>
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s);
+  const caseEl = $('#case'), kbd = $('#kbd'), lcd = $('#lcd'), lcdMsg = $('#lcdmsg'), statusEl = $('#status');
+  const MIC_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z"/></svg>';
+
+  // Tasti come sul T-Deck: [id, scritta, scritta gialla (con alt), colonna, riga]. Colonna e riga
+  // sono quelle della matrice del C3 (MATRIX in scheda/src/tdeck/tastiera_tdeck.cpp).
+  const ROWS = [
+    [['Q','Q','#',0,0],['W','W','1',0,1],['E','E','2',1,0],['R','R','3',2,0],['T','T','(',2,2],['Y','Y',')',3,2],['U','U','_',3,0],['I','I','-',4,2],['O','O','+',4,0],['P','P','@',1,3]],
+    [['A','A','*',0,3],['S','S','4',1,1],['D','D','5',1,2],['F','F','6',2,6],['G','G','/',2,1],['H','H',':',3,1],['J','J',';',3,6],['K','K',"'",4,6],['L','L','"',4,1],['BKSP','⌫','',4,3]],
+    [['ALT','alt','',0,4],['Z','Z','7',1,5],['X','X','8',1,4],['C','C','9',2,5],['V','V','?',2,4],['B','B','!',3,4],['N','N',',',3,5],['M','M','.',4,5],['DOLLAR','$','',4,4],['ENTER','⏎','',3,3]],
+    [['LSHIFT','⇧','',1,6],['MIC','','0',0,6],['SPACE','spazio','',0,5],['SYM','sym','',0,2],['RSHIFT','⇧','',2,3]],
+  ];
+  const SYM_FN = { M: 'MENU', C: 'CALL', H: 'END', SPACE: 'PWR' };
+  const LABEL = { BKSP: 'cancella', ALT: 'alt', DOLLAR: 'dollaro', ENTER: 'invio', LSHIFT: 'shift sinistro', RSHIFT: 'shift destro', MIC: 'microfono e zero', SPACE: 'spazio', SYM: 'sym' };
+  const ALT_OF = {};
+  const K = {};
+
+  const state = { ready: false, off: false, sleep: false, pc: true, lastPointer: 'mouse' };
+  const mod = () => (state.ready && !state.off ? window.Module : null);
+
+  // ---------------------------------------------------------------- tastiera
+  for (const row of ROWS) for (const [id, main, alt, col, r] of row) {
+    if (alt) ALT_OF[alt] = id;
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.tabIndex = -1;
+    el.className = 'key' + (id === 'SPACE' ? ' space' : '') + (id.endsWith('SHIFT') ? ' shift' : '');
+    el.setAttribute('aria-label', 'Tasto ' + (LABEL[id] || main));
+    const small = main.length > 1 && !/^[⌫⏎⇧]$/.test(main);
+    el.innerHTML = (id === 'MIC' ? '<span class="m">' + MIC_SVG + '</span>' : '<span class="m' + (small ? ' s' : '') + '">' + main + '</span>') +
+      (alt ? '<span class="a">' + alt + '</span>' : '') + (SYM_FN[id] ? '<span class="fn">' + SYM_FN[id] + '</span>' : '');
+    kbd.appendChild(el);
+    K[id] = { el, col, row: r, src: new Set(), at: 0 };
+    bindKey(el, id);
+  }
+
+  function setMatrix(k, on) { const m = mod(); if (m) m._web_matrix(k.col, k.row, on ? 1 : 0); }
+  function isDown(id) { return K[id].src.size > 0; }
+  function press(id, src) {
+    const k = K[id];
+    if (state.off) return;
+    const was = k.src.size > 0;
+    k.src.add(src);
+    if (!was) { k.at = performance.now(); setMatrix(k, true); k.el.classList.add('down'); mods(); }
+  }
+  function release(id, src) {
+    const k = K[id];
+    if (!k.src.delete(src) || k.src.size) return;
+    const done = () => { if (k.src.size) return; setMatrix(k, false); k.el.classList.remove('down'); mods(); };
+    const held = performance.now() - k.at;
+    if (held < 45) setTimeout(done, 45 - held); else done();
+  }
+  function latch(id) {
+    const k = K[id];
+    if (k.src.has('latch')) { k.el.classList.remove('latched'); release(id, 'latch'); }
+    else if (!state.off) { k.el.classList.add('latched'); press(id, 'latch'); }
+  }
+  function releaseAll() {
+    for (const id in K) { const k = K[id]; k.el.classList.remove('latched'); for (const s of [...k.src]) release(id, s); }
+  }
+  let sosTimer = null;
+  function mods() {
+    caseEl.classList.toggle('sym-on', isDown('SYM'));
+    caseEl.classList.toggle('alt-on', isDown('ALT'));
+    const sos = isDown('LSHIFT') && isDown('RSHIFT');
+    caseEl.classList.toggle('sos-on', sos);
+    const bar = $('#sosbar');
+    if (sos && !sosTimer) {
+      const t0 = performance.now();
+      const b = document.createElement('div');
+      b.className = 'sosbar'; b.id = 'sosbar';
+      kbd.appendChild(b);
+      const tick = () => { const left = 3 - (performance.now() - t0) / 1000; b.textContent = left > 0 ? 'SOS fra ' + Math.ceil(left) + '…' : 'SOS'; };
+      tick(); sosTimer = setInterval(tick, 100);
+    } else if (!sos && sosTimer) { clearInterval(sosTimer); sosTimer = null; if (bar) bar.remove(); }
+  }
+  function bindKey(el, id) {
+    el.addEventListener('pointerdown', e => {
+      state.lastPointer = e.pointerType;
+      if (e.button === 2) return;           // il clic destro e' "tieni premuto" (contextmenu)
+      e.preventDefault();
+      sound.unlock();
+      if (K[id].src.has('latch')) { latch(id); return; }
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      press(id, 'p' + e.pointerId);
+    });
+    const up = e => release(id, 'p' + e.pointerId);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      if (state.lastPointer === 'touch') return;  // col dito si tengono premuti due tasti insieme
+      sound.unlock();
+      latch(id);
+    });
+  }
+
+  // ---------------------------------------------------------------- trackball
+  const ball = $('#ball');
+  function roll(dir) {
+    const m = mod();
+    if (m) m._web_trackball(dir, 1);
+    ball.classList.remove('r0', 'r1', 'r2', 'r3'); void ball.offsetWidth; ball.classList.add('r' + dir);
+    clearTimeout(roll.t); roll.t = setTimeout(() => ball.classList.remove('r' + dir), 90);
+  }
+  // Clic del trackball, in fila con gli altri tasti: il firmware legge il clic prima degli scatti,
+  // quindi una freccia e un Invio battuti insieme arriverebbero al contrario.
+  function clickBall() {
+    run([() => {
+      const m = mod();
+      if (!m) return 0;
+      ball.classList.add('press');
+      m._web_click(1);
+      return 110;
+    }, () => {
+      const m = mod();
+      if (m) m._web_click(0);
+      ball.classList.remove('press');
+      return 40;
+    }]);
+  }
+  const rollLater = dir => run([() => (roll(dir), 30)]);
+  let drag = null;
+  ball.addEventListener('pointerdown', e => {
+    e.preventDefault(); sound.unlock();
+    try { ball.setPointerCapture(e.pointerId); } catch (_) {}
+    drag = { x: e.clientX, y: e.clientY, ax: 0, ay: 0, moved: false };
+  });
+  ball.addEventListener('pointermove', e => {
+    if (!drag) return;
+    drag.ax += e.clientX - drag.x; drag.ay += e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+    const step = 16;
+    while (Math.abs(drag.ay) >= step) { roll(drag.ay > 0 ? 1 : 0); drag.ay -= Math.sign(drag.ay) * step; drag.moved = true; }
+    while (Math.abs(drag.ax) >= step) { roll(drag.ax > 0 ? 3 : 2); drag.ax -= Math.sign(drag.ax) * step; drag.moved = true; }
+  });
+  const endDrag = e => { if (!drag) return; const moved = drag.moved; drag = null; if (!moved && e.type === 'pointerup') clickBall(); };
+  ball.addEventListener('pointerup', endDrag);
+  ball.addEventListener('pointercancel', endDrag);
+  let wheel = 0;
+  const onWheel = e => {
+    e.preventDefault();
+    wheel += Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : 0;
+    while (Math.abs(wheel) >= 60) { roll(wheel > 0 ? 1 : 0); wheel -= Math.sign(wheel) * 60; }
+  };
+  ball.addEventListener('wheel', onWheel, { passive: false });
+  $('#lcdbox').addEventListener('wheel', onWheel, { passive: false });
+  document.querySelectorAll('.tb').forEach(b => {
+    const dir = +b.dataset.dir;
+    let rep = null;
+    const stop = () => { clearTimeout(rep); clearInterval(rep); rep = null; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault(); sound.unlock();
+      try { b.setPointerCapture(e.pointerId); } catch (_) {}
+      b.classList.add('on'); roll(dir);
+      rep = setTimeout(() => { rep = setInterval(() => roll(dir), 120); }, 380);
+    });
+    b.addEventListener('pointerup', stop); b.addEventListener('pointercancel', stop); b.addEventListener('lostpointercapture', stop);
+  });
+
+  // ---------------------------------------------------------------- sequenze (guida e tastiera del PC)
+  const seq = { q: [], busy: false };
+  function run(steps) { seq.q.push(...steps); if (!seq.busy) next(); }
+  function next() {
+    const s = seq.q.shift();
+    if (!s) { seq.busy = false; return; }
+    seq.busy = true;
+    setTimeout(next, s() || 0);
+  }
+  const P = (id, ms = 50) => () => (press(id, 'seq'), ms);
+  const R = (id, ms = 50) => () => (release(id, 'seq'), ms);
+  const tap = (id, ms = 70) => [P(id, ms), R(id)];
+  const combo = (a, b, ms = 120) => [P(a, 60), P(b, ms), R(b, 50), R(a, 80)];
+  const TRY = {
+    menu: () => run(combo('SYM', 'M')),
+    call: () => run(combo('SYM', 'C')),
+    end: () => run(combo('SYM', 'H')),
+    back: () => run(tap('BKSP')),
+    ok: () => clickBall(),
+    down: () => rollLater(1),
+    volup: () => run([P('SYM', 80), () => (roll(0), 150), R('SYM', 60)]),
+    voldn: () => run([P('SYM', 80), () => (roll(1), 150), R('SYM', 60)]),
+    sos: () => run([P('LSHIFT', 40), P('RSHIFT', 3400), R('LSHIFT', 30), R('RSHIFT', 50)]),
+    pwr: () => run(combo('SYM', 'SPACE', 160)),
+    off: () => run(combo('SYM', 'SPACE', 1900)),
+    shift: () => run(tap('LSHIFT')),
+    alt1: () => run([...tap('ALT'), ...tap('W')]),
+    sym: () => run(tap('SYM')),
+  };
+  document.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => { sound.unlock(); TRY[b.dataset.try](); b.blur(); }));
+  const ptt = $('#ptt');
+  ptt.addEventListener('pointerdown', e => { e.preventDefault(); sound.unlock(); try { ptt.setPointerCapture(e.pointerId); } catch (_) {} ptt.classList.add('held'); press('MIC', 'ptt'); });
+  const pttUp = () => { ptt.classList.remove('held'); release('MIC', 'ptt'); };
+  ptt.addEventListener('pointerup', pttUp); ptt.addEventListener('pointercancel', pttUp); ptt.addEventListener('lostpointercapture', pttUp);
+
+  // ---------------------------------------------------------------- tastiera del computer
+  const pcShift = { ShiftLeft: false, ShiftRight: false };
+  let shiftAlone = false, pcSos = false, ctrlWait = null;
+  const ACCENTI = 'àèéìòùÀÈÉÌÒÙ';
+  function onKeyDown(e) {
+    if (!state.pc || state.off || e.target.closest('input, textarea, select')) return;
+    const code = e.code, key = e.key;
+    sound.unlock();
+    if (code === 'Tab') { e.preventDefault(); if (!e.repeat) press('SYM', 'pc:Tab'); return; }
+    if (code === 'AltRight' || key === 'AltGraph') { clearTimeout(ctrlWait); ctrlWait = null; return; }  // AltGr = Ctrl+Alt su Windows
+    if (code === 'ControlLeft' || code === 'ControlRight') {
+      if (!e.repeat && !ctrlWait) ctrlWait = setTimeout(() => { ctrlWait = null; press('MIC', 'pc:Ctrl'); }, 40);
+      return;
+    }
+    if (code === 'ShiftLeft' || code === 'ShiftRight') {
+      if (e.repeat) return;
+      pcShift[code] = true; shiftAlone = true;
+      if (pcShift.ShiftLeft && pcShift.ShiftRight && !pcSos) { pcSos = true; press('LSHIFT', 'pc:sos'); press('RSHIFT', 'pc:sos'); }
+      return;
+    }
+    const altGr = e.getModifierState && e.getModifierState('AltGraph');
+    if (!altGr && (e.ctrlKey || e.metaKey || e.altKey)) return;  // scorciatoie del browser
+    shiftAlone = false;
+    const arrows = { ArrowUp: 0, ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3 };
+    if (code in arrows) { e.preventDefault(); rollLater(arrows[code]); return; }
+    if (code === 'Enter') { e.preventDefault(); if (!e.repeat) clickBall(); return; }
+    if (code === 'NumpadEnter') { e.preventDefault(); run(tap('ENTER')); return; }
+    if (code === 'Backspace') { e.preventDefault(); run(tap('BKSP')); return; }
+    if (code === 'Space') {
+      e.preventDefault();
+      if (e.repeat) return;
+      if (isDown('SYM')) press('SPACE', 'pc:Space'); else run(tap('SPACE'));
+      return;
+    }
+    if (key.length !== 1) return;
+    if (/^[a-zA-Z]$/.test(key)) {
+      e.preventDefault();
+      if (e.repeat) return;
+      const id = key.toUpperCase();
+      if (isDown('SYM')) { press(id, 'pc:' + code); return; }  // combinazione: Tab tenuto + lettera
+      run(key === id ? [P('LSHIFT', 50), P(id, 70), R(id, 50), R('LSHIFT', 50)] : tap(id));
+      return;
+    }
+    if (key === '$') { e.preventDefault(); run(tap('DOLLAR')); return; }
+    if (ALT_OF[key]) { e.preventDefault(); run([...tap('ALT'), ...tap(ALT_OF[key])]); return; }
+    if (ACCENTI.includes(key)) { e.preventDefault(); say('Gli accenti si scrivono con sym (Tab): si apre il riquadro, scegli col trackball e premi OK.'); }
+  }
+  function onKeyUp(e) {
+    const code = e.code;
+    if (code === 'Tab') release('SYM', 'pc:Tab');
+    else if (code === 'ControlLeft' || code === 'ControlRight') { clearTimeout(ctrlWait); ctrlWait = null; release('MIC', 'pc:Ctrl'); }
+    else if (code === 'Space') release('SPACE', 'pc:Space');
+    else if (code === 'ShiftLeft' || code === 'ShiftRight') {
+      pcShift[code] = false;
+      if (pcSos) { pcSos = false; release('LSHIFT', 'pc:sos'); release('RSHIFT', 'pc:sos'); }
+      else if (shiftAlone && state.pc && !state.off) run(tap('LSHIFT'));
+      shiftAlone = false;
+    } else if (/^Key[A-Z]$/.test(code)) release(code.slice(3), 'pc:' + code);
+  }
+  addEventListener('keydown', onKeyDown);
+  addEventListener('keyup', onKeyUp);
+  addEventListener('blur', () => { for (const id in K) for (const s of [...K[id].src]) if (s.startsWith('pc:')) release(id, s); });
+  $('#tg-pc').addEventListener('change', e => { state.pc = e.target.checked; });
+
+  // ---------------------------------------------------------------- suoni (note del firmware)
+  const sound = {
+    on: true, ctx: null, timer: null, nodes: [],
+    unlock() {
+      if (!this.on) return;
+      try {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      } catch (_) { this.ctx = null; }
+    },
+    play(notes, loop, volume) {
+      this.stop();
+      if (!this.on || state.off || !this.ctx) return;
+      const c = this.ctx, g = Math.pow(volume / 10, 2) * 0.16;
+      let t = c.currentTime + 0.02, total = 0;
+      for (const [hz, ms] of notes) {
+        const d = ms / 1000;
+        if (hz && g > 0) {
+          const o = c.createOscillator(), a = c.createGain();
+          o.type = 'square'; o.frequency.value = hz;
+          a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + 0.004);
+          a.gain.setValueAtTime(g, Math.max(t + 0.004, t + d - 0.006)); a.gain.linearRampToValueAtTime(0, t + d);
+          o.connect(a).connect(c.destination); o.start(t); o.stop(t + d + 0.01);
+          this.nodes.push(o);
+        }
+        t += d; total += ms;
+      }
+      if (loop) this.timer = setTimeout(() => this.play(notes, loop, volume), total);
+    },
+    stop() {
+      clearTimeout(this.timer); this.timer = null;
+      for (const o of this.nodes) { try { o.stop(); } catch (_) {} }
+      this.nodes = [];
+    },
+  };
+  const soundBtn = $('#sound');
+  try { if (localStorage.getItem('pippaphone-suono') === '0') sound.on = false; } catch (_) {}
+  const showSound = () => { soundBtn.setAttribute('aria-pressed', String(sound.on)); soundBtn.textContent = sound.on ? 'Suono acceso' : 'Suono spento'; };
+  showSound();
+  soundBtn.addEventListener('click', () => {
+    sound.on = !sound.on;
+    if (!sound.on) sound.stop(); else sound.unlock();
+    try { localStorage.setItem('pippaphone-suono', sound.on ? '1' : '0'); } catch (_) {}
+    showSound();
+  });
+
+  // ---------------------------------------------------------------- accensione, interruttore, RST
+  const sw = $('#sw');
+  const reboot = () => location.reload();
+  sw.addEventListener('click', () => {
+    if (state.off) { reboot(); return; }
+    state.off = true;
+    sw.setAttribute('aria-pressed', 'false');
+    releaseAll(); sound.stop(); keyLight(0);
+    lcd.style.opacity = 0;
+    lcdMsg.hidden = true;
+    say('Interruttore su OFF: il T-Deck è senza corrente. Rimettilo su ON per riaccenderlo.');
+  });
+  $('#rst').addEventListener('click', reboot);
+  $('#reboot').addEventListener('click', reboot);
+
+  // ---------------------------------------------------------------- fai succedere qualcosa
+  document.querySelectorAll('.actions [data-cmd]').forEach(b => b.addEventListener('click', () => {
+    sound.unlock(); const m = mod(); if (m) m._web_cmd(+b.dataset.cmd, 0); b.blur();
+  }));
+  document.querySelectorAll('.toggles input[data-cmd]').forEach(c => c.addEventListener('change', () => {
+    const m = mod(); if (m) m._web_cmd(+c.dataset.cmd, c.checked ? 1 : 0); c.blur();
+  }));
+
+  // ---------------------------------------------------------------- tasti arrivati all'interfaccia
+  const chips = $('#chips');
+  const NAMES = { SU: '↑', GIU: '↓', SINISTRA: '←', DESTRA: '→', SPACE: 'spazio', ENTER: '⏎ invio', BKSP: '⌫ cancella / BACK',
+    LSHIFT: '⇧ maiuscola', RSHIFT: '⇧ maiuscola', SYM: 'SYM: accenti', '0/MIC': 'microfono: PTT o 0', 'VOL-': 'VOL−', SOS: 'SOS (tenuto)' };
+  function keyEvent(name, down) {
+    const label = NAMES[name] || name;
+    if (down) {
+      const empty = chips.querySelector('.empty'); if (empty) empty.remove();
+      const c = document.createElement('span');
+      c.className = 'chip'; c.textContent = label; c.dataset.k = name;
+      chips.prepend(c);
+      while (chips.children.length > 12) chips.lastChild.remove();
+    } else {
+      const c = chips.querySelector('.chip:not(.up)[data-k="' + CSS.escape(name) + '"]');
+      if (c) c.classList.add('up');
+    }
+  }
+
+  // ---------------------------------------------------------------- schermo e luci
+  const ctx = lcd.getContext('2d');
+  const img = ctx.createImageData(320, 240);
+  const R5 = new Uint8Array(32), G6 = new Uint8Array(64);
+  for (let i = 0; i < 32; i++) R5[i] = (i * 527 + 23) >> 6;
+  for (let i = 0; i < 64; i++) G6[i] = (i * 259 + 33) >> 6;
+  let light = 0;
+  function keyLight(level) { light = level; kbd.style.setProperty('--kb', state.off ? 0 : (level / 255).toFixed(3)); }
+  function say(text, warn) { statusEl.textContent = text; statusEl.classList.toggle('warn', !!warn); }
+
+  window.PippaSim = {
+    frame(px, w, h) {
+      if (state.off) return;
+      const d = img.data;
+      for (let i = 0, j = 0, n = w * h; i < n; i++, j += 4) {
+        const v = px[i];
+        d[j] = R5[v >> 11]; d[j + 1] = G6[(v >> 5) & 63]; d[j + 2] = R5[v & 31]; d[j + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    },
+    backlight(p) {
+      if (state.off) return;
+      lcd.style.opacity = p ? 1 : 0;
+      lcd.style.filter = 'brightness(' + (0.35 + 0.65 * p / 100).toFixed(3) + ')';
+    },
+    keyLight,
+    keyEvent,
+    play(notes, loop, volume) { sound.play(notes, loop, volume); },
+    stopSound() { sound.stop(); },
+    powerOff() {
+      state.sleep = true;
+      sound.stop(); keyLight(0); lcd.style.opacity = 0;
+      say('Spento: il T-Deck dorme. Interruttore su OFF e poi su ON (o RST) per riaccenderlo.');
+    },
+    restart: reboot,
+    ready() { state.ready = true; lcdMsg.hidden = true; say('Acceso · tastiera in modo raw (firmware del C3 dal giugno 2025)'); },
+    crashed(what) {
+      state.ready = false;
+      lcdMsg.hidden = false;
+      lcdMsg.textContent = 'Il simulatore si è fermato. Ricarica la pagina.';
+      say('Errore: ' + what, true);
+    },
+  };
+})();
+</script>
+<script>
+var Module = {
+  print: function (t) { console.log(t); },
+  printErr: function (t) { console.warn(t); },
+  onAbort: function (what) { if (window.PippaSim) PippaSim.crashed(String(what)); },
+};
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

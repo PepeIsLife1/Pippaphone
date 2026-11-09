@@ -29,9 +29,17 @@ struct State {
     uint32_t playingFile = 0;
     uint32_t playedMs = 0;
     std::set<uint16_t> sosAcked = {101};
+    // Simulatore nel browser: vocali che durano davvero.
+    int64_t recStartMs = 0;
+    int64_t playStartMs = 0;
+    uint32_t playLenMs = 0;
 };
 
 State& state();
+
+// Rubrica, chat e gruppi di prova; tile finti per la mappa (labels = coordinate scritte sopra).
+void fillData();
+void makeTiles(bool labels);
 
 // Tempo simulato (ms dall'avvio).
 int64_t nowMs();

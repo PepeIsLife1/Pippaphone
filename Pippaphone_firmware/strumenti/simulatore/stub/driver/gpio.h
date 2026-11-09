@@ -8,3 +8,24 @@ typedef enum {
     GPIO_NUM_39, GPIO_NUM_40, GPIO_NUM_41, GPIO_NUM_42, GPIO_NUM_43, GPIO_NUM_44, GPIO_NUM_45, GPIO_NUM_46,
     GPIO_NUM_47, GPIO_NUM_48,
 } gpio_num_t;
+
+// Quello che usa la tastiera del T-Deck (tastiera_tdeck.cpp): lo implementa il simulatore nel
+// browser (web/sim_web.cpp), dove il trackball e il suo clic arrivano dalla pagina.
+#include <stdint.h>
+typedef enum { GPIO_MODE_DISABLE = 0, GPIO_MODE_INPUT = 1, GPIO_MODE_OUTPUT = 2 } gpio_mode_t;
+typedef enum { GPIO_PULLUP_DISABLE = 0, GPIO_PULLUP_ENABLE = 1 } gpio_pullup_t;
+typedef enum { GPIO_PULLDOWN_DISABLE = 0, GPIO_PULLDOWN_ENABLE = 1 } gpio_pulldown_t;
+typedef enum { GPIO_INTR_DISABLE = 0, GPIO_INTR_POSEDGE, GPIO_INTR_NEGEDGE, GPIO_INTR_ANYEDGE } gpio_int_type_t;
+typedef struct {
+    uint64_t pin_bit_mask;
+    gpio_mode_t mode;
+    gpio_pullup_t pull_up_en;
+    gpio_pulldown_t pull_down_en;
+    gpio_int_type_t intr_type;
+} gpio_config_t;
+typedef void (*gpio_isr_t)(void*);
+#define ESP_INTR_FLAG_IRAM (1 << 10)
+int gpio_config(const gpio_config_t* cfg);
+int gpio_install_isr_service(int flags);
+int gpio_isr_handler_add(gpio_num_t pin, gpio_isr_t fn, void* arg);
+int gpio_get_level(gpio_num_t pin);

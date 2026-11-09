@@ -87,7 +87,7 @@ void buildStatusBar(lv_obj_t* parent) {
 
 void buildHints(const std::vector<Hint>& hints) {
     std::string key;
-    for (const auto& h : hints) key += std::string(h.key) + "|" + h.text + "|";
+    for (const auto& h : hints) key += std::string(TXT(h.key, tasto(h.key))) + "|" + h.text + "|";  // segue il modo
     if (key == g_hintsKey) return;
     g_hintsKey = key;
     lv_obj_clean(g_hints);

@@ -53,8 +53,12 @@ public:
     void service();
     QueueHandle_t queue() const { return q_; }
     void sleep() {}
-    // true = modo raw (tasti premuti e rilasciati), false = ripiego coi caratteri.
-    bool rawMode() const { return mode_ == RAW; }
+    // true = modo raw (tasti premuti e rilasciati), false = ripiego coi caratteri. Il modo si capisce al
+    // primo tasto premuto: fino ad allora si suppone raw (il firmware del C3 di oggi), cosi' la barra in
+    // basso mostra subito le combinazioni giuste.
+    bool rawMode() const { return mode_ != CHARS; }
+    // false finche' non e' arrivato il primo tasto.
+    bool modeKnown() const { return mode_ != UNKNOWN; }
     // Luce della tastiera 0..255 (comando 0x01 del C3).
     void light(uint8_t level);
 

@@ -125,7 +125,8 @@ InitResult init(bool full) {
     r.audio = audio().begin();
     r.gnss = gnss().begin();
     ESP_LOGI(TAG, "tastiera %d (%s), batteria %d, display %d, audio %d, gnss %d", r.tastiera,
-             tastiera().rawMode() ? "raw" : "modo da capire o caratteri", r.batteria, r.display, r.audio, r.gnss);
+             !tastiera().modeKnown() ? "modo da capire al primo tasto" : tastiera().rawMode() ? "raw" : "caratteri",
+             r.batteria, r.display, r.audio, r.gnss);
     return r;
 }
 

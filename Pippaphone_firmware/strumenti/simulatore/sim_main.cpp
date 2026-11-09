@@ -32,7 +32,11 @@ State& state() {
     return s;
 }
 
+#ifdef SIM_WEB
+uint32_t unixNow() { return uint32_t(std::time(nullptr)); }  // nel browser: l'ora vera
+#else
 uint32_t unixNow() { return 1794231120u + uint32_t(nowMs() / 1000); }
+#endif
 
 void key(Key k, bool pressed) {
     scheda::KeyEvent e{k, pressed};
@@ -140,10 +144,6 @@ void shot(const std::string& name, std::function<void()> action) {
 
 void setOutput(const std::string& dir) { g_out = dir; }
 
-}  // namespace sim
-
-namespace {
-
 using app::ChatId;
 using app::ChatKind;
 using app::Message;
@@ -221,6 +221,63 @@ void fillData() {
     // Vocale salvato: codec, durata (ms), pezzi persi.
     app::writeFile("/dati/voce/1.c2", {1, 0xE8, 0x1C, 0, 0, 0, 0, 0, 0, 0, 0});
 }
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// Tile finti per provare la mappa (niente download): sfondo, strade, un fiume, il bordo del tile
+// e, se labels, le coordinate z/x/y scritte sopra, cosi' si vede subito se sono messi al posto giusto.
+void makeTiles(bool labels) {
+    static const uint8_t DIGITS[11][5] = {{7, 5, 5, 5, 7}, {2, 6, 2, 2, 7}, {7, 1, 7, 4, 7}, {7, 1, 7, 1, 7},
+                                          {5, 5, 7, 1, 1}, {7, 4, 7, 1, 7}, {7, 4, 7, 5, 7}, {7, 1, 1, 1, 1},
+                                          {7, 5, 7, 5, 7}, {7, 5, 7, 1, 7}, {1, 1, 2, 4, 4}};  // 0-9 e '/'
+    for (int z = 13; z <= 15; z++) {
+        const double n = double(1 << z);
+        const double lat = 45.4642 * M_PI / 180;
+        const int cx = int((9.19 + 180) / 360 * n);
+        const int cy = int((1 - std::log(std::tan(lat) + 1 / std::cos(lat)) / M_PI) / 2 * n);
+        for (int x = cx - 2; x <= cx + 2; x++)
+            for (int y = cy - 2; y <= cy + 2; y++) {
+                std::vector<uint8_t> rgb(256 * 256 * 3);
+                for (int py = 0; py < 256; py++)
+                    for (int px = 0; px < 256; px++) {
+                        uint8_t r = 236, g = 232, b = 222;
+                        const int gx = x * 256 + px, gy = y * 256 + py;  // coordinate globali: strade continue
+                        if ((gx / 40 + gy / 56) % 7 == 0) r = 200, g = 226, b = 190;          // parchi
+                        if (gx % 96 < 5 || gy % 128 < 5) r = 255, g = 255, b = 255;          // strade
+                        if (std::abs((gx - 2 * gy) % 900) < 9) r = 150, g = 190, b = 235;   // fiume
+                        if (labels && (px == 0 || py == 0)) r = 180, g = 170, b = 160;       // bordo del tile
+                        uint8_t* p = &rgb[(size_t(py) * 256 + px) * 3];
+                        p[0] = r;
+                        p[1] = g;
+                        p[2] = b;
+                    }
+                const std::string label = std::to_string(z) + "/" + std::to_string(x) + "/" + std::to_string(y);
+                for (size_t i = 0; labels && i < label.size(); i++) {
+                    const int d = label[i] == '/' ? 10 : label[i] - '0';
+                    for (int ry = 0; ry < 5; ry++)
+                        for (int rx = 0; rx < 3; rx++)
+                            if (DIGITS[d][ry] & (4 >> rx))
+                                for (int s = 0; s < 4; s++) {
+                                    uint8_t* p = &rgb[(size_t(8 + ry * 2 + s / 2) * 256 + 8 + i * 8 + rx * 2 + s % 2) * 3];
+                                    p[0] = 120;
+                                    p[1] = 90;
+                                    p[2] = 60;
+                                }
+                }
+                const std::string dir = std::string(app::MAPPE) + "/" + std::to_string(z) + "/" + std::to_string(x);
+                std::filesystem::create_directories(dir);
+                savePngRgb(dir + "/" + std::to_string(y) + ".png", 256, 256, rgb);
+            }
+    }
+}
+#endif
+
+}  // namespace sim
+
+#ifndef SIM_WEB  // nel browser il main e' in web/sim_web.cpp e non c'e' il copione
+namespace {
+
+using app::ChatId;
+using app::ChatKind;
 
 void script() {
     using sim::shot;
@@ -368,55 +425,6 @@ void script() {
 #endif
 }
 
-#if CONFIG_SCHEDA_TDECK_PLUS
-// Tile finti per provare la mappa (niente download): sfondo, strade, un fiume, il bordo del tile
-// e le coordinate z/x/y scritte sopra, cosi' si vede subito se sono messi al posto giusto.
-void makeTiles() {
-    static const uint8_t DIGITS[11][5] = {{7, 5, 5, 5, 7}, {2, 6, 2, 2, 7}, {7, 1, 7, 4, 7}, {7, 1, 7, 1, 7},
-                                          {5, 5, 7, 1, 1}, {7, 4, 7, 1, 7}, {7, 4, 7, 5, 7}, {7, 1, 1, 1, 1},
-                                          {7, 5, 7, 5, 7}, {7, 5, 7, 1, 7}, {1, 1, 2, 4, 4}};  // 0-9 e '/'
-    for (int z = 13; z <= 15; z++) {
-        const double n = double(1 << z);
-        const double lat = 45.4642 * M_PI / 180;
-        const int cx = int((9.19 + 180) / 360 * n);
-        const int cy = int((1 - std::log(std::tan(lat) + 1 / std::cos(lat)) / M_PI) / 2 * n);
-        for (int x = cx - 2; x <= cx + 2; x++)
-            for (int y = cy - 2; y <= cy + 2; y++) {
-                std::vector<uint8_t> rgb(256 * 256 * 3);
-                for (int py = 0; py < 256; py++)
-                    for (int px = 0; px < 256; px++) {
-                        uint8_t r = 236, g = 232, b = 222;
-                        const int gx = x * 256 + px, gy = y * 256 + py;  // coordinate globali: strade continue
-                        if ((gx / 40 + gy / 56) % 7 == 0) r = 200, g = 226, b = 190;          // parchi
-                        if (gx % 96 < 5 || gy % 128 < 5) r = 255, g = 255, b = 255;          // strade
-                        if (std::abs((gx - 2 * gy) % 900) < 9) r = 150, g = 190, b = 235;   // fiume
-                        if (px == 0 || py == 0) r = 180, g = 170, b = 160;                   // bordo del tile
-                        uint8_t* p = &rgb[(size_t(py) * 256 + px) * 3];
-                        p[0] = r;
-                        p[1] = g;
-                        p[2] = b;
-                    }
-                const std::string label = std::to_string(z) + "/" + std::to_string(x) + "/" + std::to_string(y);
-                for (size_t i = 0; i < label.size(); i++) {
-                    const int d = label[i] == '/' ? 10 : label[i] - '0';
-                    for (int ry = 0; ry < 5; ry++)
-                        for (int rx = 0; rx < 3; rx++)
-                            if (DIGITS[d][ry] & (4 >> rx))
-                                for (int s = 0; s < 4; s++) {
-                                    uint8_t* p = &rgb[(size_t(8 + ry * 2 + s / 2) * 256 + 8 + i * 8 + rx * 2 + s % 2) * 3];
-                                    p[0] = 120;
-                                    p[1] = 90;
-                                    p[2] = 60;
-                                }
-                }
-                const std::string dir = std::string(app::MAPPE) + "/" + std::to_string(z) + "/" + std::to_string(x);
-                std::filesystem::create_directories(dir);
-                sim::savePngRgb(dir + "/" + std::to_string(y) + ".png", 256, 256, rgb);
-            }
-    }
-}
-#endif
-
 }  // namespace
 
 #ifdef _WIN32
@@ -447,10 +455,11 @@ int main(int argc, char** argv) {
     app::eventsInit();
     scheda::tastiera().begin();
 #if CONFIG_SCHEDA_TDECK_PLUS
-    makeTiles();
+    sim::makeTiles(true);
 #endif
-    fillData();
+    sim::fillData();
     script();
     ui::init();  // non torna: il compito dell'interfaccia gira finche' il copione non finisce
     return 0;
 }
+#endif  // SIM_WEB

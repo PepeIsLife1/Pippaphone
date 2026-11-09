@@ -115,6 +115,9 @@ const char* firmwareVersion() { return "0.1.0"; }
 
 // ---------------------------------------------------------------- vocali
 
+// Nel browser (SIM_WEB) i vocali, i messaggi inviati, la posizione, l'SOS e i gruppi creati sono in
+// web/rete_web.cpp: durano davvero e la rete finta risponde.
+#ifndef SIM_WEB
 bool Voce::begin() { return true; }
 bool Voce::startRecording() {
     sim::state().recording = true;
@@ -135,6 +138,7 @@ void Voce::stop() { sim::state().playing = false; }
 bool Voce::playing() const { return sim::state().playing; }
 uint32_t Voce::playedMs() const { return sim::state().playedMs; }
 uint32_t Voce::playingFile() const { return sim::state().playingFile; }
+#endif
 Voce& voce() {
     static Voce v;
     return v;
@@ -155,6 +159,7 @@ std::string Rete::myCode() { return "4821 7730 1964 5528"; }
 std::string Rete::adminCode() { return "4821 7730 1964 5528"; }
 std::string Rete::codeOf(uint16_t number) { return number == 205 ? "" : "3307 1185 9042 6613"; }
 
+#ifndef SIM_WEB
 uint32_t Rete::sendText(const ChatId& chat, const std::string& text) {
     Message m;
     static uint32_t id = 900;
@@ -167,14 +172,16 @@ uint32_t Rete::sendText(const ChatId& chat, const std::string& text) {
     dati().addMessage(chat, m, false);
     return m.id;
 }
-void Rete::markRead(const ChatId& chat) { dati().markRead(chat); }
 uint32_t Rete::requestPosition(uint16_t) { return 1; }
-void Rete::answerPosition(uint16_t, uint32_t, bool) {}
 void Rete::startSos() { sim::state().sos = true; }
+#endif
+void Rete::markRead(const ChatId& chat) { dati().markRead(chat); }
+void Rete::answerPosition(uint16_t, uint32_t, bool) {}
 void Rete::stopSos() { sim::state().sos = false; }
 bool Rete::sosActive() { return sim::state().sos; }
 std::vector<uint16_t> Rete::sosContacts() { return {101, 102, 205, 318}; }
 std::set<uint16_t> Rete::sosAcked() { return sim::state().sosAcked; }
+#ifndef SIM_WEB
 pn::GroupInfo Rete::createGroup(const std::string& name, const std::vector<uint16_t>& members) {
     pn::GroupInfo g;
     g.id = 9;
@@ -185,6 +192,7 @@ pn::GroupInfo Rete::createGroup(const std::string& name, const std::vector<uint1
     return g;
 }
 uint32_t Rete::sendVoice(uint16_t, const std::vector<uint8_t>&, uint16_t) { return 77; }
+#endif
 
 void Rete::setProvisioning(bool) {}
 bool Rete::offer(pn::Cert& cert, std::string& adminCode) {

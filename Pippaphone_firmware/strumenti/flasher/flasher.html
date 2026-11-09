@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pippaphone: carica il firmware</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<!-- Pagina per caricare il firmware dal browser (Chrome o Edge, Web Serial). Questo e' il modello:
+     strumenti/flasher/prepara.py ci mette dentro esptool-js e i firmware compilati e scrive
+     build-flasher/pippaphone_flasher.html. -->
+<style>
+/* Una colonna di passi numerati (scegli, come, collega, console): i colori e i caratteri sono
+   quelli dell'interfaccia del telefono (AMBRA, Atkinson Hyperlegible, IBM Plex Mono). */
+:root {
+  --bg: #eef1f3;
+  --panel: #ffffff;
+  --ink: #15191d;
+  --muted: #58636c;
+  --line: #d1d8de;
+  --accent: #8f5d00;
+  --accent-fill: #ffb000;
+  --accent-soft: #ffb0002b;
+  --danger: #b42323;
+  --danger-soft: #b4232314;
+  --ok: #17803a;
+  --term-bg: #0d1013;
+  --term-ink: #d7dde2;
+  --font-ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101317; --panel: #171b20; --ink: #e6eaee; --muted: #9ba6b0; --line: #2b3239;
+    --accent: #ffb000; --accent-soft: #ffb0001f; --danger: #ff6b6b; --danger-soft: #ff6b6b1a; --ok: #45cf74;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font-ui); padding: 28px 16px 48px; }
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 18px; }
+header h1 { margin: 0; font-size: clamp(1.6rem, 1.2rem + 1.5vw, 2.2rem); line-height: 1.1; letter-spacing: -0.01em; }
+header p { margin: 8px 0 0; color: var(--muted); max-width: 66ch; }
+.banner { border: 1px solid var(--danger); background: var(--danger-soft); color: var(--ink); border-radius: 10px; padding: 12px 14px; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 20px; display: grid; gap: 12px; }
+.step.off { opacity: .55; }
+.step h2 { margin: 0; font-size: 1.15rem; display: flex; gap: 10px; align-items: center; }
+.step h2 .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-fill); color: #1d1400; font: 700 .95rem var(--font-mono); flex: none; }
+.step > p { margin: 0; color: var(--muted); }
+
+.devices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .devices { grid-template-columns: minmax(0, 1fr); } }
+.dev { position: relative; border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 6px; cursor: pointer; align-content: start; }
+.dev:hover { border-color: var(--accent); }
+.dev input { position: absolute; opacity: 0; pointer-events: none; }
+.dev:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); background: var(--accent-soft); }
+.dev:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dev:has(input:disabled) { cursor: not-allowed; opacity: .6; }
+.dev .ruolo { font: 600 .74rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dev .nome { font-weight: 700; font-size: 1.05rem; line-height: 1.25; }
+.dev .fw { font: .82rem/1.45 var(--font-mono); color: var(--muted); }
+.dev .nota { font-size: .88rem; color: var(--muted); line-height: 1.4; }
+
+.mode { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: start; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.mode:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.mode input { margin-top: 4px; accent-color: var(--accent); }
+.mode span { grid-column: 2; color: var(--muted); font-size: .92rem; }
+.mode.zero:has(input:checked) { border-color: var(--danger); background: var(--danger-soft); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; cursor: pointer; }
+.check input { margin-top: 4px; accent-color: var(--accent); }
+
+button { font: inherit; cursor: pointer; }
+.primary { justify-self: start; border: 0; border-radius: 10px; padding: 12px 22px; background: var(--accent-fill); color: #1d1400; font-weight: 700; font-size: 1.05rem; }
+.primary:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+.second { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 8px; padding: 7px 12px; font-size: .92rem; }
+.second:hover:not(:disabled) { border-color: var(--accent); }
+.second:disabled { opacity: .5; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.progress { display: grid; gap: 8px; }
+.bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent-fill); transition: width .2s; }
+.bar.ok i { background: var(--ok); }
+.bar.err i { background: var(--danger); }
+.stato { margin: 0; font-weight: 700; min-height: 1.5em; }
+.stato.err { color: var(--danger); }
+.stato.ok { color: var(--ok); }
+.found { margin: 0; font: .86rem var(--font-mono); color: var(--muted); }
+.confirm { border: 1px solid var(--danger); background: var(--danger-soft); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; }
+.confirm p { margin: 0; }
+.confirm .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.confirm .si { border: 0; border-radius: 8px; padding: 8px 14px; background: var(--danger); color: #fff; font-weight: 700; }
+details { border-top: 1px solid var(--line); padding-top: 10px; }
+details summary { cursor: pointer; font-weight: 700; }
+details ol { margin: 8px 0 0; padding-left: 1.3em; display: grid; gap: 4px; }
+pre { margin: 8px 0 0; max-height: 240px; overflow: auto; background: var(--term-bg); color: var(--term-ink); border-radius: 8px; padding: 10px 12px; font: .8rem/1.45 var(--font-mono); white-space: pre-wrap; word-break: break-word; }
+
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools label { display: inline-flex; gap: 6px; align-items: center; font-size: .92rem; }
+.tools input[type=number] { width: 5.5em; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+#term { min-height: 220px; max-height: 360px; }
+.cmd { display: flex; gap: 8px; }
+.cmd input { flex: 1; min-width: 0; font: .9rem var(--font-mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+footer { color: var(--muted); font-size: .85rem; }
+code, kbd { font-family: var(--font-mono); font-size: .9em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Carica il firmware</h1>
+    <p>Per il telefono sul LilyGO T-Deck Plus e per i ripetitori su Heltec V3 e LilyGO T3-S3. Funziona con Chrome o Edge sul computer, anche senza internet: i firmware sono dentro la pagina.</p>
+  </header>
+
+  <div class="banner" id="noserial" hidden><b>Questo browser non può usare le porte USB.</b> Apri la pagina con Chrome o Edge sul computer (Firefox e Safari non hanno Web Serial).</div>
+
+  <section class="step" id="s1">
+    <h2><span class="n">1</span> Scegli il dispositivo</h2>
+    <div class="devices" id="devices" role="radiogroup" aria-label="Dispositivo"></div>
+  </section>
+
+  <section class="step" id="s2">
+    <h2><span class="n">2</span> Come caricarlo</h2>
+    <label class="mode"><input type="radio" name="mode" id="m-aggiorna" value="aggiorna" checked><b>Aggiorna</b><span id="txt-aggiorna">Cambia solo il programma: numero, chiavi e impostazioni restano.</span></label>
+    <label class="mode zero"><input type="radio" name="mode" id="m-zero" value="zero"><b>Installa da zero</b><span id="txt-zero">Cancella tutta la memoria. Serve la prima volta, se sulla scheda c’è il firmware di fabbrica o Meshtastic.</span></label>
+    <label class="check"><input type="checkbox" id="antenna"><span>L’antenna è collegata. Appena acceso il dispositivo trasmette da solo, e una radio che trasmette senza antenna si può rovinare.</span></label>
+  </section>
+
+  <section class="step" id="s3">
+    <h2><span class="n">3</span> Collega e carica</h2>
+    <p>Collega il dispositivo alla USB del computer, poi premi il pulsante e scegli la sua porta.</p>
+    <button class="primary" id="go" type="button" disabled>Collega e carica</button>
+    <div class="progress">
+      <div class="bar" id="bar"><i></i></div>
+      <p class="stato" id="stato" aria-live="polite">Scegli il dispositivo e conferma l’antenna.</p>
+      <p class="found" id="found"></p>
+    </div>
+    <div class="confirm" id="conf" hidden>
+      <p id="confText"></p>
+      <div class="row"><button class="si" id="confSi" type="button">Continua</button><button class="second" id="confNo" type="button">Annulla</button></div>
+    </div>
+    <details id="aiuto"><summary>Se non si collega</summary><ol id="aiutoList"></ol></details>
+    <details><summary>Dettagli del caricamento</summary><pre id="log"></pre></details>
+  </section>
+
+  <section class="step" id="s4">
+    <h2><span class="n">4</span> Console</h2>
+    <p id="consoleIntro">I messaggi del dispositivo, dalla stessa porta USB.</p>
+    <div class="tools">
+      <button class="second" id="apri" type="button">Apri la console</button>
+      <button class="second" id="chiudi" type="button" disabled>Chiudi</button>
+      <button class="second" id="reset" type="button" disabled>Riavvia la scheda</button>
+    </div>
+    <div class="tools" id="rip">
+      <label for="numero">Numero R</label><input type="number" id="numero" min="1" max="4094" value="1">
+      <button class="second" type="button" data-cmd="numero">Imposta</button>
+      <label for="potenza">Potenza (dBm)</label><input type="number" id="potenza" min="-9" max="22" value="22">
+      <button class="second" type="button" data-cmd="potenza">Imposta</button>
+      <button class="second" type="button" data-cmd="info">info</button>
+      <button class="second" type="button" data-cmd="strade">strade</button>
+      <button class="second" type="button" data-cmd="schermo gira">schermo gira</button>
+    </div>
+    <pre id="term" aria-live="off"></pre>
+    <form class="cmd" id="cmdForm"><input id="cmd" type="text" autocomplete="off" placeholder="comando, per esempio: info" aria-label="Comando"><button class="second" type="submit">Invia</button></form>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>/*FIRMWARE*/</script>
+<script type="module">/*ESPTOOL*/</script>
+<script type="module">
+const $ = s => document.querySelector(s);
+const FW = window.FIRMWARE || {};
+const ESPRESSIF = 0x303a, SILABS = 0x10c4, WCH = 0x1a86;
+
+// I tre dispositivi. flashMB e vid servono a controllare che sia la scheda giusta prima di scrivere.
+const DEV = {
+  tdeck: {
+    ruolo: 'Telefono', nome: 'LilyGO T-Deck Plus', flashMB: 16, vid: [ESPRESSIF], ripetitore: false,
+    nota: 'Versione LoRa a 868 MHz.',
+    aggiorna: 'Cambia solo il programma: numero, chiavi, PIN e impostazioni restano; rubrica e chat sono sulla microSD.',
+    zero: 'Cancella tutta la memoria: chiavi, numero, certificato e PIN (la microSD non si tocca). Il numero poi va riassegnato dall’amministratore. Serve la prima volta, sopra il firmware di fabbrica o Meshtastic.',
+    aiuto: ['Sposta l’interruttore laterale su OFF.', 'Tieni premuto il trackball e rimetti l’interruttore su ON.', 'Dopo 2–3 secondi rilascia: lo schermo resta nero, il T-Deck aspetta il firmware.', 'Premi di nuovo “Collega e carica”. Alla fine spegni e riaccendi con l’interruttore.'],
+    dopo: 'Il T-Deck si riavvia col firmware nuovo. Se lo schermo resta nero, spegnilo e riaccendilo con l’interruttore.',
+  },
+  heltec: {
+    ruolo: 'Ripetitore in casa', nome: 'Heltec WiFi LoRa 32 V3', flashMB: 8, vid: [SILABS, WCH], ripetitore: true,
+    nota: 'Deve essere la V3 (SX1262). Sul computer è una porta “CP210x” (o CH9102 su alcuni cloni).',
+    aggiorna: 'Cambia solo il programma: numero del ripetitore, potenza e schermo restano.',
+    zero: 'Cancella tutta la memoria: il ripetitore riparte con un numero a caso e la potenza massima, poi va numerato. Serve la prima volta, sopra Meshtastic o il firmware di fabbrica.',
+    aiuto: ['Controlla che il cavo USB porti i dati (alcuni caricano e basta).', 'Se Windows non vede la porta, installa il driver “CP210x” di Silicon Labs.', 'Tieni premuto PRG, premi e rilascia RST, rilascia PRG; poi riprova.'],
+    dopo: 'Il ripetitore si riavvia col firmware nuovo. Apri la console qui sotto e dagli il suo numero.',
+  },
+  t3s3: {
+    ruolo: 'Ripetitore solare', nome: 'LilyGO T3-S3 V1.2 (SX1262)', flashMB: 4, vid: [ESPRESSIF], ripetitore: true,
+    nota: 'Quella con SX1262 a 868 MHz. Con la batteria quasi scarica dorme: per caricarlo, attaccalo al computer.',
+    aggiorna: 'Cambia solo il programma: numero del ripetitore, potenza e schermo restano.',
+    zero: 'Cancella tutta la memoria: il ripetitore riparte con un numero a caso e la potenza massima, poi va numerato. Serve la prima volta, sopra Meshtastic o il firmware di fabbrica.',
+    aiuto: ['Tieni premuto BOOT, premi e rilascia RST, rilascia BOOT; poi riprova.', 'Alla fine del caricamento premi RST per farlo ripartire.'],
+    dopo: 'Se non riparte da solo, premi RST. Poi apri la console qui sotto e dagli il suo numero.',
+  },
+};
+
+let scelto = null, busy = false, lastInfo = null;
+const hasSerial = 'serial' in navigator;
+if (!hasSerial) $('#noserial').hidden = false;
+
+// ---------------------------------------------------------------- scelta del dispositivo
+const box = $('#devices');
+for (const [id, d] of Object.entries(DEV)) {
+  const fw = FW[id];
+  const l = document.createElement('label');
+  l.className = 'dev';
+  const kb = fw ? Math.round(fw.file.reduce((s, f) => s + f.dimensione, 0) / 1024) : 0;
+  l.innerHTML = `<input type="radio" name="dev" value="${id}"${fw ? '' : ' disabled'}>` +
+    `<span class="ruolo">${d.ruolo}</span><span class="nome">${d.nome}</span>` +
+    `<span class="fw">${fw ? `firmware ${esc(fw.versione || '?')}<br>compilato il ${esc(fw.compilato || '?')}<br>${kb} kB, flash ${d.flashMB} MB` : 'firmware non preparato: lancia prepara.py'}</span>` +
+    `<span class="nota">${d.nota}</span>`;
+  box.appendChild(l);
+}
+box.addEventListener('change', e => { scelto = e.target.value; aggiorna(true); });
+$('#antenna').addEventListener('change', () => aggiorna(true));
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => aggiorna(true)));
+$('#foot').textContent = FW.creato
+  ? `Pagina preparata il ${FW.creato}${FW.git ? ' dai sorgenti ' + FW.git : ''}. Carica i firmware con esptool-js 0.7.0 di Espressif (Apache 2.0).`
+  : 'Questa è la pagina modello: i firmware li mette dentro strumenti/flasher/prepara.py.';
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+// dalUtente: la scelta e' cambiata, si riscrive anche lo stato (non dopo un caricamento, che ha il suo).
+function aggiorna(dalUtente) {
+  const d = scelto && DEV[scelto];
+  $('#go').disabled = !d || !hasSerial || busy || !$('#antenna').checked || !FW[scelto];
+  if (d) {
+    $('#txt-aggiorna').textContent = d.aggiorna;
+    $('#txt-zero').textContent = d.zero;
+    $('#aiutoList').innerHTML = d.aiuto.map(t => `<li>${esc(t)}</li>`).join('');
+    $('#rip').hidden = !d.ripetitore;
+    $('#consoleIntro').textContent = d.ripetitore
+      ? 'Comandi del ripetitore: numero (R1–R4094), potenza, info, strade, schermo, riavvia. Restano salvati.'
+      : 'I messaggi del telefono (avvio, radio, microSD, modo della tastiera). Per vederli dall’inizio premi “Riavvia la scheda”.';
+  } else {
+    $('#rip').hidden = true;
+  }
+  if (dalUtente && !busy && d) {
+    barra(0);
+    stato(!$('#antenna').checked ? 'Conferma che l’antenna è collegata.' : 'Pronto: premi “Collega e carica”.');
+  }
+}
+
+// ---------------------------------------------------------------- stato e registro
+const logEl = $('#log');
+const terminal = {
+  clean() { logEl.textContent = ''; },
+  writeLine(s) { logEl.textContent += s + '\n'; logEl.scrollTop = logEl.scrollHeight; },
+  write(s) { logEl.textContent += s; logEl.scrollTop = logEl.scrollHeight; },
+};
+function stato(t, kind) { const e = $('#stato'); e.textContent = t; e.className = 'stato' + (kind ? ' ' + kind : ''); }
+function barra(frac, kind) { const b = $('#bar'); b.className = 'bar' + (kind ? ' ' + kind : ''); b.firstElementChild.style.width = Math.round(frac * 100) + '%'; }
+function chiedi(testo, si) {
+  return new Promise(res => {
+    $('#confText').textContent = testo;
+    $('#confSi').textContent = si;
+    $('#conf').hidden = false;
+    const fine = v => { $('#conf').hidden = true; $('#confSi').onclick = $('#confNo').onclick = null; res(v); };
+    $('#confSi').onclick = () => fine(true);
+    $('#confNo').onclick = () => fine(false);
+    $('#confSi').focus();
+  });
+}
+function b64(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+
+// MD5 (RFC 1321): esptool-js lo confronta con quello che calcola il chip, per controllare la scrittura.
+function md5hex(data) {
+  const S = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+             4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+  const K = new Uint32Array(64);
+  for (let i = 0; i < 64; i++) K[i] = (Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+  const len = data.length;
+  const buf = new Uint8Array((((len + 8) >>> 6) << 6) + 64);
+  buf.set(data);
+  buf[len] = 0x80;
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(buf.length - 8, (len * 8) >>> 0, true);
+  dv.setUint32(buf.length - 4, Math.floor(len / 536870912), true);
+  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  const M = new Uint32Array(16);
+  for (let off = 0; off < buf.length; off += 64) {
+    for (let i = 0; i < 16; i++) M[i] = dv.getUint32(off + i * 4, true);
+    let A = a0, B = b0, C = c0, D = d0;
+    for (let i = 0; i < 64; i++) {
+      let F, g;
+      if (i < 16) { F = (B & C) | (~B & D); g = i; }
+      else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) & 15; }
+      else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) & 15; }
+      else { F = C ^ (B | ~D); g = (7 * i) & 15; }
+      F = (F + A + K[i] + M[g]) >>> 0;
+      A = D; D = C; C = B;
+      B = (B + ((F << S[i]) | (F >>> (32 - S[i])))) >>> 0;
+    }
+    a0 = (a0 + A) >>> 0; b0 = (b0 + B) >>> 0; c0 = (c0 + C) >>> 0; d0 = (d0 + D) >>> 0;
+  }
+  const out = new DataView(new ArrayBuffer(16));
+  out.setUint32(0, a0, true); out.setUint32(4, b0, true); out.setUint32(8, c0, true); out.setUint32(12, d0, true);
+  return Array.from(new Uint8Array(out.buffer), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ---------------------------------------------------------------- caricamento
+const FILTRI = [{ usbVendorId: ESPRESSIF }, { usbVendorId: SILABS }, { usbVendorId: WCH }];
+const nomeVid = v => v === ESPRESSIF ? 'USB interna dell’ESP32-S3' : v === SILABS ? 'CP210x' : v === WCH ? 'CH340/CH9102' : v ? '0x' + v.toString(16) : 'sconosciuta';
+
+$('#go').addEventListener('click', async () => {
+  if (busy) return;
+  const d = DEV[scelto], fw = FW[scelto], daZero = $('#m-zero').checked;
+  if (daZero && !await chiedi(`Installare da zero ${d.nome}? ${d.zero}`, 'Cancella e installa')) return;
+  await chiudiConsole();
+  let port;
+  try {
+    port = await navigator.serial.requestPort({ filters: FILTRI });
+  } catch (e) {
+    stato(e.name === 'NotFoundError' ? 'Nessuna porta scelta.' : 'Porta non disponibile: ' + e.message);
+    return;
+  }
+  busy = true; aggiorna(false); terminal.clean(); barra(0); $('#found').textContent = '';
+  let transport = null, loader = null, riuscito = false;
+  try {
+    const info = port.getInfo();
+    lastInfo = info;
+    transport = new window.esptool.Transport(port, false);
+    loader = new window.esptool.ESPLoader({ transport, baudrate: 921600, terminal, debugLogging: false });
+    stato('Collegamento al chip…');
+    let chip;
+    try {
+      chip = await loader.main('default_reset');
+    } catch (e) {
+      $('#aiuto').open = true;
+      throw new Error('Non riesco a parlare con la scheda: mettila in programmazione (vedi “Se non si collega”) e riprova. ' + (e.message || e));
+    }
+    const flash = await loader.detectFlashSize();
+    const mb = flash ? parseInt(flash, 10) : 0;
+    $('#found').textContent = `Trovato: ${chip}, memoria ${flash || 'non riconosciuta'}, porta ${nomeVid(info.usbVendorId)}.`;
+    const dubbi = [];
+    if (!/ESP32-S3/.test(chip)) throw new Error(`Il chip è ${chip}: ${d.nome} ha un ESP32-S3. Hai scelto il dispositivo giusto?`);
+    if (mb && mb < d.flashMB) throw new Error(`La memoria è di ${flash}, ma il firmware di ${d.nome} ne vuole ${d.flashMB} MB: è un’altra scheda.`);
+    if (mb && mb > d.flashMB) dubbi.push(`la memoria è di ${flash}, la ${d.nome} ne ha ${d.flashMB} MB`);
+    if (info.usbVendorId && !d.vid.includes(info.usbVendorId)) dubbi.push(`la porta è ${nomeVid(info.usbVendorId)}, sulla ${d.nome} di solito è ${d.vid.map(nomeVid).join(' o ')}`);
+    if (dubbi.length && !await chiedi(`Sembra un’altra scheda: ${dubbi.join('; ')}. Caricare lo stesso il firmware di ${d.nome}?`, 'Carica lo stesso')) {
+      stato('Annullato: niente è stato scritto.');
+      return;
+    }
+    const files = fw.file.map(f => ({ data: b64(f.dati), address: f.indirizzo }));
+    const sizes = files.map(f => f.data.length), total = sizes.reduce((a, b) => a + b, 0);
+    stato(daZero ? 'Cancello tutta la memoria (fino a un minuto)…' : 'Scrivo il firmware…');
+    await loader.writeFlash({
+      fileArray: files, flashMode: 'keep', flashFreq: 'keep', flashSize: 'keep', eraseAll: daZero, compress: true,
+      reportProgress: (i, written, size) => {
+        const prima = sizes.slice(0, i).reduce((a, b) => a + b, 0);
+        barra((prima + sizes[i] * (size ? written / size : 1)) / total);
+        stato(`Scrivo ${fw.file[i].nome} (${i + 1} di ${files.length})…`);
+      },
+      calculateMD5Hash: md5hex,
+    });
+    barra(1, 'ok');
+    stato('Firmware scritto e controllato. Riavvio…');
+    await loader.after('hard_reset');
+    stato('Fatto. ' + d.dopo, 'ok');
+    riuscito = true;
+  } catch (e) {
+    barra(1, 'err');
+    stato(String(e && e.message || e), 'err');
+    terminal.writeLine('ERRORE: ' + (e && e.stack || e));
+  } finally {
+    try { if (transport) await transport.disconnect(); } catch (_) {}
+    busy = false; aggiorna(false);
+  }
+  // Dopo il caricamento si apre la console da sola: si vede l'avvio e, sui ripetitori, si da' il numero.
+  if (riuscito) { voleva = true; setTimeout(apriAuto, 700); }
+});
+
+// ---------------------------------------------------------------- console (Web Serial diretta, 115200)
+// La console resta "voluta" finche' non la si chiude: se la scheda si riavvia e la porta sparisce e
+// ricompare (succede con la USB interna dell'ESP32-S3), si riapre da sola.
+let cport = null, creader = null, cclosing = false, voleva = false, aprendo = false;
+const term = $('#term');
+const dec = new TextDecoder();
+function scrivi(t) {
+  term.textContent += t.replace(/\x1b\[[0-9;]*m/g, '');   // niente colori ANSI
+  if (term.textContent.length > 60000) term.textContent = term.textContent.slice(-40000);
+  term.scrollTop = term.scrollHeight;
+}
+function consoleAperta(on) {
+  $('#apri').disabled = on; $('#chiudi').disabled = !on; $('#reset').disabled = !on;
+  document.querySelectorAll('#rip button, #cmdForm button').forEach(b => b.disabled = !on);
+}
+consoleAperta(false);
+const stessa = p => {
+  const i = p.getInfo();
+  return !!lastInfo && i.usbVendorId === lastInfo.usbVendorId && i.usbProductId === lastInfo.usbProductId;
+};
+
+async function apri(port) {
+  if (cport || aprendo || busy) return;
+  aprendo = true;
+  try {
+    await port.open({ baudRate: 115200 });
+    try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch (_) {}
+    cport = port; cclosing = false; lastInfo = port.getInfo();
+    consoleAperta(true);
+    scrivi('[console aperta]\n');
+    leggi(port);
+  } finally {
+    aprendo = false;
+  }
+}
+
+// Dopo il caricamento o un riavvio: la porta gia' autorizzata con lo stesso VID/PID, se c'e'; se non
+// c'e' ancora, arriva poi con l'evento "connect".
+async function apriAuto() {
+  if (!voleva || cport || busy || !hasSerial) return;
+  const p = (await navigator.serial.getPorts()).find(stessa);
+  if (p) { try { await apri(p); } catch (e) { scrivi(`[console: ${e.message}]\n`); } }
+}
+
+$('#apri').addEventListener('click', async () => {
+  if (!hasSerial || busy) return;
+  try {
+    const p = (await navigator.serial.getPorts()).find(stessa) || await navigator.serial.requestPort({ filters: FILTRI });
+    voleva = true;
+    await apri(p);
+  } catch (e) {
+    if (e.name !== 'NotFoundError') scrivi(`[non riesco ad aprire la porta: ${e.message}. Se è aperta in un altro programma (per esempio idf.py monitor), chiudilo.]\n`);
+  }
+});
+
+async function leggi(port) {
+  while (cport === port && port.readable && !cclosing) {
+    creader = port.readable.getReader();
+    try {
+      for (;;) {
+        const { value, done } = await creader.read();
+        if (done) break;
+        scrivi(dec.decode(value, { stream: true }));
+      }
+    } catch (e) {
+      if (!cclosing) scrivi(voleva ? '\n[la scheda si è riavviata: la console si riapre appena torna]\n' : `\n[porta persa: ${e.message}]\n`);
+      break;
+    } finally {
+      try { creader.releaseLock(); } catch (_) {}
+    }
+  }
+  if (cport === port && !cclosing) {
+    try { await port.close(); } catch (_) {}
+    cport = null;
+    consoleAperta(false);
+    setTimeout(apriAuto, 500);
+  }
+}
+
+async function chiudiConsole() {
+  voleva = false;
+  if (!cport) return;
+  cclosing = true;
+  try { await creader?.cancel(); } catch (_) {}
+  try { await cport.close(); } catch (_) {}
+  cport = null;
+  consoleAperta(false);
+  scrivi('[console chiusa]\n');
+}
+$('#chiudi').addEventListener('click', chiudiConsole);
+
+async function invia(riga) {
+  if (!cport || !cport.writable) return;
+  const w = cport.writable.getWriter();
+  try { await w.write(new TextEncoder().encode(riga + '\r\n')); } finally { w.releaseLock(); }
+}
+$('#cmdForm').addEventListener('submit', e => { e.preventDefault(); const c = $('#cmd').value.trim(); if (c) { invia(c); $('#cmd').value = ''; } });
+document.querySelectorAll('#rip [data-cmd]').forEach(b => b.addEventListener('click', () => {
+  const c = b.dataset.cmd;
+  if (c === 'numero') {
+    const n = parseInt($('#numero').value, 10);
+    if (n >= 1 && n <= 4094) invia('numero ' + n); else scrivi('[il numero va da 1 a 4094]\n');
+  } else if (c === 'potenza') {
+    const p = parseInt($('#potenza').value, 10);
+    if (p >= -9 && p <= 22) invia('potenza ' + p); else scrivi('[la potenza va da -9 a 22 dBm]\n');
+  } else invia(c);
+}));
+// Riavvio dalla linea RTS (come esptool): funziona sia col CP210x sia con la USB interna.
+$('#reset').addEventListener('click', async () => {
+  if (!cport) return;
+  try {
+    scrivi('\n[riavvio]\n');
+    await cport.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await new Promise(r => setTimeout(r, 120));
+    await cport.setSignals({ dataTerminalReady: false, requestToSend: false });
+  } catch (e) { if (!voleva) scrivi(`[riavvio non riuscito: ${e.message}]\n`); }
+});
+if (hasSerial) {
+  navigator.serial.addEventListener('connect', e => { if (voleva && !cport && stessa(e.target)) setTimeout(apriAuto, 300); });
+  navigator.serial.addEventListener('disconnect', e => { if (e.target === cport && !voleva) scrivi('\n[dispositivo scollegato]\n'); });
+}
+aggiorna(false);
+</script>
+</body>
+</html>

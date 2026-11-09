@@ -27,7 +27,9 @@ Pippaphone_firmware/
 │   └── codec2/          Codec 2, modo 700C (LGPL 2.1)
 ├── test/                test del protocollo sul PC (rete simulata)
 ├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome),
-│   └── simulatore/      l'interfaccia del telefono sul PC: screenshot di tutte le schermate
+│   ├── flasher/         pagina per caricare il firmware dal browser (T-Deck e ripetitori)
+│   └── simulatore/      l'interfaccia del telefono sul PC (screenshot di tutte le schermate)
+│                        e nel browser col T-Deck disegnato (web/)
 └── PROTOCOLLO.md        descrizione del protocollo PippaNet
 ```
 
@@ -51,6 +53,23 @@ idf.py build flash monitor         # ripetitore sulla PCB del telefono; per Helt
 La porta USB-C della PCB è collegata alla USB interna dell'ESP32-S3: non servono adattatori.
 Se il chip non entra in programmazione, tieni GPIO0 a massa (punto di test **TP6**) mentre
 accendi la scheda (vedi sotto: col cavo USB da solo la PCB rev. 1.1 resta spenta).
+
+### Caricare dal browser (T-Deck Plus e ripetitori)
+
+`strumenti/flasher` prepara una pagina sola per caricare il firmware senza ESP-IDF: il telefono
+sul LilyGO T-Deck Plus e il ripetitore su Heltec WiFi LoRa 32 V3 e LilyGO T3-S3 (la PCB per ora
+no). Si apre con Chrome o Edge sul computer, anche con un doppio clic e senza internet: i firmware
+sono dentro la pagina e li scrive esptool-js di Espressif. Prima di scrivere controlla che la
+scheda collegata sia quella scelta (chip ESP32-S3 e memoria da 16, 8 o 4 MB). **Aggiorna** cambia
+solo il programma e lascia numero, chiavi e impostazioni; **Installa da zero** cancella tutta la
+memoria (serve la prima volta, sopra il firmware di fabbrica o Meshtastic). Alla fine si apre la
+console: sui ripetitori ci sono le caselle per dare il numero e la potenza.
+
+```sh
+python strumenti/flasher/prepara.py                 # con ESP-IDF attivo: compila i tre firmware
+python strumenti/flasher/prepara.py --solo-pagina   # usa le compilazioni che ci sono già
+# -> build-flasher/pippaphone_flasher.html (circa 4 MB)
+```
 
 ### Accensione e spegnimento (PCB rev. 1.1)
 
@@ -127,13 +146,15 @@ T-Deck non ha:
 | SYM + altro tasto | il simbolo stampato sul tasto (come col firmware di fabbrica) |
 
 La barra in basso mostra sempre i tasti giusti. Il modo "raw" (tasti premuti e rilasciati) c'è nel
-firmware della tastiera (ESP32-C3) dal giugno 2025. Con un firmware più vecchio il telefono se ne
-accorge da solo e passa a un **ripiego**: i caratteri arrivano già composti dal C3 (i numeri con
-SYM tenuto), il PTT è SHIFT+🎤 premuto una volta per parlare e una per inviare, MENU è SHIFT+$,
-CALL è ALT+C, END è SYM+SHIFT+H, l'SOS si annulla tenendo premuto il trackball, e non ci sono il
-riquadro degli accenti, il volume dai tasti e la scorciatoia dell'SOS. Per avere tutto basta
-aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un adattatore USB-seriale
-sui pin accanto al tasto RST). Il monitor seriale scrive quale modo è in uso.
+firmware della tastiera (ESP32-C3) dal giugno 2025. Il telefono capisce il modo al primo tasto
+premuto e fino ad allora suppone il raw. Con un firmware più vecchio se ne accorge da solo (la barra
+in basso si corregge in un paio di secondi) e passa a un **ripiego**: i caratteri arrivano già
+composti dal C3 (i numeri con SYM tenuto), il PTT è SHIFT+🎤 premuto una volta per parlare e una per
+inviare, MENU è SHIFT+$, CALL è ALT+C, END è SYM+SHIFT+H, l'SOS si annulla tenendo premuto il
+trackball, e non ci sono il riquadro degli accenti, il volume dai tasti e la scorciatoia dell'SOS.
+Per avere tutto basta aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un
+adattatore USB-seriale sui pin accanto al tasto RST). Il monitor seriale e `info.txt` scrivono quale
+modo è in uso.
 
 ### Differenze dalla PCB
 
@@ -284,6 +305,25 @@ Per controllare che una modifica non cambi l'interfaccia della PCB si compila il
 coi sorgenti di prima (`-DUI_DIR=... -DSCHEDA_DIR=...`) e si confrontano gli screenshot: devono
 essere identici pixel per pixel.
 
+### Simulatore nel browser (T-Deck Plus)
+
+Lo stesso simulatore, compilato in WebAssembly con Emscripten, diventa una pagina HTML sola (circa
+1,8 MB) col T-Deck disegnato: tasti cliccabili, trackball, interruttore, RST e la guida a tutte le
+combinazioni, con un pulsante "Prova" per ognuna. Interfaccia, dati e tastiera sono il codice vero,
+compreso `tastiera_tdeck.cpp`: un ESP32-C3 finto risponde in modo raw coi tasti premuti nella pagina.
+La rete finta risponde ai messaggi, ai vocali, alle richieste di posizione e all'SOS (Luca Verdi è
+fuori portata). Dalla pagina si fanno arrivare messaggi, vocali, SOS, richieste di posizione, inviti
+nei gruppi e la batteria scarica. Si usa anche la tastiera del computer: Tab tenuto vale sym, Ctrl
+tenuto il microfono (PTT), Invio il clic del trackball. Serve Emscripten (emsdk):
+
+```sh
+emcmake cmake -S strumenti/simulatore -B build-web -G Ninja && cmake --build build-web
+# -> build-web/pippaphone_tdeck.html: si apre col browser, anche come file, senza server
+```
+
+I sorgenti della pagina sono in `strumenti/simulatore/web` (`shell.html` è la pagina, `sim_web.cpp`
+il collegamento col browser, `rete_web.cpp` la rete finta).
+
 ## Stato del lavoro
 
 **Fatto e verificato:**
@@ -347,6 +387,7 @@ licenze (i file di licenza sono nelle rispettive cartelle):
 | Monocypher | BSD-2 / CC0 |
 | Atkinson Hyperlegible, IBM Plex Mono, Font Awesome Free | SIL Open Font License 1.1 |
 | **Codec 2** | **GNU LGPL 2.1** |
+| esptool-js (solo nella pagina per caricare il firmware, non nel firmware) | Apache 2.0 |
 
 **Attenzione a Codec 2.** Se distribuisci il firmware compilato ad altri, la LGPL chiede di
 permettere a chi lo riceve di sostituire Codec 2 con una sua versione modificata: si fa

@@ -53,5 +53,32 @@ function(simulatore nome tdeck)
     target_link_libraries(${nome} lvgl_sim pn_sim)
 endfunction()
 
-simulatore(sim_pcb OFF)
-simulatore(sim_tdeck ON)
+if(NOT EMSCRIPTEN)
+    simulatore(sim_pcb OFF)
+    simulatore(sim_tdeck ON)
+else()
+    # Simulatore nel browser (T-Deck Plus): una pagina HTML sola, col WebAssembly dentro.
+    #   emcmake cmake -S strumenti/simulatore -B build-web -G Ninja && cmake --build build-web
+    #   -> build-web/pippaphone_tdeck.html
+    file(GLOB UI_SRCS ${UI_DIR}/ui/*.cpp)
+    file(GLOB FONT_SRCS ${UI_DIR}/ui/font/*.c)
+    add_executable(pippaphone_tdeck
+        ${SIM}/web/sim_web.cpp ${SIM}/web/rete_web.cpp
+        ${SIM}/sim_main.cpp ${SIM}/sim_rtos.cpp ${SIM}/sim_scheda.cpp ${SIM}/sim_app.cpp ${SIM}/png.cpp
+        ${UI_SRCS} ${FONT_SRCS}
+        ${UI_DIR}/app/dati.cpp ${UI_DIR}/app/eventi.cpp
+        ${SCHEDA_DIR}/src/tastiera.cpp ${SCHEDA_DIR}/src/tdeck/tastiera_tdeck.cpp)
+    target_include_directories(pippaphone_tdeck PRIVATE ${SIM}/stub ${SIM} ${UI_DIR} ${SCHEDA_DIR}/include
+                               ${FW}/componenti/pippa_radio/include)
+    target_compile_definitions(pippaphone_tdeck PRIVATE CONFIG_SCHEDA_TDECK_PLUS=1 SIM_WEB=1)
+    target_compile_options(pippaphone_tdeck PRIVATE -include ${SIM}/sim_compat.h)
+    target_link_libraries(pippaphone_tdeck lvgl_sim pn_sim)
+    set_target_properties(pippaphone_tdeck PROPERTIES SUFFIX ".html")
+    set_property(TARGET pippaphone_tdeck APPEND PROPERTY LINK_DEPENDS ${SIM}/web/shell.html)
+    target_link_options(pippaphone_tdeck PRIVATE
+        -O2 -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sSTACK_SIZE=1048576
+        -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=67108864 -sENVIRONMENT=web -sSINGLE_FILE=1 -sSINGLE_FILE_BINARY_ENCODE=0 -sMINIFY_HTML=0
+        -sEXPORTED_FUNCTIONS=_main,_web_matrix,_web_trackball,_web_click,_web_cmd
+        -sEXPORTED_RUNTIME_METHODS=UTF8ToString,HEAPU16
+        --shell-file ${SIM}/web/shell.html)
+endif()
