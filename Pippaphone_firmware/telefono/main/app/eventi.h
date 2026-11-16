@@ -23,6 +23,9 @@ enum class Ev : uint8_t {
     PROV_HELLO,      // (amministratore) un telefono nuovo chiede un numero
     TIME,            // ora sincronizzata
     BATTERY,         // batteria: a = percentuale; id = 0 quasi scarica, 1 scarica (si spegne)
+    GAME,            // sfida via radio: from = avversario, id = partita, a = cosa e' arrivato (app/giochi.h)
+    MAPPE,           // (T-Deck) mappe dal computer via USB: id = 0 cominciano, 1 finite; a = tile ricevuti
+    CUFFIE,          // (T-Deck) cuffie USB-C, cambio di stato: a = app::Cuffie::Stato, id = app::Cuffie::Errore
 };
 
 struct Event {

@@ -11,6 +11,7 @@
 // fatti coi sorgenti vecchi e con quelli nuovi devono essere identici pixel per pixel.
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 
@@ -22,6 +23,19 @@
 #include "sim.h"
 #include "ui/schermate.h"
 #include "ui/ui.h"
+#ifdef SIM_NUOVE
+#include <ctime>
+
+#include "app/giochi.h"
+#include "app/orologio.h"
+#include "ui/giochi.h"
+#endif
+#if CONFIG_SCHEDA_TDECK_PLUS
+#include "app/cuffie.h"
+#ifdef SIM_NUOVE
+#include "app/musica.h"
+#endif
+#endif
 
 using scheda::Key;
 
@@ -139,6 +153,12 @@ void shot(const std::string& name, std::function<void()> action) {
         if (dump && name == dump) dumpTree(lv_screen_active(), 0);
         checkOverflow(lv_screen_active(), name);
         checkOverflow(lv_layer_top(), name);
+#if CONFIG_SCHEDA_TDECK_PLUS
+        // SIM_GPS_LOG=1: per ogni foto, GPS acceso e schermata che lo chiede (Screen::vuoleGps, ui.cpp).
+        if (std::getenv("SIM_GPS_LOG"))
+            std::fprintf(stderr, "GPS %s: acceso %d, chiesto da una schermata %d\n", name.c_str(),
+                         scheda::gnss().powered() ? 1 : 0, app::rete().gnssSchermataAperta() ? 1 : 0);
+#endif
     });
 }
 
@@ -279,6 +299,351 @@ namespace {
 
 using app::ChatId;
 using app::ChatKind;
+
+#ifdef SIM_NUOVE
+// Novita' del 14/11/2026 (menu a pagine, orologio, data e ora, giochi, musica, primo avvio): dopo le
+// schermate di prima, cosi' quelle restano confrontabili pixel per pixel coi sorgenti vecchi.
+void novita() {
+    using sim::shot;
+    sim::step(6000, [] { ui::goHome(); });  // via le notifiche della chiamata
+    shot("47_menu_pagina2", [] {
+        ui::goHome();
+        sim::tap(Key::MENU);
+        for (int i = 0; i < PX(3, 5); i++) sim::tap(Key::RIGHT);  // oltre il bordo: seconda pagina
+    });
+    shot("48_orologio_sveglie", [] { sim::tap(Key::OK); });
+    shot("49_nuova_sveglia", [] {
+        sim::tap(Key::OK);  // "Nuova sveglia"
+        for (Key k : {Key::ZERO_MIC, Key::Z, Key::R, Key::ZERO_MIC}) sim::tap(k);  // 07:30
+        sim::tap(Key::UP);
+        sim::tap(Key::UP);  // lun-ven
+    });
+    shot("50_sveglie_elenco", [] { sim::tap(Key::OK); });
+    shot("51_timer", [] { sim::tap(Key::RIGHT); });
+    shot("52_timer_in_corso", [] { sim::tap(Key::OK); });
+    sim::step(3000, [] {});
+    shot("53_cronometro", [] {
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::OK);
+    });
+    sim::step(4200, [] { sim::tap(Key::DOWN); });  // un giro
+    shot("54_cronometro_giri", [] { sim::tap(Key::DOWN); });
+    // Sveglia tra un minuto: si aspetta che suoni (anche dalla schermata principale).
+    sim::step(100, [] {
+        ui::goHome();
+        const time_t now = time_t(app::rete().unixTime() + 60);
+        std::tm tm{};
+        localtime_r(&now, &tm);
+        app::Sveglia s;
+        s.ora = uint8_t(tm.tm_hour);
+        s.minuti = uint8_t(tm.tm_min);
+        s.nome = "Partenza";
+        auto all = app::orologio().sveglie();
+        all.push_back(s);
+        app::orologio().setSveglie(all);
+    });
+    sim::step(61000, [] {});
+    shot("55_sveglia_suona", [] {});
+    shot("56_sveglia_posticipata", [] { sim::tap(Key::BACK); });
+    sim::step(4500, [] { ui::goHome(); });  // l'avviso "Sveglia posticipata" sparisce (copriva le cifre)
+    shot("57_data_ora", [] {
+        ui::goHome();
+        ui::push(ui::makeSetTime());
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::UP);
+    });
+    // I tasti arrivano all'interfaccia dopo il passo, le chiamate dirette subito: vanno separati.
+    sim::step(300, [] { sim::tap(Key::OK); });  // salva: l'ora diventa "a mano"
+    shot("58_impostazioni_data", [] {
+        ui::goHome();
+        ui::push(ui::makeSettings());
+        // Fino a "Data e ora" (dopo "Tema"; sul T-Deck prima ci sono anche le due righe delle cuffie USB-C).
+        for (int i = 0; i < PX(7, 8); i++) sim::tap(Key::DOWN);
+    });
+    shot("59_giochi", [] {
+        ui::goHome();
+        ui::push(ui::makeGames());
+    });
+    shot("60_serpente", [] {
+        ui::push(ui::makeSnake());
+        sim::tap(Key::RIGHT);
+    });
+    sim::step(1500, [] { sim::tap(Key::DOWN); });
+    shot("61_serpente_gira", [] { sim::tap(Key::LEFT); });
+    shot("62_campo_minato", [] {
+        ui::goHome();
+        ui::push(ui::makeMines(1));
+        sim::tap(Key::OK);
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::F);
+    });
+    // Sfida a tris che arriva da Giulia (102): invito, poi la sua prima mossa al centro.
+    shot("63_tris_invito", [] {
+        ui::goHome();
+        const uint8_t inv[] = {1, 1, 0x34, 0x12};
+        app::giochi().ricevi(102, inv, sizeof(inv));
+    });
+    sim::step(300, [] {  // "Gioca" (la prima scelta e' "Dopo")
+        sim::tap(Key::DOWN);
+        sim::tap(Key::OK);
+    });
+    shot("64_tris_partita", [] {
+        const uint8_t m[] = {1, 4, 0x34, 0x12, 1, 4};  // Giulia (X) gioca al centro
+        app::giochi().ricevi(102, m, sizeof(m));
+    });
+    shot("65_tris_mossa", [] {
+        sim::tap(Key::UP);
+        sim::tap(Key::LEFT);
+        sim::tap(Key::OK);
+    });
+    // Battaglia navale con Marco (101): navi, poi lui accetta e si spara il primo colpo.
+    shot("66_navale_navi", [] {
+        app::giochi().abbandona();
+        app::giochi().chiudi();
+        ui::goHome();
+        app::giochi().sfidaNuova(app::Gioco::NAVALE, 101);
+        ui::openChallenge();
+    });
+    sim::step(300, [] { sim::tap(Key::OK); });  // pronto: parte l'invito
+    sim::step(300, [] {
+        const uint16_t id = app::giochi().sfida().id;
+        const uint8_t acc[] = {2, 2, uint8_t(id), uint8_t(id >> 8)};  // Marco accetta
+        app::giochi().ricevi(101, acc, sizeof(acc));
+    });
+    sim::step(300, [] {
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::OK);  // colpo in 45
+    });
+    shot("67_navale_partita", [] {
+        const uint16_t id = app::giochi().sfida().id;
+        const uint8_t es[] = {2, 5, uint8_t(id), uint8_t(id >> 8), 1, 45, 2, 0};  // colpito
+        app::giochi().ricevi(101, es, sizeof(es));
+        const uint8_t suo[] = {2, 4, uint8_t(id), uint8_t(id >> 8), 2, 33};  // il suo colpo in 33
+        app::giochi().ricevi(101, suo, sizeof(suo));
+    });
+    shot("68_musica", [] {
+        ui::goHome();
+        ui::push(ui::makeMusic());
+    });
+#if CONFIG_SCHEDA_TDECK_PLUS
+    shot("68b_musica_suona", [] { sim::tap(Key::OK); });
+#endif
+    // Primo avvio: "Crea una rete nuova" porta alla schermata principale (prima restava il benvenuto).
+    shot("69_rete_creata", [] {
+        ui::goHome();
+        ui::replace(ui::makeFirstBoot());
+        sim::tap(Key::MENU);
+        sim::tap(Key::OK);  // "Si', crea la rete"
+        for (Key k : {Key::W, Key::ZERO_MIC, Key::ZERO_MIC}) sim::tap(k);  // 100
+        sim::tap(Key::OK);
+    });
+    // Ora persa (interruttore del T-Deck, batteria scarica): "Data e ora" riparte dall'ultima ora
+    // salvata (qui tre ore fa) invece che dal giorno della compilazione. Per ultima: non sposta le altre.
+    sim::step(4500, [] { ui::goHome(); });  // l'avviso "Rete creata" sparisce
+    shot("70_data_ora_persa", [] {
+        app::saveLastTime(app::rete().unixTime() - 3 * 3600);
+        sim::state().timeSource = uint8_t(app::Rete::TimeSource::NONE);
+        ui::goHome();
+        ui::push(ui::makeSetTime());
+    });
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // Cuffie USB-C (14/11/2026), finte (sim_app.cpp): la domanda prima di accenderle, poi collegate col nome
+    // lungo quanto puo' esserlo (32 byte: icona ambra nella barra di stato, avviso, riga delle impostazioni) e la
+    // musica che va a loro. Per ultime: non spostano le altre.
+    shot("71_cuffie_domanda", [] {
+        sim::state().timeSource = uint8_t(app::Rete::TimeSource::NETWORK);  // l'ora torna (la 70 l'aveva tolta)
+        ui::goHome();
+        ui::push(ui::makeSettings());
+        sim::tap(Key::DOWN);
+        sim::tap(Key::DOWN);  // "Cuffie USB-C", dopo Suoneria e Volume
+        sim::tap(Key::OK);
+    });
+    sim::step(300, [] { sim::tap(Key::OK); });  // "Attiva": in attesa delle cuffie
+    shot("72_cuffie_collegate", [] {
+        sim::state().cuffieNome = "USB-C to 3.5mm Headphone Jack Ad";  // il nome dell'adattatore Apple, tagliato
+        sim::state().cuffieStato = uint8_t(app::Cuffie::Stato::COLLEGATE);
+        app::post({app::Ev::CUFFIE, {}, 0, 0, int32_t(app::Cuffie::Stato::COLLEGATE)});
+    });
+    sim::step(4500, [] {});  // l'avviso "Cuffie collegate" sparisce
+    shot("73_musica_cuffie", [] {
+        ui::goHome();
+        ui::push(ui::makeMusic());  // suona dalla 68b: "volume 4 · cuffie"
+    });
+#endif
+}
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// GPS del T-Deck (15/11/2026), col GPS finto di sim_scheda.cpp: Posizione mentre cerca i satelliti, col GPS
+// muto, con l'ultima posizione nota e quando arriva la posizione; la mappa col riquadro del GPS, quando mi
+// trova, mentre mi muovo, spostata a mano, col GPS muto, fuori dalle mappe, col GPS spento e senza nessun
+// segnaposto; la posizione di un contatto, la richiesta in attesa e gli SOS; la posizione di adesso che arriva
+// dopo una vecchia (mappa e posizione di un contatto) e la richiesta col GPS muto. Per ultime: non spostano le
+// altre.
+void gpsTdeck() {
+    using sim::shot;
+    // GPS acceso che cerca i satelliti: 14 in vista, conSegnale con segnale (il migliore a 27 dB-Hz),
+    // nessuna posizione mia, ne' di adesso ne' vecchia.
+    auto cerca = [](uint8_t conSegnale) {
+        sim::State& s = sim::state();
+        s.gpsFix = false;
+        s.gpsMuto = false;
+        s.gpsUltima = false;
+        s.gpsInVista = 14;
+        s.gpsConSegnale = conSegnale;
+        s.gpsSnrMax = 27;
+        s.gpsLatE7 = 454642000;
+        s.gpsLonE7 = 91900000;
+        scheda::gnss().power(true);
+    };
+    shot("74_posizione_cerca", [=] {
+        // Niente cuffie e musica (dalla 72 e 73): la barra di stato torna com'era.
+        sim::state().cuffieStato = uint8_t(app::Cuffie::Stato::SPENTE);
+        app::musica().ferma();
+        cerca(5);
+        ui::goHome();
+        ui::push(ui::makePosition());
+    });
+    shot("75_posizione_gps_muto", [=] {
+        cerca(0);
+        sim::state().gpsMuto = true;
+        ui::goHome();
+        ui::push(ui::makePosition());
+    });
+    shot("76_posizione_ultima_nota", [=] {
+        cerca(3);
+        sim::state().gpsUltima = true;
+        ui::goHome();
+        ui::push(ui::makePosition());
+    });
+    // La posizione arriva con la schermata aperta: titolo, satelliti usati e i contatti con distanza e direzione.
+    sim::step(600, [=] {
+        cerca(8);
+        ui::goHome();
+        ui::push(ui::makePosition());
+    });
+    sim::step(2500, [] { sim::state().gpsFix = true; });
+    shot("77_posizione_fix_arriva", [] {});
+    // Mappa senza la mia posizione: il riquadro del GPS; poi mi trova (inquadratura con me) e mi muovo.
+    shot("78_mappa_cerca", [=] {
+        cerca(5);
+        ui::goHome();
+        ui::push(ui::makeMap());
+    });
+    sim::step(2500, [] { sim::state().gpsFix = true; });
+    shot("79_mappa_mi_trova", [] {});
+    sim::step(2500, [] { sim::state().gpsLatE7 += 30000; });  // 330 m piu' a nord: centro e zoom restano
+    shot("80_mappa_mi_muovo", [] {});
+    // Mappa spostata a mano prima della posizione: quando arriva non salta, lo dice.
+    sim::step(600, [=] {
+        cerca(5);
+        ui::goHome();
+        ui::push(ui::makeMap());
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::RIGHT);
+    });
+    sim::step(2500, [] { sim::state().gpsFix = true; });
+    shot("81_mappa_spostata_mi_trova", [] {});
+    shot("82_mappa_gps_muto", [=] {
+        cerca(0);
+        sim::state().gpsMuto = true;
+        ui::goHome();
+        ui::push(ui::makeMap());
+    });
+    // Fuori dalle mappe: l'avviso "Nessuna mappa..." scende sotto il riquadro del GPS.
+    shot("83_mappa_fuori_zona", [=] {
+        cerca(4);
+        ui::goHome();
+        ui::push(ui::makeMap());
+        for (int i = 0; i < 12; i++) sim::tap(Key::LEFT);
+    });
+    // GPS spento: icona grigia e niente riquadro.
+    shot("84_mappa_gps_spento", [=] {
+        cerca(0);
+        scheda::gnss().power(false);
+        ui::goHome();
+        ui::push(ui::makeMap());
+    });
+    shot("85_posizione_contatto_cerca", [=] {
+        cerca(4);
+        ui::goHome();
+        // L'ora del telefono, non quella simulata: dalla 58 la data messa a mano e' un mese avanti.
+        ui::push(ui::makePositionView(101, "454652000,91950000,130,9,30", app::rete().unixTime() - 720));
+    });
+    shot("86_richiesta_attesa", [=] {
+        cerca(2);
+        ui::goHome();
+        ui::push(ui::makePositionRequest(102, 55));
+        sim::tap(Key::OK);  // Consenti: senza posizione aspetta il GPS
+    });
+    shot("87_sos_attivo_cerca", [=] {
+        cerca(3);
+        sim::state().sos = true;
+        ui::goHome();
+        ui::push(ui::makeSosActive(false));
+    });
+    // SOS di Giulia senza la mia posizione (le sue coordinate), poi arriva la mia: distanza e direzione.
+    sim::step(600, [=] {
+        sim::state().sos = false;
+        cerca(6);
+        ui::goHome();
+        ui::push(ui::makeSosReceived(102));
+    });
+    sim::step(2500, [] { sim::state().gpsFix = true; });
+    shot("88_sos_ricevuto_mi_trova", [] {});
+    // Nessuna posizione, ne' mia ne' dei contatti: la mappa si apre sulla zona delle mappe della microSD.
+    shot("89_mappa_vuota", [=] {
+        cerca(5);
+        app::dati().deleteChat({ChatKind::DIRECT, 101});
+        app::dati().deleteChat({ChatKind::DIRECT, 102});
+        ui::goHome();
+        ui::push(ui::makeMap());
+    });
+    // C'era solo una mia posizione vecchia (di 5 minuti fa) e arriva quella di adesso, 670 m piu' a nord: la
+    // mappa mi inquadra di nuovo (prima restava com'era e il punto nuovo cadeva fuori, senza dire niente);
+    // spostata a mano, lo dice. Lo stesso sulla posizione di un contatto (con le mappe finte, zoom 13-15, ci
+    // stanno tutti e due). Dopo la 89: niente contatti sulla mappa, e le altre foto non si spostano.
+    auto ultimaPoiFix = [] {
+        sim::state().gpsFix = true;
+        sim::state().gpsLatE7 += 60000;
+    };
+    sim::step(600, [=] {
+        cerca(5);
+        sim::state().gpsUltima = true;
+        ui::goHome();
+        ui::push(ui::makeMap());
+    });
+    sim::step(2500, ultimaPoiFix);
+    shot("90_mappa_ultima_poi_fix", [] {});
+    sim::step(600, [=] {
+        cerca(5);
+        sim::state().gpsUltima = true;
+        ui::goHome();
+        ui::push(ui::makeMap());
+        sim::tap(Key::RIGHT);
+        sim::tap(Key::RIGHT);
+    });
+    sim::step(2500, ultimaPoiFix);
+    shot("91_mappa_spostata_ultima_poi_fix", [] {});
+    sim::step(600, [=] {
+        cerca(4);
+        sim::state().gpsUltima = true;
+        ui::goHome();
+        ui::push(ui::makePositionView(101, "454652000,91950000,130,9,30", app::rete().unixTime() - 720));
+    });
+    sim::step(2500, ultimaPoiFix);
+    shot("92_posizione_contatto_ultima_poi_fix", [] {});
+    // Richiesta di posizione che aspetta il GPS, che non risponde: lo dice (prima "Cerco il GPS... ne sento 0").
+    shot("93_richiesta_gps_muto", [=] {
+        cerca(0);
+        sim::state().gpsMuto = true;
+        ui::goHome();
+        ui::push(ui::makePositionRequest(102, 55));
+        sim::tap(Key::OK);  // Consenti: senza posizione aspetta il GPS
+    });
+}
+#endif
+#endif
 
 void script() {
     using sim::shot;
@@ -457,6 +822,12 @@ void script() {
         sim::tap(Key::DOWN);
         sim::tap(Key::OK);  // "Chiama"
     });
+#ifdef SIM_NUOVE
+    novita();
+#if CONFIG_SCHEDA_TDECK_PLUS
+    gpsTdeck();
+#endif
+#endif
 }
 
 }  // namespace
@@ -492,6 +863,14 @@ int main(int argc, char** argv) {
     sim::makeTiles(true);
 #endif
     sim::fillData();
+#if SIM_NUOVE
+    // SIM_TEMA=scuro: screenshot col tema scuro (da confrontare con quelle di prima); se no Carta.
+    if (const char* t = std::getenv("SIM_TEMA"); t && std::string(t) == "scuro") {
+        app::Settings s = app::dati().settings();
+        s.temaScuro = true;
+        app::dati().setSettings(s);
+    }
+#endif
     script();
     ui::init();  // non torna: il compito dell'interfaccia gira finche' il copione non finisce
     return 0;

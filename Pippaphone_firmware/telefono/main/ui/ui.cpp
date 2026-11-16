@@ -1,9 +1,13 @@
 #include "ui/ui.h"
 
+#include <algorithm>
 #include <ctime>
 
 #include "app/dati.h"
 #include "app/eventi.h"
+#include "app/giochi.h"
+#include "app/musica.h"
+#include "app/orologio.h"
 #include "app/rete.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -13,6 +17,8 @@
 #include "scheda/scheda.h"
 #include "ui/schermate.h"
 #if TDECK
+#include "app/cuffie.h"
+#include "ui/mappa.h"
 #include "ui/widget.h"
 #endif
 
@@ -30,7 +36,11 @@ std::vector<std::unique_ptr<Screen>> g_trash;  // eliminate fuori dal loro onKey
 std::string g_hintsKey;
 
 // Barra di stato.
-lv_obj_t *g_sbTime, *g_sbUnread, *g_sbSos, *g_sbGps, *g_sbBars[4], *g_sbBatt;
+lv_obj_t *g_sbTime, *g_sbUnread, *g_sbSos, *g_sbAlarm, *g_sbGps, *g_sbBars[4], *g_sbBatt;
+#if TDECK
+lv_obj_t* g_sbMusic = nullptr;
+lv_obj_t* g_sbCuffie = nullptr;
+#endif
 
 // Notifica e finestra di scelta.
 lv_obj_t* g_toast = nullptr;
@@ -58,6 +68,7 @@ void flushCb(lv_display_t* d, const lv_area_t* a, uint8_t* px) {
 uint32_t tickCb() { return uint32_t(esp_timer_get_time() / 1000); }
 
 void buildStatusBar(lv_obj_t* parent) {
+    TemaScuroFisso scura;  // la barra di stato e' nera in tutti e due i temi
     g_status = row(parent, PX(10, 6));
     lv_obj_set_size(g_status, W, BAR_TOP);
     pad(g_status, 0, PX(14, 8), 0, PX(14, 8));
@@ -73,6 +84,17 @@ void buildStatusBar(lv_obj_t* parent) {
     lv_obj_t* spacer = box(g_status);
     grow(spacer);
     lv_obj_set_height(spacer, 1);
+    // Campanello: c'e' una sveglia accesa (nascosto se no, cosi' la barra resta com'era).
+    g_sbAlarm = label(g_status, &icone_18, GRIGIO3(), IC_SVEGLIA);
+    lv_obj_add_flag(g_sbAlarm, LV_OBJ_FLAG_HIDDEN);
+#if TDECK
+    // Cuffie USB-C accese (la porta USB-C non e' del computer): grigie in attesa, ambra quando suonano.
+    g_sbCuffie = label(g_status, &icone_18, GRIGIO1(), IC_CUFFIE);
+    lv_obj_add_flag(g_sbCuffie, LV_OBJ_FLAG_HIDDEN);
+    // Nota: la musica suona (anche uscendo dal lettore).
+    g_sbMusic = label(g_status, &icone_18, AMBRA(), IC_MUSICA);
+    lv_obj_add_flag(g_sbMusic, LV_OBJ_FLAG_HIDDEN);
+#endif
     g_sbGps = label(g_status, &icone_18, VERDE(), IC_GPS);
     lv_obj_t* bars = box(g_status);
     lv_obj_set_size(bars, PX(22, 15), PX(16, 12));
@@ -99,28 +121,77 @@ void buildHints(const std::vector<Hint>& hints) {
 #else
         lv_obj_t* k = label(r, &mono_16, BIANCO(), h.key);
 #endif
-        lv_obj_set_style_border_width(k, 1, 0);
-        lv_obj_set_style_border_color(k, GRIGIO2(), 0);
+        if (temaChiaro()) {  // Carta: tasti neri pieni con la scritta bianca
+            fill(k, INCHIOSTRO());
+            lv_obj_set_style_text_color(k, SU_COLORE(), 0);
+        } else {
+            lv_obj_set_style_border_width(k, 1, 0);
+            lv_obj_set_style_border_color(k, GRIGIO2(), 0);
+        }
         radius(k, PX(4, 3));
         pad(k, 0, PX(5, 3), 0, PX(5, 3));
         label(r, &font_16, GRIGIO3(), h.text.c_str());
     }
 }
 
+// Riga sopra la barra dei tasti: scuro sottile e grigia, Carta nera da 2 (come lo sketch).
+void stileBarraTasti() {
+    lv_obj_set_style_border_color(g_hints, temaChiaro() ? INCHIOSTRO() : GRIGIO1(), 0);
+    lv_obj_set_style_border_width(g_hints, temaChiaro() ? 2 : 1, 0);
+}
+
+// Carta: alone bianco intorno a domande e avvisi, cosi' si staccano dalla pagina sotto (bordi
+// neri dei fumetti, testi). Avvisi: l'alone arriva giusto al bordo della barra di stato.
+void alone(lv_obj_t* o) {
+    lv_obj_set_style_outline_width(o, PX(6, 4), 0);
+    lv_obj_set_style_outline_color(o, NERO(), 0);
+}
+
 #if TDECK
+// Freccia di W A S D tenuta premuta: dopo un attimo si ripete (il trackball non serve tenerlo).
+Key g_heldArrow = Key::NONE;
+int64_t g_heldSince = 0, g_lastRepeat = 0;
+constexpr int64_t REPEAT_DELAY_MS = 450, REPEAT_EVERY_MS = 110;
+
 // T-Deck: il tasto 0/microfono e' il PTT, tranne quando il campo di testo aspetta una cifra (dopo
-// ALT, o nei campi numerici); il tasto cancella e' BACK quando non c'e' niente da cancellare. La
-// scelta si fa alla pressione e vale anche per il rilascio.
+// ALT, o nei campi numerici); il tasto cancella e' BACK quando non c'e' niente da cancellare.
+// Quando non si sta scrivendo (nessun campo di testo, oppure una finestra di scelta o la griglia
+// dei simboli aperta) W A S D sono le frecce, come il trackball, e Invio e' OK. La scelta si fa
+// alla pressione e vale anche per il rilascio (per ogni tasto: se ne possono tenere piu' insieme).
 void translateKey(scheda::KeyEvent& e) {
-    static bool micIsPtt = false, bkspIsBack = false;
+    static bool micIsPtt = false, bkspIsBack = false, enterIsOk = false;
+    static Key cross[4] = {Key::NONE, Key::NONE, Key::NONE, Key::NONE};
+    static const Key LETTERS[4] = {Key::W, Key::A, Key::S, Key::D};
+    static const Key ARROWS[4] = {Key::UP, Key::LEFT, Key::DOWN, Key::RIGHT};
     const Screen* s = top();
     const TextInput* in = s ? s->input() : nullptr;
+    const bool digits = s && s->typesDigits() && !g_ask.box;
+    const bool typing = (in && !g_ask.box) || digits;
+    // Schermate che usano le lettere (la rubrica salta all'iniziale): W A S D restano lettere.
+    const bool letters = s && s->lettersAreKeys() && !g_ask.box;
     if (e.key == Key::ZERO_MIC) {
-        if (e.pressed) micIsPtt = !(in && in->wantsDigit());
+        if (e.pressed) micIsPtt = !((in && in->wantsDigit()) || digits);
         if (micIsPtt) e.key = Key::PTT;
     } else if (e.key == Key::BKSP) {
         if (e.pressed) bkspIsBack = g_ask.box || !in || in->symOpen() || in->empty();
         if (bkspIsBack) e.key = Key::BACK;
+    } else if (e.key == Key::ENTER) {
+        if (e.pressed) enterIsOk = !typing;
+        if (enterIsOk) e.key = Key::OK;
+    } else {
+        for (int i = 0; i < 4; i++) {
+            if (e.key != LETTERS[i]) continue;
+            if (e.pressed) cross[i] = (typing || letters) && !(in && in->symOpen()) ? Key::NONE : ARROWS[i];
+            if (cross[i] == Key::NONE) break;
+            e.key = cross[i];
+            if (e.pressed) {
+                g_heldArrow = e.key;
+                g_heldSince = g_lastRepeat = nowMs();
+            } else if (g_heldArrow == e.key) {
+                g_heldArrow = Key::NONE;
+            }
+            break;
+        }
     }
 }
 #endif
@@ -170,7 +241,12 @@ bool globalKey(Key k, bool pressed) {
             g_pwrLongDone = false;
         } else if (!g_pwrLongDone && g_pwrDownAt) {
             g_pwrDownAt = 0;
-            if (g_on) {
+            if (ringOnTop()) {
+                // Sveglia o timer che suonano in cima: PWR va a loro (la sveglia si posticipa),
+                // niente schermo spento o blocco col PIN sopra la schermata che suona. Se sopra c'e'
+                // altro (chiamata, SOS) PWR fa il suo solito lavoro.
+                top()->onKey(Key::PWR, true);
+            } else if (g_on) {
                 screenOff();
                 if (!app::dati().settings().pin.empty()) push(makeLock());
             } else {
@@ -181,6 +257,14 @@ bool globalKey(Key k, bool pressed) {
     }
     if (!pressed) return false;
     if ((k == Key::VOLUP || k == Key::VOLDN) && !(top() && top()->onKey(k, pressed))) {
+#if TDECK
+        // Con le cuffie USB-C che suonano i tasti del volume vanno a loro (niente clic: sarebbe sulla cassa).
+        if (app::cuffie().pronta()) {
+            cambiaVolumeCuffie(k == Key::VOLUP ? 1 : -1);
+            toast("Volume cuffie", std::to_string(app::dati().settings().volumeCuffie) + " su 10", GRIGIO3());
+            return true;
+        }
+#endif
         app::Settings s = app::dati().settings();
         if (k == Key::VOLUP && s.volume < 10) s.volume++;
         if (k == Key::VOLDN && s.volume > 0) s.volume--;
@@ -195,6 +279,7 @@ bool globalKey(Key k, bool pressed) {
 
 void handleKey(const scheda::KeyEvent& e) {
     g_lastActivity = nowMs();
+    if (e.pressed) clockNoteActivity();  // un T-Deck acceso dalla sveglia e' in uso: non si rispegne
     if (!g_on) {
         // Il primo tasto accende solo lo schermo (PWR e PTT fanno anche il loro lavoro).
         if (e.pressed && e.key != Key::PWR && e.key != Key::PTT) {
@@ -236,6 +321,62 @@ void handleKey(const scheda::KeyEvent& e) {
     if (e.key == Key::BACK && g_stack.size() > 1) pop();
 }
 
+#if TDECK
+// Cuffie USB-C: un avviso a ogni cambio di stato che conta. Se smettono di suonare (staccate, spente, guaste)
+// con la musica in corso, anche il lettore va in pausa: l'audio ha gia' fermato la musica prima della cassa.
+void eventoCuffie(const app::Event& e) {
+    using C = app::Cuffie;
+    static C::Stato prima = C::Stato::SPENTE;
+    static bool musicaFerma = false;  // la musica e' in pausa perche' le cuffie non suonano piu'
+    const C::Stato s = C::Stato(e.a);
+    const C::Errore er = C::Errore(e.id);
+    if (prima == C::Stato::COLLEGATE && s != C::Stato::COLLEGATE) {
+        musicaFerma = app::musica().attiva() && !app::musica().inPausa();
+        if (musicaFerma) app::musica().pausa(true);
+    }
+    switch (s) {
+        case C::Stato::COLLEGATE:
+            wake();
+            toast("Cuffie collegate", app::cuffie().nome(), VERDE());
+            musicaFerma = false;
+            break;
+        case C::Stato::IN_ATTESA:
+            if (prima == C::Stato::COLLEGATE) {
+                wake();
+                toast("Cuffie scollegate", musicaFerma ? "Musica in pausa" : "", GRIGIO3());
+            } else if (prima == C::Stato::ACCENSIONE) {
+                toast("Cuffie USB-C attive", "Collega le cuffie con l'adattatore alimentato", BLU());
+            }
+            break;
+        case C::Stato::NON_SUPPORTATE:
+            wake();
+            toast("Dispositivo USB non supportato", C::testoErrore(er), ROSSO());
+            break;
+        case C::Stato::ERRORE:
+            wake();
+            toast("Cuffie USB-C: errore", std::string(C::testoErrore(er)) + (musicaFerma ? " · musica in pausa" : ""),
+                  ROSSO());
+            break;
+        case C::Stato::SPENTE:
+            if (er == C::Errore::SENZA_CUFFIE) {
+                wake();
+                toast("Cuffie USB-C spente", "Spente dopo 2 minuti senza cuffie", GRIGIO3());
+            } else if (er == C::Errore::DRIVER) {
+                toast("Cuffie USB-C: errore", C::testoErrore(er), ROSSO());
+            } else {
+                toast("Cuffie USB-C spente",
+                      musicaFerma ? "Musica in pausa · la porta torna al computer" : "La porta USB-C torna al computer",
+                      GRIGIO3());
+            }
+            musicaFerma = false;
+            break;
+        default:  // ACCENSIONE, COLLEGAMENTO, SPEGNIMENTO: niente avvisi
+            break;
+    }
+    prima = s;
+}
+#endif
+
 void handleEvent(const app::Event& e) {
     using app::Ev;
     auto name = [&](uint16_t n) { return app::dati().nameOf(n); };
@@ -264,6 +405,12 @@ void handleEvent(const app::Event& e) {
         }
         case Ev::POS_REQUEST:
             wake();
+            clockNoteActivity();
+            if (ringOnTop()) {
+                // Mentre suona una sveglia la richiesta aspetta sotto: compare quando la si ferma.
+                pushUnder(makePositionRequest(e.from, e.id));
+                break;
+            }
             alert(scheda::suoni::SQUILLO, 40, 30, 0);
             push(makePositionRequest(e.from, e.id));
             break;
@@ -276,6 +423,7 @@ void handleEvent(const app::Event& e) {
         case Ev::SOS:
             wake();
             if (e.a) {
+                clockNoteActivity();
                 if (sosShouldAlert(e.from)) {
                     if (g_toast) {  // niente avvisi vecchi sopra l'allarme
                         lv_obj_delete(g_toast);
@@ -319,12 +467,30 @@ void handleEvent(const app::Event& e) {
             const auto s = pn::CallState(e.a);
             if (s == pn::CallState::INCOMING && !callScreenOpen()) {
                 wake();
+                clockNoteActivity();
                 push(makeIncomingCall(e.from));  // squilla la schermata stessa
             } else if (s == pn::CallState::IDLE && pn::CallResult(e.id) == pn::CallResult::MISSED && !callScreenOpen()) {
                 toast("Chiamata persa", name(e.from), ROSSO());
             }
             break;
         }
+        case Ev::GAME:
+            gameEvent(e);  // sfida arrivata, mossa dell'altro (schermate_giochi)
+            break;
+#if TDECK
+        case Ev::MAPPE:  // mappe dal computer (flasher, via USB)
+            wake();
+            if (e.id == 0) {
+                toast("Mappe dal computer", "Arrivano i tile: non scollegare il cavo", BLU());
+            } else {
+                mapReload();
+                toast("Mappe arrivate", std::to_string(e.a) + " tile sulla microSD", VERDE());
+            }
+            break;
+        case Ev::CUFFIE:  // cuffie USB-C
+            eventoCuffie(e);
+            break;
+#endif
         case Ev::VOICE_INCOMING:
             wake();
             toast("Walkie-talkie", name(e.from) + " sta parlando...", VERDE());
@@ -332,7 +498,7 @@ void handleEvent(const app::Event& e) {
         case Ev::VOICE_READY:
             wake();
             if (walkieTakesVoice(e.from)) break;  // lo riproduce il walkie-talkie aperto
-            if (walkieRecording() || scheda::audio().recording()) {
+            if (walkieRecording() || scheda::audio().recording() || ringOpen()) {
                 toast("Vocale da " + name(e.from),
                       TXT("Premi CALL dopo per ascoltarlo", std::string("Premi ") + tasto("CALL") + " dopo per ascoltarlo"),
                       VERDE());
@@ -354,14 +520,34 @@ void uiTask(void*) {
     if (!app::rete().radioOk()) toast("Radio LoRa non trovata", "Controlla il modulo SX1262", ROSSO());
     for (;;) {
         scheda::KeyEvent ke;
+        bool tasti = false;
         while (xQueueReceive(scheda::tastiera().queue(), &ke, 0) == pdTRUE) {
 #if TDECK
             translateKey(ke);
 #endif
             handleKey(ke);
+            tasti = true;
         }
+#if TDECK
+        // W A S D tenuti premuti: la freccia si ripete (al massimo 15 s, se si perdesse il rilascio).
+        if (g_heldArrow != Key::NONE) {
+            const int64_t t = nowMs();
+            if (t - g_heldSince > 15000) g_heldArrow = Key::NONE;
+            else if (t - g_heldSince > REPEAT_DELAY_MS && t - g_lastRepeat > REPEAT_EVERY_MS) {
+                g_lastRepeat = t;
+                handleKey({g_heldArrow, true});
+                handleKey({g_heldArrow, false});
+                tasti = true;
+            }
+        }
+#endif
+        // La barra dei tasti segue subito la schermata (se no restava quella vecchia fino a 2 s),
+        // anche coi tasti ripetuti.
+        if (tasti && top()) buildHints(top()->hints());
         app::Event ev;
         while (app::poll(ev)) handleEvent(ev);
+        clockService();          // sveglie e timer (anche a schermo spento)
+        app::giochi().servizio();  // mosse delle sfide via radio da mandare
         const int64_t now = nowMs();
         // PWR tenuto premuto: spegnimento.
         if (g_pwrDownAt && !g_pwrLongDone && now - g_pwrDownAt > 1500) {
@@ -370,9 +556,14 @@ void uiTask(void*) {
             wake();
             ask("Spegnere il telefono?",
                 TXT("Non riceverai messaggi finché non lo riaccendi (tieni premuto PWR).",
-                    "Non riceverai messaggi finché non lo riaccendi con l'interruttore laterale."),
+                    "Non riceverai messaggi. Si riaccende premendo il trackball, e l'ora resta giusta."),
                 {"Spegni", "Annulla"}, [](int i) {
-                    if (i == 0) scheda::powerOff();
+                    if (i != 0) return;
+                    clockBeforePowerOff();  // T-Deck: si riaccende da solo per la prossima sveglia
+#if TDECK
+                    app::cuffie().spegniEAspetta();  // cuffie USB-C: la porta torna al computer
+#endif
+                    scheda::powerOff();
                 });
         }
         // VOL+ e VOL- insieme per 3 secondi: SOS.
@@ -440,6 +631,19 @@ void showTop() {
     refreshBars();
 }
 
+void applicaTema() {
+    setTemaChiaro(!app::dati().settings().temaScuro);
+    lv_obj_t* scr = lv_screen_active();
+    fill(scr, NERO());
+    lv_obj_set_style_text_color(scr, BIANCO(), 0);
+    stileBarraTasti();
+    if (g_toast) {
+        lv_obj_delete(g_toast);
+        g_toast = nullptr;
+    }
+    showTop();  // la schermata in cima si ricostruisce coi colori nuovi (la barra di stato e' uguale)
+}
+
 void init() {
     setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
@@ -454,6 +658,7 @@ void init() {
     lv_display_set_buffers(g_disp, b1, b2, bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(g_disp, flushCb);
 
+    setTemaChiaro(!app::dati().settings().temaScuro);
     lv_obj_t* scr = lv_screen_active();
     fill(scr, NERO());
     lv_obj_set_style_text_color(scr, BIANCO(), 0);
@@ -470,8 +675,7 @@ void init() {
     lv_obj_set_size(g_hints, W, BAR_BOTTOM);
     pad(g_hints, 0, PX(14, 6), 0, PX(14, 6));
     lv_obj_set_style_border_side(g_hints, LV_BORDER_SIDE_TOP, 0);
-    lv_obj_set_style_border_color(g_hints, GRIGIO1(), 0);
-    lv_obj_set_style_border_width(g_hints, 1, 0);
+    stileBarraTasti();
 
     g_lastActivity = nowMs();
     xTaskCreatePinnedToCore(uiTask, "ui", 16384, nullptr, 5, nullptr, 1);
@@ -480,6 +684,16 @@ void init() {
 void push(Screen* s) {
     g_stack.emplace_back(s);
     showTop();
+}
+
+// Sotto la schermata in cima, che resta quella visibile: questa compare quando l'altra si chiude.
+void pushUnder(Screen* s) {
+    // Mai sotto la schermata di base (si perderebbe): con una sola schermata si mette in cima.
+    if (g_stack.size() < 2) {
+        push(s);
+        return;
+    }
+    g_stack.insert(g_stack.end() - 1, std::unique_ptr<Screen>(s));
 }
 
 void pop() {
@@ -498,7 +712,8 @@ void replace(Screen* s) {
 }
 
 void goHome() {
-    while (g_stack.size() > 1) {
+    // Ci si ferma alla schermata del PIN, se c'e' (vedi Screen::isLock).
+    while (g_stack.size() > 1 && !g_stack.back()->isLock()) {
         g_trash.push_back(std::move(g_stack.back()));
         g_stack.pop_back();
     }
@@ -510,6 +725,15 @@ Screen* top() { return g_stack.empty() ? nullptr : g_stack.back().get(); }
 
 void refreshBars() {
     if (!g_status) return;
+#if TDECK
+    // Le schermate che usano il GPS lo tengono acceso finche' sono nella pila, anche sotto altre o sotto il
+    // PIN: la richiesta vale 6 secondi e si rinnova qui (ogni 2 secondi e a ogni cambio di schermata).
+    for (const auto& sc : g_stack)
+        if (sc->vuoleGps()) {
+            app::rete().gnssSchermata();
+            break;
+        }
+#endif
     Screen* s = top();
     const uint32_t t = app::rete().unixTime();
     lv_label_set_text(g_sbTime, (s && !s->showClock()) || !t ? "" : timeHM(t).c_str());
@@ -517,10 +741,34 @@ void refreshBars() {
     lv_label_set_text(g_sbUnread, unread ? (std::string(IC_BUSTA " ") + std::to_string(unread)).c_str() : "");
     if (app::rete().sosActive()) lv_obj_clear_flag(g_sbSos, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(g_sbSos, LV_OBJ_FLAG_HIDDEN);
-    const scheda::Fix f = scheda::gnss().fix();
-    lv_obj_set_style_text_color(g_sbGps, f.valid ? VERDE() : GRIGIO1(), 0);
-    const app::Rete::Signal sig = app::rete().signal();
-    for (int i = 0; i < 4; i++) fill(g_sbBars[i], i < sig.bars ? BIANCO() : GRIGIO1());
+    bool alarm = false;
+    for (const auto& a : app::orologio().sveglie()) alarm = alarm || a.attiva;
+    if (alarm) lv_obj_clear_flag(g_sbAlarm, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(g_sbAlarm, LV_OBJ_FLAG_HIDDEN);
+#if TDECK
+    if (app::musica().attiva() && !app::musica().inPausa()) lv_obj_clear_flag(g_sbMusic, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(g_sbMusic, LV_OBJ_FLAG_HIDDEN);
+    const app::Cuffie::Stato cuffie = app::cuffie().stato();
+    if (cuffie == app::Cuffie::Stato::SPENTE) lv_obj_add_flag(g_sbCuffie, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(g_sbCuffie, LV_OBJ_FLAG_HIDDEN);
+#endif
+    {
+        TemaScuroFisso scura;  // barra di stato
+#if TDECK
+        // GPS: grigio spento, ambra acceso senza una posizione di adesso (cerca i satelliti, o non risponde),
+        // verde con la posizione.
+        const FaseGps gps = faseGps();
+        lv_obj_set_style_text_color(g_sbGps, gps == FaseGps::FIX ? VERDE() : gps == FaseGps::SPENTO ? GRIGIO1() : AMBRA(), 0);
+#else
+        const scheda::Fix f = scheda::gnss().fix();
+        lv_obj_set_style_text_color(g_sbGps, f.valid ? VERDE() : GRIGIO1(), 0);
+#endif
+        const app::Rete::Signal sig = app::rete().signal();
+        for (int i = 0; i < 4; i++) fill(g_sbBars[i], i < sig.bars ? BIANCO() : GRIGIO1());
+#if TDECK
+        lv_obj_set_style_text_color(g_sbCuffie, cuffie == app::Cuffie::Stato::COLLEGATE ? AMBRA() : GRIGIO1(), 0);
+#endif
+    }
     const uint8_t b = scheda::batteria().percent();
     const bool chg = scheda::batteria().charging();
     std::string bt = b <= 100 ? std::to_string(b) + "% " : "";
@@ -535,10 +783,11 @@ void toast(const std::string& title, const std::string& text, lv_color_t accent)
     lv_obj_set_width(g_toast, PX(452, 304));
     lv_obj_set_height(g_toast, LV_SIZE_CONTENT);
     lv_obj_align(g_toast, LV_ALIGN_TOP_MID, 0, PX(42, 26));
-    fill(g_toast, GRIGIO1());
+    fill(g_toast, SUPERFICIE());
     radius(g_toast, PX(12, 8));
     lv_obj_set_style_border_width(g_toast, 2, 0);
     lv_obj_set_style_border_color(g_toast, accent, 0);
+    if (temaChiaro()) alone(g_toast);
     pad(g_toast, PX(10, 5), PX(14, 8), PX(12, 6), PX(14, 8));
     label(g_toast, &font_18, accent, title.c_str());
     if (!text.empty()) {
@@ -557,12 +806,14 @@ void ask(const std::string& title, const std::string& text, const std::vector<st
     g_ask.box = column(lv_layer_top(), PX(10, 4));
     lv_obj_set_size(g_ask.box, PX(440, 300), LV_SIZE_CONTENT);
     lv_obj_center(g_ask.box);
-    fill(g_ask.box, GRIGIO1());
+    fill(g_ask.box, SUPERFICIE());
     radius(g_ask.box, PX(16, 10));
     lv_obj_set_style_border_width(g_ask.box, 2, 0);
     lv_obj_set_style_border_color(g_ask.box, AMBRA(), 0);
+    if (temaChiaro()) alone(g_ask.box);
     pad(g_ask.box, PX(18, 8), PX(18, 10), PX(18, 8), PX(18, 10));
-    label(g_ask.box, &font_26b, BIANCO(), title.c_str());
+    // Largo quanto il riquadro: un titolo lungo (un nome lungo) va a capo invece di uscire.
+    lv_obj_set_width(label(g_ask.box, &font_26b, BIANCO(), title.c_str()), lv_pct(100));
     if (!text.empty()) {
         lv_obj_t* l = label(g_ask.box, &font_20, GRIGIO3(), text.c_str());
         lv_obj_set_width(l, PX(400, 276));
@@ -573,13 +824,30 @@ void ask(const std::string& title, const std::string& text, const std::vector<st
         lv_obj_set_size(r, PX(400, 276), PX(48, 28));
         radius(r, PX(24, 14));
         pad(r, 0, PX(18, 12), 0, PX(18, 12));
+        if (temaChiaro()) {  // Carta: anche le scelte non selezionate hanno il bordo
+            lv_obj_set_style_border_width(r, 2, 0);
+            lv_obj_set_style_border_color(r, INCHIOSTRO(), 0);
+        }
         label(r, &font_22b, BIANCO(), o.c_str());
         g_ask.rows.push_back(r);
     }
     g_ask.sel = 0;
     g_ask.cb = std::move(cb);
+    if (temaChiaro()) {
+        // Carta: l'alone si ferma alle barre (quella di stato e' sempre nera), come per gli avvisi.
+        // Serve per le domande alte (Informazioni sul T-Deck).
+        lv_obj_update_layout(g_ask.box);
+        lv_area_t a;
+        lv_obj_get_coords(g_ask.box, &a);
+        const bool barre = !lv_obj_has_flag(g_status, LV_OBJ_FLAG_HIDDEN);
+        const int32_t su = a.y1 - (barre ? BAR_TOP : 0);
+        const int32_t giu = (barre ? H - BAR_BOTTOM : H) - (a.y2 + 1);
+        lv_obj_set_style_outline_width(g_ask.box, std::max<int32_t>(0, std::min<int32_t>(PX(6, 4), std::min(su, giu))), 0);
+    }
     askFocus();
 }
+
+bool askOpen() { return g_ask.box != nullptr; }
 
 void wake() {
     g_lastActivity = nowMs();

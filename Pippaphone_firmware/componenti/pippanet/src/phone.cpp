@@ -31,7 +31,7 @@ constexpr Millis CALL_CLOSE_MS = 2000;        // tempo massimo per mandare la fi
 // al massimo CALL_MAX_MS; si riprova anche subito se intanto si sente quel telefono.
 constexpr Millis RETRY_LATER_MS = CALL_MAX_MS + 30000;
 constexpr int LATER_ROUNDS = 1;
-bool retriesLater(Type t) { return t == Type::DM_TEXT || t == Type::GROUP_INVITE; }
+bool retriesLater(Type t) { return t == Type::DM_TEXT || t == Type::GROUP_INVITE || t == Type::GAME; }
 
 uint16_t randomId() {
     uint16_t v = 0;
@@ -93,7 +93,14 @@ bool Phone::provision(const ProvHello& hello, Addr number, Millis now) {
     p.cert.number = number;
     p.cert.edPublic = hello.edPublic;
     p.cert.xPublic = hello.xPublic;
-    p.cert.issued = unixTime(now);
+    // Una riassegnazione del numero deve battere il certificato di prima (learnCert tiene il piu'
+    // recente), anche se l'ora dell'amministratore e' indietro o lo era quando l'aveva emesso (per
+    // esempio una data sbagliata messa a mano).
+    uint32_t issued = unixTime(now);
+    if (const Cert* old = certOf(number)) {
+        if (old->issued != UINT32_MAX) issued = std::max(issued, old->issued + 1);
+    }
+    p.cert.issued = issued;
     p.cert.signWith(admin_);
     p.adminPublic = admin_.edPublic;
     uint8_t buf[MAX_PAYLOAD];
@@ -105,7 +112,20 @@ bool Phone::provision(const ProvHello& hello, Addr number, Millis now) {
     h.src = self_;
     h.dst = ADDR_NONE;
     sendRaw(h, buf, n, now);
-    if (trusted_) learnCert(p.cert);
+    if (trusted_) {
+        const Cert* prev = certOf(number);
+        if (prev && prev->edPublic == p.cert.edPublic && prev->xPublic == p.cert.xPublic) {
+            // Stesso telefono, numero mandato di nuovo (offerta persa o non ancora confermata): il
+            // telefono tiene l'ultima offerta, quindi anche qui si ricorda la piu' recente (learnCert
+            // non cambia un certificato con le stesse chiavi). Cosi' una riassegnazione la batte.
+            if (p.cert.issued > prev->issued) {
+                certs_[number] = p.cert;
+                L_.onCertLearned(p.cert);
+            }
+        } else {
+            learnCert(p.cert);
+        }
+    }
     return true;
 }
 
@@ -215,6 +235,17 @@ uint32_t Phone::sendText(Addr to, const std::string& text, Millis now) {
     size_t n = encodeTextPayload(t, buf, MAX_PAYLOAD - PAIR_OVERHEAD);
     if (!n) return 0;
     return queueReliable(to, Type::DM_TEXT, buf, n, now);
+}
+
+uint32_t Phone::sendGame(Addr to, const uint8_t* data, size_t len, Millis now) {
+    if (!data || len == 0 || len > MAX_GAME_BYTES || !isPhoneAddr(to) || to == self_) return 0;
+    return queueReliable(to, Type::GAME, data, len, now);
+}
+
+void Phone::cancelGame(Addr to, uint32_t msgId) {
+    out_.erase(std::remove_if(out_.begin(), out_.end(),
+                              [&](const Outgoing& o) { return o.type == Type::GAME && o.to == to && o.msgId == msgId; }),
+               out_.end());
 }
 
 void Phone::sendRead(Addr to, uint32_t msgId, Millis now) { sendAck(to, msgId, AckKind::READ, now); }
@@ -381,7 +412,9 @@ void Phone::handle(const Header& h, const uint8_t* raw, size_t len, const RxInfo
         case Type::BEACON: {
             Beacon b;
             if (!decodeBeacon(payload, plen, b)) return;
-            if (b.timeValid && b.unixTime && !timeFromGps() && (!timeValid() || b.gpsTime)) {
+            // Senza ora, o con l'ora ritrovata dopo un riavvio, va bene quella della rete; un'ora gia'
+            // valida (anche messa a mano) la cambia solo quella del GPS.
+            if (b.timeValid && b.unixTime && !timeFromGps() && (!timeValid() || b.gpsTime || timeRestored_)) {
                 setUnixTime(b.unixTime, now, false);
                 L_.onTimeSync(b.unixTime);
             }
@@ -522,6 +555,7 @@ void Phone::handlePairwise(const Header& h, const uint8_t* raw, size_t len, cons
             if (t == Type::SOS) L_.onSosAck(h.src);
             if (t == Type::DM_TEXT) L_.onDelivery(h.src, a.ackedSeq, Delivery::DELIVERED);
             if (t == Type::POS_REQ) L_.onDelivery(h.src, a.ackedSeq, Delivery::DELIVERED);
+            if (t == Type::GAME) L_.onGameDelivery(h.src, a.ackedSeq, Delivery::DELIVERED);
             break;
         }
         if (a.kind == AckKind::READ) L_.onDelivery(h.src, a.ackedSeq, Delivery::READ);
@@ -564,6 +598,9 @@ void Phone::handlePairwise(const Header& h, const uint8_t* raw, size_t len, cons
             L_.onGroupInvite(g, h.src);
             break;
         }
+        case Type::GAME:
+            if (blen > 0 && blen <= MAX_GAME_BYTES) L_.onGame(h.src, msgId, body, blen);
+            break;
         default:
             break;
     }
@@ -1248,12 +1285,27 @@ void Phone::onTransmitted(const uint8_t* data, size_t len, Millis now) {
 
 // ------------------------------------------------------------------ tempo
 
+bool Phone::setLocalTime(uint32_t unixSec, Millis now) {
+    if (gpsTimeFresh(now)) return false;
+    Node::setUnixTime(unixSec, now, false);
+    timeLocal_ = true;
+    timeRestored_ = false;
+    return true;
+}
+
+bool Phone::setRestoredTime(uint32_t unixSec, Millis now) {
+    if (!setLocalTime(unixSec, now)) return false;
+    timeRestored_ = true;
+    return true;
+}
+
 void Phone::sendBeacon(Millis now) {
     Beacon b;
     b.role = Role::PHONE;
-    b.timeValid = timeValid();
-    b.gpsTime = timeFromGps();
-    b.unixTime = unixTime(now);
+    // L'ora messa a mano vale solo per questo telefono: nel beacon esce come non sincronizzata.
+    b.timeValid = timeValid() && !timeLocal_;
+    b.gpsTime = b.timeValid && timeFromGps();
+    b.unixTime = b.timeValid ? unixTime(now) : 0;
     b.battery = battery;
     uint8_t p[16];
     size_t n = encodeBeacon(b, p, sizeof(p));
@@ -1304,11 +1356,13 @@ void Phone::tick(Millis now) {
                 o.certTries = 0;
                 o.nextTry = now + RETRY_LATER_MS + randomBelow(30000);
                 if (o.type == Type::DM_TEXT) L_.onDelivery(o.to, o.msgId, Delivery::RETRYING);
+                if (o.type == Type::GAME) L_.onGameDelivery(o.to, o.msgId, Delivery::RETRYING);
                 i++;
                 continue;
             }
             if (o.type == Type::DM_TEXT || o.type == Type::POS_REQ)
                 L_.onDelivery(o.to, o.msgId, Delivery::UNREACHABLE);
+            if (o.type == Type::GAME) L_.onGameDelivery(o.to, o.msgId, Delivery::UNREACHABLE);
             out_.erase(out_.begin() + long(i));
             continue;
         }

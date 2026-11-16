@@ -6,6 +6,8 @@
 #include <dirent.h>
 
 #include <algorithm>
+#include <cctype>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -130,11 +132,103 @@ void scaleFor(double metersPerPx, int& px, std::string& text) {
 }
 }  // namespace
 
+namespace {
+std::vector<int> g_zooms;
+bool g_scanned = false;
+// Zona coperta dalle mappe (coordinate del mondo a zoom 0), dai tile del primo zoom sulla microSD.
+bool g_areaScanned = false, g_areaOk = false;
+double g_ax0 = 0, g_ax1 = 0, g_ay0 = 0, g_ay1 = 0;
+
+// "123.png" (anche .PNG): 123; -1 se il nome non e' cosi'.
+long tileNumber(const char* name) {
+    char* end = nullptr;
+    const long v = std::strtol(name, &end, 10);
+    if (end == name || v < 0) return -1;
+    static const char EXT[] = ".png";
+    for (size_t i = 0; i < sizeof(EXT); i++)  // anche lo 0 finale
+        if (std::tolower(static_cast<unsigned char>(end[i])) != EXT[i]) return -1;
+    return v;
+}
+
+// La zona delle mappe sulla microSD, dai tile del primo zoom (il piu' lontano: sono pochi), per aprire li'
+// una mappa senza segnaposto (prima si apriva sull'Italia intera, dove di solito non c'erano tile: "Nessuna
+// mappa di questa zona"). Si calcola una volta (e di nuovo dopo mapReload), leggendo al massimo 4000 tile.
+bool mapArea(double& x0, double& x1, double& y0, double& y1) {
+    if (!g_areaScanned) {
+        g_areaScanned = true;
+        g_areaOk = false;
+        const std::vector<int>& av = mapZooms();
+        if (!av.empty()) {
+            const int z = av.front();
+            char dir[80];
+            snprintf(dir, sizeof(dir), "%s/%d", app::MAPPE, z);
+            long tx0 = LONG_MAX, tx1 = -1, ty0 = LONG_MAX, ty1 = -1;
+            int seen = 0;
+            if (DIR* d = opendir(dir)) {
+                while (seen < 4000) {
+                    dirent* e = readdir(d);
+                    if (!e) break;
+                    char* end = nullptr;
+                    const long x = std::strtol(e->d_name, &end, 10);
+                    if (end == e->d_name || *end || x < 0) continue;
+                    char sub[100];
+                    snprintf(sub, sizeof(sub), "%s/%ld", dir, x);
+                    DIR* dx = opendir(sub);
+                    if (!dx) continue;
+                    while (seen < 4000) {
+                        dirent* f = readdir(dx);
+                        if (!f) break;
+                        const long y = tileNumber(f->d_name);
+                        if (y < 0) continue;
+                        seen++;
+                        tx0 = std::min(tx0, x);
+                        tx1 = std::max(tx1, x);
+                        ty0 = std::min(ty0, y);
+                        ty1 = std::max(ty1, y);
+                    }
+                    closedir(dx);
+                }
+                closedir(d);
+            }
+            if (tx1 >= 0) {
+                const double k = TILE / double(1u << z);  // un tile di questo zoom, in coordinate a zoom 0
+                g_ax0 = double(tx0) * k;
+                g_ax1 = double(tx1 + 1) * k;
+                g_ay0 = double(ty0) * k;
+                g_ay1 = double(ty1 + 1) * k;
+                g_areaOk = true;
+                ESP_LOGI(TAG, "zona delle mappe: zoom %d, x %ld-%ld, y %ld-%ld (%d tile letti)", z, tx0, tx1, ty0, ty1,
+                         seen);
+            }
+        }
+    }
+    x0 = g_ax0;
+    x1 = g_ax1;
+    y0 = g_ay0;
+    y1 = g_ay1;
+    return g_areaOk;
+}
+}  // namespace
+
+void mapReload() {
+    g_areaScanned = false;
+    // I tile ricordati come mancanti potrebbero esserci adesso: si dimenticano (quelli letti restano).
+    for (auto it = g_cache.begin(); it != g_cache.end();) {
+        if ((*it)->missing) {
+            freeTile(*it);
+            it = g_cache.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    g_scanned = false;
+}
+
 const std::vector<int>& mapZooms() {
-    static std::vector<int> zooms;
-    static bool scanned = false;
-    if (scanned) return zooms;
-    scanned = true;
+    std::vector<int>& zooms = g_zooms;
+    if (g_scanned) return zooms;
+    g_scanned = true;
+    zooms.clear();
     DIR* d = opendir(app::MAPPE);
     if (!d) return zooms;
     while (dirent* e = readdir(d)) {
@@ -153,32 +247,77 @@ void MapView::create(lv_obj_t* parent, int w, int h) {
     h_ = h;
     cont_ = box(parent);
     lv_obj_set_size(cont_, w, h);
-    fill(cont_, lv_color_hex(0x202020));
+    fill(cont_, colore(0x202020, 0xFFFFFF));  // senza tile: scuro, in Carta il foglio bianco
     layer_ = box(cont_);
     lv_obj_set_size(layer_, w, h);
     tiles_.clear();
     marks_.clear();
     // Scala in basso a sinistra, attribuzione in basso a destra (su fondo scuro, per leggerle
-    // anche sopra la mappa), avviso in alto.
+    // anche sopra la mappa; in Carta su un cartellino bianco col bordo nero), avviso in alto.
+    const bool carta = temaChiaro();
     lv_obj_t* scale = column(cont_, 2);
     lv_obj_set_size(scale, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(scale, NERO(), 0);
-    lv_obj_set_style_bg_opa(scale, LV_OPA_60, 0);
+    lv_obj_set_style_bg_opa(scale, carta ? LV_OPA_COVER : LV_OPA_60, 0);
     pad(scale, 1, 4, 3, 4);
+    if (carta) {
+        lv_obj_set_style_border_side(scale, lv_border_side_t(LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_RIGHT), 0);
+        lv_obj_set_style_border_width(scale, 1, 0);
+        lv_obj_set_style_border_color(scale, INCHIOSTRO(), 0);
+    }
     lv_obj_align(scale, LV_ALIGN_BOTTOM_LEFT, 0, 0);
     scaleText_ = label(scale, &font_16, BIANCO(), "");
     scaleLine_ = box(scale);
     fill(scaleLine_, BIANCO());
     lv_obj_t* osm = label(cont_, &font_16, GRIGIO3(), "© OpenStreetMap");
     lv_obj_set_style_bg_color(osm, NERO(), 0);
-    lv_obj_set_style_bg_opa(osm, LV_OPA_60, 0);
+    lv_obj_set_style_bg_opa(osm, carta ? LV_OPA_COVER : LV_OPA_60, 0);
     pad(osm, 0, 3, 0, 3);
+    if (carta) {
+        lv_obj_set_style_border_side(osm, lv_border_side_t(LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_LEFT), 0);
+        lv_obj_set_style_border_width(osm, 1, 0);
+        lv_obj_set_style_border_color(osm, INCHIOSTRO(), 0);
+    }
     lv_obj_align(osm, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
     msg_ = label(cont_, &font_16, GRIGIO3(), "");
     lv_obj_set_width(msg_, w - 40);
     lv_obj_set_style_text_align(msg_, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(msg_, LV_LABEL_LONG_WRAP);
     lv_obj_align(msg_, LV_ALIGN_TOP_MID, 0, 6);
+    // Stato del GPS in alto a sinistra (setGps), come la scala: su fondo scuro, in Carta su un cartellino
+    // bianco col bordo nero. Nascosto finche' non serve.
+    gps_ = label(cont_, &font_16, BIANCO(), "");
+    lv_obj_set_style_bg_color(gps_, NERO(), 0);
+    lv_obj_set_style_bg_opa(gps_, carta ? LV_OPA_COVER : LV_OPA_60, 0);
+    pad(gps_, 1, 4, 3, 4);
+    if (carta) {
+        lv_obj_set_style_border_side(gps_, lv_border_side_t(LV_BORDER_SIDE_BOTTOM | LV_BORDER_SIDE_RIGHT), 0);
+        lv_obj_set_style_border_width(gps_, 1, 0);
+        lv_obj_set_style_border_color(gps_, INCHIOSTRO(), 0);
+    }
+    lv_obj_align(gps_, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_add_flag(gps_, LV_OBJ_FLAG_HIDDEN);
+    moved_ = false;
+}
+
+void MapView::setGps(const std::string& text) {
+    if (!gps_) return;
+    if (text.empty()) {
+        if (lv_obj_has_flag(gps_, LV_OBJ_FLAG_HIDDEN)) return;
+        lv_obj_add_flag(gps_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(msg_, LV_ALIGN_TOP_MID, 0, 6);
+        return;
+    }
+    if (text != lv_label_get_text(gps_)) lv_label_set_text(gps_, text.c_str());
+    if (!lv_obj_has_flag(gps_, LV_OBJ_FLAG_HIDDEN)) return;
+    lv_obj_clear_flag(gps_, LV_OBJ_FLAG_HIDDEN);
+    // L'avviso "Nessuna mappa..." scende sotto il riquadro (alto una riga, i margini e il bordo).
+    lv_obj_align(msg_, LV_ALIGN_TOP_MID, 0, lv_font_get_line_height(&font_16) + 1 + 3 + 1 + 4);
+}
+
+void MapView::update(const std::vector<MapMarker>& m) {
+    setMarkers(m);
+    redraw();
 }
 
 void MapView::setMarkers(const std::vector<MapMarker>& m) {
@@ -190,24 +329,38 @@ void MapView::setMarkers(const std::vector<MapMarker>& m) {
         lv_obj_t* o = box(layer_);
         lv_obj_set_size(o, s, s);
         radius(o, LV_RADIUS_CIRCLE);
-        fill(o, k.kind == MapMarker::ME ? BLU() : k.color);
         lv_obj_set_style_border_width(o, k.kind == MapMarker::PERSON ? 1 : 2, 0);
-        lv_obj_set_style_border_color(o, k.kind == MapMarker::TARGET ? AMBRA() : (k.kind == MapMarker::ME ? BIANCO() : NERO()), 0);
-        if (!k.text.empty()) lv_obj_center(label(o, &font_16, BIANCO(), k.text.c_str()));
+        if (temaChiaro()) {
+            // Carta, sui tile chiari: io blu con l'anello bianco e il contorno nero, i contatti col
+            // contorno nero, il punto da mostrare con l'anello bianco e l'alone blu.
+            fill(o, k.kind == MapMarker::ME ? AMBRA() : k.color);
+            lv_obj_set_style_border_color(o, k.kind == MapMarker::PERSON ? INCHIOSTRO() : SU_COLORE(), 0);
+            if (k.kind != MapMarker::PERSON) {
+                lv_obj_set_style_outline_width(o, k.kind == MapMarker::ME ? 1 : 2, 0);
+                lv_obj_set_style_outline_color(o, k.kind == MapMarker::ME ? INCHIOSTRO() : AMBRA(), 0);
+                lv_obj_set_style_outline_opa(o, LV_OPA_COVER, 0);
+            }
+        } else {
+            fill(o, k.kind == MapMarker::ME ? BLU() : k.color);
+            lv_obj_set_style_border_color(o, k.kind == MapMarker::TARGET ? AMBRA() : (k.kind == MapMarker::ME ? BIANCO() : NERO()), 0);
+        }
+        if (!k.text.empty()) lv_obj_center(label(o, &font_16, SU_COLORE(), k.text.c_str()));
         marks_.push_back(o);
     }
 }
 
 void MapView::fit() {
     const std::vector<int>& av = mapZooms();
-    if (markers_.empty()) {
+    moved_ = false;
+    // Senza segnaposto: la zona delle mappe sulla microSD; l'Italia centrale solo se non ci sono mappe.
+    double minX = 1e300, maxX = -1e300, minY = 1e300, maxY = -1e300;
+    if (markers_.empty() && !mapArea(minX, maxX, minY, maxY)) {
         lat_ = 42.5;  // Italia
         lon_ = 12.5;
         zoom_ = av.empty() ? 5 : av.front();
         redraw();
         return;
     }
-    double minX = 1e300, maxX = -1e300, minY = 1e300, maxY = -1e300;
     for (const MapMarker& k : markers_) {
         const double x = lonToX(k.lonE7 / 1e7, 0), y = latToY(k.latE7 / 1e7, 0);
         minX = std::min(minX, x);
@@ -260,6 +413,7 @@ bool MapView::key(scheda::Key k) {
         case Key::C: fit(); return true;
         default: return false;
     }
+    moved_ = true;  // la guida chi la usa: niente inquadrature da sola fino a C
     redraw();
     return true;
 }

@@ -38,6 +38,9 @@ const std::vector<Note> ERRORE = {{440, 180}, {0, 40}, {330, 260}};
 const std::vector<Note> PTT_INIZIO = {{1200, 60}, {1800, 60}};
 const std::vector<Note> PTT_FINE = {{1800, 60}, {1200, 60}};
 const std::vector<Note> SQUILLO_USCITA = {{425, 1000}, {0, 3000}};  // come il tono di chiamata italiano
+// Sveglia: arpeggio che sale; timer: quattro bip. Suonano a ciclo finche' non si fermano.
+const std::vector<Note> SVEGLIA = {{1047, 120}, {0, 40}, {1319, 120}, {0, 40}, {1568, 120}, {0, 40}, {2093, 260}, {0, 700}};
+const std::vector<Note> TIMER = {{2637, 90}, {0, 70}, {2637, 90}, {0, 70}, {2637, 90}, {0, 70}, {2637, 90}, {0, 800}};
 }  // namespace suoni
 
 namespace {
@@ -99,9 +102,142 @@ void writeMono16k(const int16_t* s, size_t n, int volume) {
     }
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+// Musica (T-Deck): coda mono alla frequenza del brano, protetta da g_lock. La suona playTask, che e'
+// l'unico a scrivere sull'I2S: cambia lui la frequenza della cassa, tra un suono e l'altro.
+constexpr size_t MUSIC_CAP = 48000;  // 1 secondo a 48 kHz
+int16_t* g_mring = nullptr;
+size_t g_mHead = 0, g_mLen = 0;
+uint32_t g_musicRate = 44100;
+std::atomic<bool> g_music{false};
+std::atomic<bool> g_musicPaused{false};
+// Cambia a ogni musicStart (brano nuovo o salto), musicStop e pausa: i campioni presi dalla coda prima del
+// cambio non valgono piu' (con le cuffie USB-C il resto del blocco si butta, invece di suonare dopo).
+std::atomic<uint32_t> g_musicGen{0};
+// Solo playTask: l'ultimo blocco di musica e' andato all'uscita esterna. Sta fuori da musicLoop perche' deve
+// restare anche quando un altro suono interrompe la musica: se intanto le cuffie se ne vanno, la musica riparte
+// in pausa invece che dalla cassa.
+bool g_musicaFuori = false;
+int g_txRate = I2S_RATE;  // frequenza attuale della cassa (solo playTask)
+
+void setTxRate(int rate) {
+    if (rate == g_txRate) return;
+    // Nel DMA (6 x 240 frame) c'e' ancora la musica appena scritta: disable non lo svuota ed enable
+    // riparte dal primo, quindi si risentirebbe, alla frequenza nuova e fuori ordine. Prima la si fa
+    // finire alla frequenza giusta spingendo dentro silenzio (1536 frame, piu' di tutto il DMA).
+    static const int16_t zero[256] = {};
+    for (int i = 0; i < 6; i++) writeMono16k(zero, 256, 0);
+    i2s_channel_disable(g_tx);
+    i2s_std_clk_config_t c = I2S_STD_CLK_DEFAULT_CONFIG(uint32_t(rate));
+    i2s_channel_reconfig_std_clock(g_tx, &c);
+    i2s_channel_enable(g_tx);
+    g_txRate = rate;
+}
+
+// Musica piu' forte: la cassa del T-Deck e' piccola e col volume al massimo i brani restavano bassi.
+// Si alzano di 6 dB e un limitatore abbassa solo le punte che supererebbero circa -1 dBFS (attacco
+// sul campione stesso, quindi niente saturazione; rilascio in 150 ms). Solo la musica: suonerie,
+// vocali e chiamate restano come prima.
+struct Limitatore {
+    float inv = 0;        // inviluppo delle punte, dopo il guadagno
+    float rilascio = 0;   // per campione, dalla frequenza
+    uint32_t hz = 0;
+    int16_t passa(int16_t x, uint32_t rate) {
+        constexpr float GUADAGNO = 2.0f;    // +6 dB
+        constexpr float SOGLIA = 29000.0f;  // circa -1 dBFS
+        if (rate != hz) {
+            hz = rate;
+            rilascio = expf(-1.0f / (0.15f * float(rate ? rate : 44100)));
+        }
+        const float y = float(x) * GUADAGNO;
+        const float a = fabsf(y);
+        // Prima cala, poi il massimo col campione: cosi' l'inviluppo non e' mai sotto il campione.
+        inv *= rilascio;
+        if (a > inv) inv = a;
+        return int16_t(inv > SOGLIA ? y * (SOGLIA / inv) : y);
+    }
+};
+Limitatore g_limitatore;  // solo playTask
+
+// Altri suoni in attesa (melodia, vocale, chiamata): hanno la precedenza sulla musica.
+bool otherPending() {
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    const bool r = !g_notes.empty() || !g_pcm.empty() || g_streaming;
+    xSemaphoreGive(g_lock);
+    return r;
+}
+
+// Suona la musica finche' c'e' e nessun altro suono la interrompe. Con l'uscita esterna pronta (cuffie USB-C,
+// app/cuffie.cpp) la musica va li', mono (le cuffie la mettono uguale a sinistra e a destra), senza
+// setTxRate, Limitatore e I2S: la frequenza la converte l'uscita e il passo lo da' il clock della USB (spingi
+// aspetta, come il DMA della cassa). Se le cuffie si staccano (o si spengono) mentre la musica andava li', anche
+// durante un altro suono che l'ha interrotta, la musica va in pausa prima che un solo campione arrivi alla
+// cassa (g_musicaFuori); l'interfaccia, con Ev::CUFFIE, mette in pausa anche il lettore. La decisione si prende
+// a ogni blocco.
+void musicLoop() {
+    int16_t s[256];
+    bool zittita = false;  // registrando: la coda dell'uscita esterna e' gia' stata svuotata
+    while (g_music && !otherPending()) {
+        UscitaEsterna* u = audio().uscitaEsterna();
+        const bool fuori = u && u->pronta();
+        if (g_musicaFuori && !fuori) {
+            g_musicPaused = true;
+            g_musicaFuori = false;
+        }
+        if (g_musicPaused || g_recording) {  // pausa, o si sta registrando col microfono
+            // In pausa l'uscita esterna l'ha gia' svuotata musicPause; registrando tace subito anche li'.
+            if (g_recording && fuori && !zittita) {
+                u->svuota();
+                zittita = true;
+            }
+            vTaskDelay(pdMS_TO_TICKS(20));
+            continue;
+        }
+        zittita = false;
+        if (!fuori) setTxRate(int(g_musicRate));
+        size_t k = 0;
+        xSemaphoreTake(g_lock, portMAX_DELAY);
+        const uint32_t gen = g_musicGen;
+        while (k < 256 && g_mLen) {
+            s[k++] = g_mring[g_mHead];
+            g_mHead = (g_mHead + 1) % MUSIC_CAP;
+            g_mLen--;
+        }
+        xSemaphoreGive(g_lock);
+        if (!k) {
+            vTaskDelay(pdMS_TO_TICKS(5));  // coda vuota: l'I2S manda silenzio da solo (auto_clear)
+            continue;
+        }
+        if (fuori) {
+            // Fino a quando l'uscita prende tutto il blocco; se smette di essere pronta o se intanto la musica
+            // e' cambiata (pausa, salto, stop) il resto del blocco si butta.
+            g_musicaFuori = true;
+            for (size_t fatti = 0; fatti < k && u->pronta() && g_musicGen == gen;)
+                fatti += u->spingi(s + fatti, k - fatti, 1, g_musicRate, true);
+            continue;
+        }
+        for (size_t i = 0; i < k; i++) s[i] = g_limitatore.passa(s[i], g_musicRate);
+        writeMono16k(s, k, audio().volume());  // a qualunque frequenza: scrive e basta
+    }
+    // Un altro suono (sulla cassa) ferma la musica: quella in coda nelle cuffie sfuma invece di finire di colpo.
+    if (g_musicaFuori) {
+        if (UscitaEsterna* u = audio().uscitaEsterna()) u->svuota();
+    }
+    if (!g_music) g_musicaFuori = false;  // musica ferma (musicStop): il prossimo brano va dove si trova
+}
+#endif
+
 void playTask(void*) {
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+#if CONFIG_SCHEDA_TDECK_PLUS
+        musicLoop();
+        if (!otherPending()) {
+            setTxRate(I2S_RATE);  // musica finita: la cassa torna a 16 kHz
+            continue;
+        }
+        setTxRate(I2S_RATE);
+#endif
         g_playing = true;
         amp(true);
         vTaskDelay(pdMS_TO_TICKS(5));
@@ -190,6 +326,9 @@ void playTask(void*) {
         for (int i = 0; i < 8; i++) writeMono16k(zero, 256, 0);
         amp(false);
         g_playing = false;
+#if CONFIG_SCHEDA_TDECK_PLUS
+        if (g_music) xTaskNotifyGive(g_playTask);  // finiti gli altri suoni: riparte la musica
+#endif
     }
 }
 
@@ -452,6 +591,79 @@ void Audio::streamStop() {
 bool Audio::streaming() const { return g_streaming; }
 
 uint32_t Audio::streamQueuedMs() const { return uint32_t(g_ringLen / (RATE / 1000)); }
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+bool Audio::musicStart(uint32_t rate) {
+    if (rate < 8000 || rate > 48000) return false;
+    if (!g_mring) {
+        g_mring = static_cast<int16_t*>(heap_caps_malloc(MUSIC_CAP * sizeof(int16_t), MALLOC_CAP_SPIRAM));
+        if (!g_mring) {
+            ESP_LOGE(TAG, "niente memoria per la musica");
+            return false;
+        }
+    }
+    // La pausa resta com'e' (la toglie chi fa partire un brano): un salto fatto in pausa passa di
+    // qui e non deve far ripartire la musica.
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    g_mHead = g_mLen = 0;
+    g_musicRate = rate;
+    g_music = true;
+    g_musicGen++;
+    xSemaphoreGive(g_lock);
+    // Brano nuovo o salto: anche quello gia' nelle cuffie USB-C se ne va (sfumando).
+    if (UscitaEsterna* u = uscitaEsterna()) u->svuota();
+    xTaskNotifyGive(g_playTask);
+    return true;
+}
+
+size_t Audio::musicPush(const int16_t* mono, size_t n, uint32_t waitMs) {
+    size_t done = 0;
+    const TickType_t until = xTaskGetTickCount() + pdMS_TO_TICKS(waitMs);
+    while (done < n && g_music) {
+        xSemaphoreTake(g_lock, portMAX_DELAY);
+        while (done < n && g_mLen < MUSIC_CAP) {
+            g_mring[(g_mHead + g_mLen) % MUSIC_CAP] = mono[done++];
+            g_mLen++;
+        }
+        xSemaphoreGive(g_lock);
+        if (done < n) {
+            if (int32_t(xTaskGetTickCount() - until) >= 0) break;
+            vTaskDelay(pdMS_TO_TICKS(10));  // coda piena: si aspetta che la cassa ne consumi un po'
+        }
+    }
+    return done;
+}
+
+void Audio::musicPause(bool paused) {
+    g_musicPaused = paused;
+    if (!paused) return;
+    // In pausa la musica nelle cuffie USB-C si ferma subito (sfumando), non dopo la loro coda (circa 90 ms).
+    g_musicGen++;
+    if (UscitaEsterna* u = uscitaEsterna()) u->svuota();
+}
+
+void Audio::musicStop() {
+    xSemaphoreTake(g_lock, portMAX_DELAY);
+    g_music = false;
+    g_mHead = g_mLen = 0;
+    g_musicGen++;
+    xSemaphoreGive(g_lock);
+    if (UscitaEsterna* u = uscitaEsterna()) u->svuota();
+    xTaskNotifyGive(g_playTask);
+}
+
+bool Audio::musicActive() const { return g_music; }
+
+uint32_t Audio::musicQueuedMs() const { return g_musicRate ? uint32_t(uint64_t(g_mLen) * 1000 / g_musicRate) : 0; }
+#else
+// PCB: niente musica (manca la microSD nel firmware).
+bool Audio::musicStart(uint32_t) { return false; }
+size_t Audio::musicPush(const int16_t*, size_t, uint32_t) { return 0; }
+void Audio::musicPause(bool) {}
+void Audio::musicStop() {}
+bool Audio::musicActive() const { return false; }
+uint32_t Audio::musicQueuedMs() const { return 0; }
+#endif
 
 void Audio::startRecording(uint32_t maxMs, std::function<void(const int16_t*, size_t)> onFrame,
                            std::function<void()> onEnd) {

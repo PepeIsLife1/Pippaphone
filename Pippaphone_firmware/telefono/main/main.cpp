@@ -5,12 +5,15 @@
 //   ui     (nucleo 1): tasti, eventi, LVGL (ui/ui.cpp)
 //   input  (nucleo 1): interruzione INT_N -> tastiera e tasti laterali (scheda)
 //   voce, audio_in:    Codec2 e I2S
-//   servizi (qui):     GPS, batteria, potenza automatica, ogni 5 secondi
+//   servizi (qui):     GPS, batteria, potenza automatica, ogni 5 secondi (sul T-Deck il GPS ogni secondo)
 #include "app/aggiorna.h"
 #include "app/dati.h"
 #include "app/eventi.h"
+#include "app/giochi.h"
 #include "app/memoria.h"
+#include "app/orologio.h"
 #include "app/rete.h"
+#include "app/usb_mappe.h"
 #include "app/voce.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -22,6 +25,9 @@
 #include <ctime>
 #include <string>
 
+#include "app/cuffie.h"
+#include "app/gps_politica.h"
+#include "esp_heap_caps.h"
 #include "pippanet/airtime.h"
 #endif
 
@@ -127,23 +133,82 @@ void deviceInfo() {
 }
 #endif
 
-// GPS: acceso all'avvio finche' non arriva l'ora (al massimo 10 minuti), poi solo quando
-// serve (richiesta di posizione, SOS, schermata della posizione).
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck: il GPS lo decide app::PoliticaGps (app/gps_politica.h), un giro al secondo: acceso all'avvio fino
+// alla prima posizione (piu' 3 minuti, al massimo 20), ricerche periodiche finche' mancano l'ora o una
+// posizione recente (piu' rade al chiuso), le schermate che lo usano finche' sono aperte (ui.cpp), le
+// richieste (wantGnss: posizione, SOS, comandi USB) e dopo 5 minuti di grazia, se non c'e' una posizione da 4
+// ore. Ogni accensione e spegnimento una riga nel registro, col motivo. La posizione passa alla rete ogni
+// secondo finche' il GPS ne ha una (il mio punto sulla mappa la segue), se no ogni 5 secondi; batteria,
+// potenza automatica e info.txt ogni 5 secondi, come sulla PCB.
+void services() {
+    using Ora = app::PoliticaGps::Ora;
+    app::PoliticaGps politica;
+    bool gpsOn = false;
+    int giro = 0, infoTicks = 0;
+    uint8_t batt = 0;
+    for (;;) {
+        const bool cinque = giro == 0;  // un giro su cinque: ogni 5 secondi
+        giro = (giro + 1) % 5;
+        if (cinque && infoTicks-- <= 0) {
+            infoTicks = 120;  // 10 minuti
+            deviceInfo();
+        }
+        const scheda::Fix f = scheda::gnss().fix();
+        const app::Rete::TimeSource src = app::rete().timeSource();
+        app::PoliticaGps::Ingressi in;
+        in.ms = esp_timer_get_time() / 1000;
+        if (src == app::Rete::TimeSource::NONE) in.ora = Ora::NESSUNA;
+        else if (src == app::Rete::TimeSource::LOCAL || src == app::Rete::TimeSource::RESTORED) in.ora = Ora::DA_CORREGGERE;
+        else in.ora = Ora::BUONA;
+        in.fix = f.valid;
+        in.snrMax = f.snrMax;
+        in.schermata = app::rete().gnssSchermataAperta();
+        in.richiesta = app::rete().gnssWanted();
+        const bool want = politica.decidi(in);
+        if (want != gpsOn) {
+            gpsOn = want;
+            scheda::gnss().power(want, politica.motivo());
+            const int64_t tra = politica.prossimaRicercaTra(in.ms);
+            if (want) ESP_LOGI(TAG, "GPS acceso: %s", politica.motivo());
+            else if (tra >= 0)
+                ESP_LOGI(TAG, "GPS spento: %s (prossima ricerca tra %d min)", politica.motivo(), int((tra + 59999) / 60000));
+            else ESP_LOGI(TAG, "GPS spento: %s", politica.motivo());
+        }
+        if (cinque) {
+            const uint8_t pc = scheda::batteria().percent();
+            batt = pc <= 100 ? pc : 0;
+        }
+        // Con la posizione ogni secondo; senza, ogni 5 secondi (updateGnss conta l'eta' a passi di 5 s).
+        if (cinque || f.valid) app::rete().updateGnss(f, scheda::gnss().accuracyM(), batt);
+        if (cinque) {
+            app::rete().service();
+            checkBattery();
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+#else
+// GPS: acceso all'avvio finche' non arriva l'ora (10 minuti; senza nessuna ora 20, poi 3 minuti
+// ogni quarto d'ora finche' arriva), poi solo quando serve (richiesta di posizione, SOS,
+// schermata della posizione).
 void services() {
     const int64_t bootMs = esp_timer_get_time() / 1000;
     bool gpsOn = false;
-#if CONFIG_SCHEDA_TDECK_PLUS
-    int infoTicks = 0;
-#endif
     for (;;) {
-#if CONFIG_SCHEDA_TDECK_PLUS
-        if (infoTicks-- <= 0) {
-            infoTicks = 120;  // 10 minuti (un giro ogni 5 secondi)
-            deviceInfo();
-        }
-#endif
         const int64_t now = esp_timer_get_time() / 1000;
-        const bool boot = !app::rete().timeValid() && now - bootMs < 10 * 60 * 1000;
+        const int64_t dall = now - bootMs;
+        constexpr int64_t MIN = 60 * 1000;
+        // Anche un'ora "locale" (messa a mano o dall'orologio del chip) si corregge col GPS: i primi
+        // 10 minuti. Senza ora (acceso con l'interruttore o dopo la batteria scarica: il GPS riparte
+        // da freddo e al chiuso puo' metterci molto) i primi 20 minuti, poi 3 minuti ogni quarto
+        // d'ora finche' non arriva: prima dopo 10 minuti si spegneva e non riprovava piu', e uscendo
+        // all'aperto l'ora non arrivava.
+        const app::Rete::TimeSource src = app::rete().timeSource();
+        const bool senzaOra = src == app::Rete::TimeSource::NONE;
+        const bool daCorreggere = src == app::Rete::TimeSource::LOCAL || src == app::Rete::TimeSource::RESTORED;
+        const bool boot = (daCorreggere && dall < 10 * MIN) ||
+                          (senzaOra && (dall < 20 * MIN || (dall - 20 * MIN) % (15 * MIN) < 3 * MIN));
         const bool want = boot || app::rete().gnssWanted();
         if (want != gpsOn) {
             gpsOn = want;
@@ -157,6 +222,7 @@ void services() {
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
+#endif
 }  // namespace
 
 extern "C" void app_main() {
@@ -166,20 +232,39 @@ extern "C" void app_main() {
     checkPowerButton(avvio);
     app::memoriaInit();
     app::dati().load();
+    app::orologio().load();
+    app::giochi().load();
     app::eventsInit();
 
     scheda::init(true);
     const app::Settings s = app::dati().settings();
     scheda::audio().setVolume(s.volume);
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // Cuffie USB-C: pronte ma spente (a ogni avvio la porta USB-C e' del computer).
+    app::cuffie().avvia();
+    app::cuffie().setVolume(s.volumeCuffie);
+#endif
 
     app::voce().begin();
     if (!app::rete().begin()) ESP_LOGE(TAG, "radio LoRa non trovata");
 
     ui::init();
+#if CONFIG_SCHEDA_TDECK_PLUS
+    app::usbMappeAvvia();  // la pagina del flasher puo' mandare le mappe per la microSD
+#endif
     scheda::display().backlight(s.brightness);
     if (s.keyLight) scheda::keyboardLight(60);
 
     // Arrivati fin qui il firmware funziona: niente ritorno alla versione precedente.
     app::otaConfirm();
+#if CONFIG_SCHEDA_TDECK_PLUS
+    ESP_LOGI(TAG, "stack del task main: %u byte mai usati", (unsigned)uxTaskGetStackHighWaterMark(nullptr));
+    // Il Wi-Fi (aggiornamento) ha bisogno di RAM interna: quanta ne resta dopo l'avvio.
+    ESP_LOGI(TAG, "RAM interna libera %u byte (blocco piu' grande %u, minimo dall'avvio %u), PSRAM libera %u kB",
+             unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+             unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+             unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
+             unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+#endif
     services();
 }

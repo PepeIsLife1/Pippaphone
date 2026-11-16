@@ -12,6 +12,12 @@ class EspHal : public RadioLibHal {
 public:
     // initBus = false se il bus SPI e' gia' stato inizializzato da altri (es. microSD).
     EspHal(spi_host_device_t host, int sck, int miso, int mosi, bool initBus, int clockHz = 8000000);
+    // Bus condiviso con dispositivi che hanno bisogno di un turno in piu' oltre al lock di ESP-IDF
+    // (T-Deck Plus): prima e dopo ogni transazione. Senza, non si chiama niente.
+    void setBusTurn(void (*take)(), void (*give)()) {
+        busTake_ = take;
+        busGive_ = give;
+    }
 
     void init() override;
     void term() override;
@@ -37,6 +43,8 @@ private:
     bool initBus_;
     int clockHz_;
     spi_device_handle_t dev_ = nullptr;
+    void (*busTake_)() = nullptr;
+    void (*busGive_)() = nullptr;
 };
 
 }  // namespace pippa

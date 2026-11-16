@@ -1,13 +1,18 @@
 #include "app/rete.h"
 
+#include <sys/time.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 
 #include "app/eventi.h"
+#include "app/giochi.h"
 #include "app/memoria.h"
 #include "app/voce.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "scheda/pins.h"
 #include "scheda/scheda.h"
 
@@ -46,6 +51,7 @@ bool Rete::begin() {
     } else {
         ESP_LOGI(TAG, "telefono senza numero: codice %s", pn::fingerprint(id.edPublic).c_str());
     }
+    restoreClock();
 
     pippa::RadioConfig cfg;
     cfg.sck = scheda::PIN_SPI_SCK;
@@ -59,6 +65,8 @@ bool Rete::begin() {
     cfg.host = scheda::SPI_HOST_SCHEDA;
     cfg.reset = scheda::PIN_LORA_RST;
     cfg.initBus = false;
+    cfg.busTake = scheda::busSpiPrendi;  // un turno sul bus con display e microSD
+    cfg.busGive = scheda::busSpiLascia;
 #else
     cfg.resetFn = [](bool level) { scheda::expander().set(scheda::Exp::LORA_RST_N, level); };
 #endif
@@ -389,6 +397,75 @@ bool Rete::timeValid() {
     return r;
 }
 
+Rete::TimeSource Rete::timeSource() {
+    lock();
+    const TimeSource s = !phone_->timeValid()   ? TimeSource::NONE
+                         : phone_->timeRestored() ? TimeSource::RESTORED
+                         : phone_->timeLocal()    ? TimeSource::LOCAL
+                         : phone_->timeFromGps() ? TimeSource::GPS
+                                                 : TimeSource::NETWORK;
+    unlock();
+    return s;
+}
+
+bool Rete::setManualTime(uint32_t unixSec) {
+    lock();
+    const bool ok = phone_->setLocalTime(unixSec, pippa::RadioLink::nowMs());
+    unlock();
+    if (!ok) return false;
+    ESP_LOGI(TAG, "ora messa a mano");
+    syncClock();
+    post({Ev::TIME, {}, 0, 0, 0});
+    return true;
+}
+
+namespace {
+constexpr time_t OROLOGIO_MIN = 1767225600;  // 1/1/2026: sotto, l'orologio del chip non ha un'ora vera
+}
+
+void Rete::restoreClock() {
+    // L'orologio del chip conta anche nei riavvii, ma e' giusto solo dopo esp_restart() (aggiornamento,
+    // riavvio chiesto), che lo allinea prima di ripartire, e dopo il risveglio per una sveglia
+    // (T-Deck), che deve suonare all'ora giusta. Dopo un crash, un watchdog o il sonno profondo di
+    // "Spegni" porterebbe lo spostamento accumulato dall'avvio: l'ora arriva dalla rete come prima.
+    // Manca anche quando manca la corrente (accensione, tasto RESET, interruttore del T-Deck).
+    const esp_reset_reason_t why = esp_reset_reason();
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // T-Deck: "Spegni" e' un sonno profondo da cui si esce col trackball o per una sveglia, e
+    // l'orologio (17,5 MHz diviso 256, abbastanza stabile) continua a contare: l'ora si riprende
+    // sempre, e la rete o il GPS la correggono se si e' spostata.
+    const bool sonno = why == ESP_RST_DEEPSLEEP;
+#else
+    const bool sonno = why == ESP_RST_DEEPSLEEP && scheda::wokeForAlarm();  // sulla PCB mai
+#endif
+    const bool allineato = why == ESP_RST_SW || sonno;
+    timeval tv{};
+    gettimeofday(&tv, nullptr);
+    if (!allineato || tv.tv_sec < OROLOGIO_MIN) return;
+    // Ritrovata: la corregge anche l'ora della rete (l'oscillatore del chip si sposta).
+    phone_->setRestoredTime(uint32_t(tv.tv_sec), pippa::RadioLink::nowMs());
+    ESP_LOGI(TAG, "ora ritrovata nell'orologio del chip (riavvio %d)", int(why));
+}
+
+void Rete::syncClock() {
+    lock();
+    const uint32_t t = phone_->timeValid() ? now32() : 0;
+    unlock();
+    if (t < uint32_t(OROLOGIO_MIN)) return;
+    // Ultima ora nota, ogni 10 minuti (e subito dopo un cambio a mano all'indietro): se l'ora si
+    // perde, "Data e ora" riparte da qui. 52 mila scritture l'anno: la NVS le regge per decenni.
+    if (t - lastTimeSaved_ >= 600) {
+        lastTimeSaved_ = t;
+        saveLastTime(t);
+    }
+    timeval tv{};
+    gettimeofday(&tv, nullptr);
+    if (std::llabs(int64_t(tv.tv_sec) - int64_t(t)) <= 1) return;
+    tv.tv_sec = time_t(t);
+    tv.tv_usec = 0;
+    settimeofday(&tv, nullptr);
+}
+
 uint64_t Rete::airtimeMs() {
     lock();
     uint64_t r = phone_->txAirtimeMs;
@@ -419,7 +496,23 @@ bool Rete::gnssWanted() {
     return r;
 }
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+void Rete::gnssSchermata() {
+    lock();
+    gnssSchermataMs_ = pippa::RadioLink::nowMs();
+    unlock();
+}
+
+bool Rete::gnssSchermataAperta() {
+    lock();
+    const bool r = gnssSchermataMs_ && pippa::RadioLink::nowMs() - gnssSchermataMs_ < 6000;
+    unlock();
+    return r;
+}
+#endif
+
 void Rete::service() {
+    syncClock();
     if (powerSetting_ > 0) return;
     // Potenza automatica: i telefoni parlano solo con i ripetitori, quindi basta il margine
     // sull'ultimo ripetitore sentito. Dopo un messaggio non consegnato si torna al massimo
@@ -457,11 +550,13 @@ void Rete::updateGnss(const scheda::Fix& fix, float accuracyM, uint8_t battery) 
         // Si tiene l'ultima posizione buona, ma se ne aggiorna l'eta'.
         phone_->position.ageS = uint16_t(std::min<uint32_t>(65535, phone_->position.ageS + 5));
     }
-    const bool wasValid = phone_->timeValid();
+    const bool wasGood = phone_->timeValid() && !phone_->timeLocal();
     if (fix.timeValid && now - fix.timeAtMs < 5000)
         phone_->setUnixTime(fix.unixTime + uint32_t((now - fix.timeAtMs) / 1000), now, true);
+    // Evento solo quando l'ora diventa buona (prima mancava o era messa a mano), non ogni 5 secondi.
+    const bool nowGood = phone_->timeValid() && !phone_->timeLocal();
     unlock();
-    if (!wasValid && fix.timeValid) post({Ev::TIME, {}, 0, 0, 0});
+    if (!wasGood && nowGood) post({Ev::TIME, {}, 0, 0, 0});
 }
 
 pn::Position Rete::lastPosition() {
@@ -747,7 +842,12 @@ void Rete::onCallVoice(pn::Addr from, uint8_t turn, uint8_t index, const uint8_t
     voce().callReceived(turn, index, data, len, frames, prev, prevLen, prevFrames, last, phone_->callRedundant());
 }
 
-void Rete::onCertLearned(const pn::Cert& c) { saveCert(c); }
+void Rete::onCertLearned(const pn::Cert& c) {
+    saveCert(c);
+    // Chiavi nuove di un numero (ripristino di fabbrica, telefono nuovo): i suoi id radio ripartono.
+    // (Compito della radio: prima la rete, poi i giochi, come in onGame.)
+    giochi().nuovaIdentita(c.number);
+}
 
 void Rete::onProvisionOffer(const pn::Cert& c, const pn::Key32& adminPublic) {
     offerCert_ = c;
@@ -767,6 +867,29 @@ void Rete::onProvisionHello(uint64_t shortId, const pn::ProvHello& h, const pn::
 }
 
 void Rete::onTimeSync(uint32_t) { post({Ev::TIME, {}, 0, 0, 0}); }
+
+uint32_t Rete::sendGame(uint16_t to, const std::vector<uint8_t>& data) {
+    lock();
+    const uint32_t id = phone_->sendGame(to, data.data(), data.size(), pippa::RadioLink::nowMs());
+    unlock();
+    radio_.wake();  // parte subito, non al prossimo giro del compito radio
+    return id;
+}
+
+void Rete::cancelGame(uint16_t to, uint32_t msgId) {
+    lock();
+    phone_->cancelGame(to, msgId);
+    unlock();
+}
+
+void Rete::onGame(pn::Addr from, uint32_t msgId, const uint8_t* data, size_t len) {
+    giochi().ricevi(from, data, len, msgId);  // msgId: cresce sempre, dice quale invito e' piu' recente
+}
+
+void Rete::onGameDelivery(pn::Addr to, uint32_t msgId, pn::Delivery d) {
+    if (d == pn::Delivery::UNREACHABLE || d == pn::Delivery::RETRYING) lastFailMs_ = uint32_t(pippa::RadioLink::nowMs());
+    giochi().consegna(to, msgId, d);
+}
 
 // ---------------------------------------------------------------- utilita'
 

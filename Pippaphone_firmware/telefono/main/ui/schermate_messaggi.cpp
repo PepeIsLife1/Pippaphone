@@ -12,16 +12,62 @@
 namespace ui {
 
 namespace {
+// Su che fondo sta una scritta: il bianco della pagina (o la nuvoletta dell'altro), la mia nuvoletta,
+// quella rossa dell'SOS.
+enum class Fondo { PAGINA, MIA, SOS };
+
+// Colore di una scritta secondo il fondo. Nello scuro e sulla pagina e' sempre quello del tema; in
+// Carta sul nero della mia nuvoletta ci vuole la versione chiara (suNero), sul rosso il bianco.
+lv_color_t suFondo(lv_color_t tema, uint32_t suNero, Fondo f) {
+    if (!temaChiaro() || f == Fondo::PAGINA) return tema;
+    return lv_color_hex(f == Fondo::SOS ? 0xFFFFFF : suNero);
+}
+
+// Testo poco importante (orari, avvisi, elenco vuoto): nello scuro GRIGIO2 come prima, in Carta il
+// grigio scuro dei testi secondari (il #808080 sul bianco al sole si legge male).
+lv_color_t tenue() { return colore(0x808080, 0x404040); }
+
 // Icona e colore dello stato di un messaggio inviato.
-void statusIcon(lv_obj_t* parent, pn::Delivery d) {
+void statusIcon(lv_obj_t* parent, pn::Delivery d, Fondo f = Fondo::PAGINA) {
+    const char* icon = nullptr;
+    lv_color_t c = GRIGIO2();
     switch (d) {
-        case pn::Delivery::PENDING: label(parent, &icone_18, GRIGIO2(), IC_OROLOGIO); break;
-        case pn::Delivery::SENT: label(parent, &icone_18, GRIGIO3(), IC_OK); break;
-        case pn::Delivery::DELIVERED: label(parent, &icone_18, BIANCO(), IC_OK); break;
-        case pn::Delivery::READ: label(parent, &icone_18, BLU(), IC_DOPPIO_OK); break;
-        case pn::Delivery::UNREACHABLE: label(parent, &icone_18, ROSSO(), IC_ATTENZIONE); break;
-        case pn::Delivery::RETRYING: label(parent, &icone_18, AMBRA(), IC_OROLOGIO); break;
+        case pn::Delivery::PENDING: icon = IC_OROLOGIO; c = suFondo(GRIGIO2(), 0x808080, f); break;
+        // Carta: spunta grigia per trasmesso, nera per consegnato (scure tutte e due non si distinguono);
+        // sul nero della mia nuvoletta grigia contro bianca, e il grigio non e' quello dell'ora accanto.
+        case pn::Delivery::SENT: icon = IC_OK; c = suFondo(colore(0xC0C0C0, 0x808080), 0x808080, f); break;
+        case pn::Delivery::DELIVERED: icon = IC_OK; c = suFondo(BIANCO(), 0xFFFFFF, f); break;
+        case pn::Delivery::READ: icon = IC_DOPPIO_OK; c = suFondo(BLU(), 0x40A0FF, f); break;
+        case pn::Delivery::UNREACHABLE: icon = IC_ATTENZIONE; c = suFondo(ROSSO(), 0xFF8000, f); break;
+        case pn::Delivery::RETRYING: icon = IC_OROLOGIO; c = suFondo(AMBRA(), 0x40A0FF, f); break;
     }
+    if (!icon) return;
+    lv_obj_t* l = label(parent, &icone_18, c, icon);
+    // Carta, sulla riga scelta (blu) dell'elenco: bianca, se no l'icona blu sparisce.
+    if (temaChiaro()) lv_obj_set_style_text_color(l, SU_COLORE(), LV_STATE_CHECKED);
+}
+
+// Stato CHECKED su un oggetto e su tutto quello che ha dentro (in Carta e' la nuvoletta scelta).
+void scelta(lv_obj_t* o, bool on) {
+    if (on) lv_obj_add_state(o, LV_STATE_CHECKED);
+    else lv_obj_clear_state(o, LV_STATE_CHECKED);
+    const uint32_t n = lv_obj_get_child_count(o);
+    for (uint32_t i = 0; i < n; i++) scelta(lv_obj_get_child(o, int32_t(i)), on);
+}
+
+void scritteBianche(lv_obj_t* o) {
+    if (lv_obj_check_type(o, &lv_label_class)) lv_obj_set_style_text_color(o, SU_COLORE(), LV_STATE_CHECKED);
+    const uint32_t n = lv_obj_get_child_count(o);
+    for (uint32_t i = 0; i < n; i++) scritteBianche(lv_obj_get_child(o, int32_t(i)));
+}
+
+// Carta: la nuvoletta scelta e' piena di blu e tutte le scritte dentro diventano bianche, come le
+// righe scelte degli elenchi.
+void coloriScelta(lv_obj_t* b) {
+    lv_obj_set_style_bg_color(b, AMBRA(), LV_STATE_CHECKED);
+    lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_STATE_CHECKED);
+    lv_obj_set_style_border_color(b, AMBRA(), LV_STATE_CHECKED);
+    scritteBianche(b);
 }
 
 // Descrizione breve di una posizione ricevuta ("1,8 km nord-est").
@@ -68,6 +114,7 @@ public:
         pad(r, PX(8, 4), PX(14, 8), PX(8, 4), PX(14, 8));
         label(r, &font_20, GRIGIO3(), "Numero");
         num_.create(r, PX(330, 236), PX(54, 32), false, 5, "scrivi o scegli sotto");
+        if (temaChiaro()) grow(num_.obj());  // Carta: il campo arriva al margine, dritto con l'elenco sotto
         num_.setDigitsOnly(true);
         num_.setFocused(true);
         contacts_ = app::dati().contacts();
@@ -78,7 +125,7 @@ public:
             List::text(row2, &font_22b, BIANCO(), c.name, true);
             List::text(row2, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
-        if (contacts_.empty()) label(list_.obj(), &font_20, GRIGIO2(), "  La rubrica è vuota");
+        if (contacts_.empty()) label(list_.obj(), &font_20, tenue(), "  La rubrica è vuota");
     }
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return false;
@@ -142,7 +189,11 @@ public:
                 lv_obj_set_size(a, PX(46, 30), PX(46, 30));
                 radius(a, PX(12, 8));
                 fill(a, avatarColor(s.id.id));
-                lv_obj_center(label(a, &icone_22, BIANCO(), IC_GRUPPO));
+                if (temaChiaro()) {  // Carta, riga scelta (blu): anello bianco, se no un #004080 sparisce nel blu
+                    lv_obj_set_style_border_width(a, 2, LV_STATE_CHECKED);
+                    lv_obj_set_style_border_color(a, SU_COLORE(), LV_STATE_CHECKED);
+                }
+                lv_obj_center(label(a, &icone_22, SU_COLORE(), IC_GRUPPO));
             } else {
                 avatar(r, s.id.id, s.title, PX(46, 30));
             }
@@ -165,12 +216,16 @@ public:
             lv_obj_t* right = column(r, PX(6, 3));
             lv_obj_set_size(right, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_flex_align(right, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-            List::text(right, &mono_16, GRIGIO2(), whenShort(s.last.time));
+            List::text(right, &mono_16, tenue(), whenShort(s.last.time));
             if (s.unread) {
                 lv_obj_t* b = label(right, &font_16, NERO(), std::to_string(s.unread).c_str());
                 fill(b, AMBRA());
                 radius(b, PX(12, 8));
                 pad(b, 1, PX(8, 5), 1, PX(8, 5));
+                if (temaChiaro()) {  // Carta, sulla riga scelta (blu): bianco col numero blu
+                    lv_obj_set_style_bg_color(b, SU_COLORE(), LV_STATE_CHECKED);
+                    lv_obj_set_style_text_color(b, AMBRA(), LV_STATE_CHECKED);
+                }
             }
         }
         list_.focus(sel_);
@@ -273,7 +328,7 @@ public:
         const size_t from = chat_.msgs.size() > 40 ? chat_.msgs.size() - 40 : 0;
         for (size_t i = from; i < chat_.msgs.size(); i++) bubbles_.push_back({bubble(chat_.msgs[i]), i});
         if (chat_.msgs.empty())
-            label(msgsBox_, &font_20, GRIGIO2(),
+            label(msgsBox_, &font_20, tenue(),
                   id_.kind == app::ChatKind::DIRECT ? "Nessun messaggio. Scrivi qualcosa!" : "Nessun messaggio.");
         sel_ = -1;
         lv_obj_update_layout(msgsBox_);
@@ -289,39 +344,61 @@ public:
     }
 
     lv_obj_t* bubble(const app::Message& m) {
-        if (m.kind == app::MsgKind::INFO)
-            return label(line(LV_FLEX_ALIGN_CENTER), &font_16, GRIGIO2(), (m.text + "  " + whenShort(m.time)).c_str());
+        const bool carta = temaChiaro();
+        if (m.kind == app::MsgKind::INFO) {
+            lv_obj_t* l =
+                label(line(LV_FLEX_ALIGN_CENTER), &font_16, tenue(), (m.text + "  " + whenShort(m.time)).c_str());
+            if (carta) {  // scelta: una pillola blu
+                pad(l, 1, PX(8, 5), 1, PX(8, 5));
+                radius(l, PX(12, 8));
+                coloriScelta(l);
+            }
+            return l;
+        }
         const bool sos = m.kind == app::MsgKind::SOS;
+        // Scuro: la mia ambra scura, la sua grigia. Carta: la mia piena di nero col testo bianco, la sua
+        // bianca col bordo nero. L'SOS rossa in tutti e due.
+        const Fondo fondo = sos ? Fondo::SOS : (m.out ? Fondo::MIA : Fondo::PAGINA);
+        const lv_color_t pieno = sos ? ROSSO_SCURO() : (m.out ? AMBRA_SCURO() : SUPERFICIE());
+        // Carta: bordo sempre di 2 pixel (nero per la sua, del colore del fondo per le altre), cosi'
+        // quando una nuvoletta e' scelta cambiano solo i colori e niente si sposta. La nuvoletta e'
+        // larga 4 pixel in piu': il testo va a capo come nello scuro.
+        const int bordo = carta ? 2 : 0;
         lv_obj_t* b = column(line(m.out ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START), 2);
         lv_obj_set_size(b, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        lv_obj_set_style_max_width(b, PX(340, 236), 0);
+        lv_obj_set_style_max_width(b, PX(340, 236) + 2 * bordo, 0);
         pad(b, PX(8, 4), PX(12, 8), PX(6, 3), PX(12, 8));
-        fill(b, sos ? ROSSO_SCURO() : (m.out ? AMBRA_SCURO() : GRIGIO1()));
+        fill(b, pieno);
         lv_obj_set_style_radius(b, PX(14, 9), 0);
         lv_obj_set_style_border_color(b, AMBRA(), 0);
+        if (carta) {
+            lv_obj_set_style_border_width(b, bordo, 0);
+            lv_obj_set_style_border_color(b, fondo == Fondo::PAGINA ? INCHIOSTRO() : pieno, 0);
+        }
         if (!m.out && id_.kind != app::ChatKind::DIRECT)
-            label(b, &font_16, AMBRA(), app::dati().nameOf(m.from).c_str());
+            label(b, &font_16, suFondo(AMBRA(), 0x40A0FF, fondo), app::dati().nameOf(m.from).c_str());
+        const lv_color_t testo = suFondo(BIANCO(), 0xFFFFFF, fondo);
         lv_obj_t* body = nullptr;
         switch (m.kind) {
             case app::MsgKind::VOICE:
-                body = label(b, &font_20, BIANCO(), (std::string(IC_MICROFONO "  Vocale  ") + durationMS(m.voiceMs) +
-                                                    "   " IC_PLAY).c_str());
+                body = label(b, &font_20, testo, (std::string(IC_MICROFONO "  Vocale  ") + durationMS(m.voiceMs) +
+                                                 "   " IC_PLAY).c_str());
                 break;
             case app::MsgKind::POSITION:
-                body = label(b, &font_20, BIANCO(),
+                body = label(b, &font_20, testo,
                              (std::string(IC_PUNTO "  ") + (m.text.find(',') != std::string::npos
                                                                 ? positionSummary(m.text)
                                                                 : "Posizione " + m.text))
                                  .c_str());
                 break;
             case app::MsgKind::SOS:
-                body = label(b, &font_20, BIANCO(),
+                body = label(b, &font_20, testo,
                              (std::string(IC_ATTENZIONE "  SOS  ") +
                               (m.text.find(',') != std::string::npos && m.text[0] != '-' ? positionSummary(m.text) : m.text))
                                  .c_str());
                 break;
             default:
-                body = label(b, &font_20, BIANCO(), m.text.c_str());
+                body = label(b, &font_20, testo, m.text.c_str());
                 break;
         }
         lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
@@ -329,21 +406,33 @@ public:
         lv_obj_set_style_max_width(body, PX(316, 220), 0);
         lv_obj_t* meta = row(b, PX(4, 3));
         lv_obj_set_size(meta, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-        label(meta, &mono_16, m.out ? BIANCO() : GRIGIO3(), whenShort(m.time).c_str());
-        if (m.out && id_.kind == app::ChatKind::DIRECT) statusIcon(meta, m.status);
+        // Carta: l'ora grigio chiaro sul nero della mia nuvoletta, grigio scuro sul bianco della sua.
+        label(meta, &mono_16, suFondo(m.out ? BIANCO() : GRIGIO3(), 0xC0C0C0, fondo), whenShort(m.time).c_str());
+        if (m.out && id_.kind == app::ChatKind::DIRECT) statusIcon(meta, m.status, fondo);
         if (m.out && m.status == pn::Delivery::UNREACHABLE)
-            label(b, &font_16, ROSSO(), "Non raggiungibile");
-        if (m.out && m.status == pn::Delivery::RETRYING)
-            label(b, &font_16, AMBRA(), "Non raggiungibile: riprovo");  // fra 3,5 minuti
+            label(b, &font_16, suFondo(ROSSO(), 0xFF8000, fondo), "Non raggiungibile");
+        if (m.out && m.status == pn::Delivery::RETRYING)  // fra 3,5 minuti
+            label(b, &font_16, suFondo(AMBRA(), 0x40A0FF, fondo), "Non raggiungibile: riprovo");
+        if (carta) coloriScelta(b);
         return b;
     }
 
+    // Nuvoletta scelta con su/giu': nello scuro col bordo ambra (com'era), in Carta piena di blu.
+    void mark(int i, bool on) {
+        if (i < 0 || i >= int(bubbles_.size())) return;
+        if (temaChiaro()) scelta(bubbles_[i].first, on);
+        else lv_obj_set_style_border_width(bubbles_[i].first, on ? PX(3, 2) : 0, 0);
+    }
+
     void select(int s) {
-        if (sel_ >= 0 && sel_ < int(bubbles_.size())) lv_obj_set_style_border_width(bubbles_[sel_].first, 0, 0);
+        mark(sel_, false);
         sel_ = s;
         if (sel_ >= 0 && sel_ < int(bubbles_.size())) {
-            lv_obj_set_style_border_width(bubbles_[sel_].first, PX(3, 2), 0);
-            lv_obj_scroll_to_view(bubbles_[sel_].first, LV_ANIM_OFF);
+            mark(sel_, true);
+            // Si fa vedere la riga della nuvoletta, che e' lei a stare nella chat che scorre. Chiesto
+            // alla nuvoletta non succedeva niente (la sua riga non scorre): la chat restava ferma in
+            // fondo e una nuvoletta vecchia scelta restava fuori dallo schermo.
+            lv_obj_scroll_to_view(lv_obj_get_parent(bubbles_[sel_].first), LV_ANIM_OFF);
         } else {
             sel_ = -1;
             lv_obj_scroll_to_y(msgsBox_, LV_COORD_MAX, LV_ANIM_OFF);
@@ -362,6 +451,15 @@ public:
 
     bool onKey(Key k, bool pressed) override {
         if (!pressed) return k == Key::PTT;
+        // Griglia dei simboli aperta: frecce, OK, BACK ed END sono suoi. OK inserisce il simbolo e
+        // basta (prima mandava anche il messaggio, e su/giu' sceglievano i messaggi sopra).
+        if (in_.symOpen() && k != Key::VOLUP && k != Key::VOLDN && k != Key::PWR && k != Key::PTT) {
+            if (in_.key(k, pressed) == TextInput::CHANGED) {
+                draft_ = in_.text();
+                if (sel_ >= 0) select(-1);
+            }
+            return true;
+        }
         if (k == Key::UP) {
             if (bubbles_.empty()) return true;
             select(sel_ < 0 ? int(bubbles_.size()) - 1 : std::max(0, sel_ - 1));
@@ -383,7 +481,6 @@ public:
             menu();
             return true;
         }
-        if ((k == Key::BACK || k == Key::END) && in_.symOpen()) return in_.key(k, pressed), true;
         // Tasti che non riguardano il testo: li gestisce l'interfaccia (indietro, home, volume).
         if (k == Key::BACK || k == Key::END || k == Key::VOLUP || k == Key::VOLDN || k == Key::CALL ||
             k == Key::PTT || k == Key::PWR)

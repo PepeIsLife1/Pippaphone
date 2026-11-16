@@ -23,6 +23,10 @@ bool loadAdminIdentity(pn::Identity& admin);
 void saveAdminIdentity(const pn::Identity& admin);
 uint32_t loadSeq();
 void saveSeq(uint32_t next);
+// Ultima ora valida (secondi Unix, 0 se mai), salvata ogni 10 minuti: quando l'ora si perde
+// (interruttore del T-Deck, batteria scarica) "Data e ora" riparte da qui e basta correggerla.
+uint32_t loadLastTime();
+void saveLastTime(uint32_t unixSec);
 std::string getStr(const char* key, const std::string& def = "");
 void setStr(const char* key, const std::string& v);
 int32_t getInt(const char* key, int32_t def);

@@ -204,4 +204,9 @@ void powerOff() {
     esp_deep_sleep_start();
 }
 
+// Sulla PCB "Spegni" toglie la corrente all'ESP32: nessuna sveglia a telefono spento.
+void wakeAfter(uint32_t) {}
+bool wokeForAlarm() { return false; }
+bool wokeFromSleep() { return esp_reset_reason() == ESP_RST_DEEPSLEEP; }
+
 }  // namespace scheda

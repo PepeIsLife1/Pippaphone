@@ -39,6 +39,10 @@ public:
     std::set<uint16_t> sosAcked();
     pn::GroupInfo createGroup(const std::string& name, const std::vector<uint16_t>& members);
     uint32_t sendVoice(uint16_t to, const std::vector<uint8_t>& codec2, uint16_t durationMs);
+    // Mossa di una sfida via radio (app/giochi.h); 0 = non partita.
+    uint32_t sendGame(uint16_t to, const std::vector<uint8_t>& data);
+    // Toglie dai tentativi della radio un messaggio di una sfida (un invito abbandonato).
+    void cancelGame(uint16_t to, uint32_t msgId);
 
     // ---- chiamata in diretta (a turni) ----
     bool call(uint16_t to);
@@ -93,6 +97,14 @@ public:
     std::vector<RepeaterInfo> repeaters();
     uint32_t unixTime();
     bool timeValid();
+    // Da dove viene l'ora. LOCAL = messa a mano; RESTORED = ritrovata nell'orologio del chip dopo un
+    // riavvio o il risveglio per una sveglia. Valgono solo per questo telefono (non escono nei beacon);
+    // quella ritrovata la corregge anche l'ora della rete.
+    enum class TimeSource : uint8_t { NONE, GPS, NETWORK, LOCAL, RESTORED };
+    TimeSource timeSource();
+    // Data e ora messe a mano (secondi Unix). La sostituisce l'ora del GPS appena arriva; false (e
+    // non cambia niente) se il GPS ha gia' dato l'ora da poco, che vale quella.
+    bool setManualTime(uint32_t unixSec);
     uint64_t airtimeMs();
     bool radioOk();
     // Potenza di trasmissione in dBm; 0 = automatica (in base al segnale del ripetitore).
@@ -101,6 +113,13 @@ public:
     // Chiede di tenere acceso il GPS per i prossimi secondi (posizione, SOS).
     void wantGnss(uint32_t seconds);
     bool gnssWanted();
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // T-Deck: e' aperta una schermata che usa il GPS (posizione, mappa, SOS...), anche sotto altre o sotto
+    // il PIN. La rinnova ui.cpp almeno ogni 2 secondi e vale 6 secondi; la legge la politica del GPS
+    // (main.cpp), che la conta come una richiesta.
+    void gnssSchermata();
+    bool gnssSchermataAperta();
+#endif
     // Da chiamare ogni pochi secondi: potenza automatica.
     void service();
     // Aggiornato ogni pochi secondi dall'applicazione.
@@ -128,11 +147,17 @@ public:
     void onProvisionOffer(const pn::Cert& c, const pn::Key32& adminPublic) override;
     void onProvisionHello(uint64_t shortId, const pn::ProvHello& h, const pn::RxInfo& info) override;
     void onTimeSync(uint32_t unixSec) override;
+    void onGame(pn::Addr from, uint32_t msgId, const uint8_t* data, size_t len) override;
+    void onGameDelivery(pn::Addr to, uint32_t msgId, pn::Delivery d) override;
 
 private:
     void lock();
     void unlock();
     uint32_t now32();
+    // Orologio del chip (settimeofday): tenuto uguale all'ora del telefono, cosi' sopravvive ai
+    // riavvii e al sonno profondo (sveglie a telefono "spento" sul T-Deck).
+    void restoreClock();
+    void syncClock();
 
     SemaphoreHandle_t lock_ = nullptr;
     pn::Phone* phone_ = nullptr;
@@ -145,7 +170,11 @@ private:
     std::vector<uint16_t> sosContacts_;
     int8_t powerSetting_ = 0;
     uint32_t gnssUntilMs_ = 0;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    pn::Millis gnssSchermataMs_ = 0;  // ultima gnssSchermata() (0 = mai)
+#endif
     uint32_t lastFailMs_ = 0;
+    uint32_t lastTimeSaved_ = 0;  // ultima ora salvata (saveLastTime), ogni 10 minuti
     // Vocale in invio: memorizzato per la chat quando parte.
     struct VoiceOut {
         uint32_t id = 0;

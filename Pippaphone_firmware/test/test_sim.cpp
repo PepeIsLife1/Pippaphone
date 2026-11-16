@@ -590,3 +590,158 @@ TEST(chiamata_strada_cambiata) {
     net.run(1500);
     CHECK(net.rec(C).callPackets(1) >= 4);
 }
+
+TEST(rete_sfida_via_radio) {
+    // Una mossa di una sfida (byte qualsiasi) da A a C attraverso tre ripetitori: arriva una volta
+    // sola, con la conferma. I ripetitori la ripetono senza conoscerne il tipo.
+    World w;
+    const uint8_t mossa[] = {1, 4, 0x12, 0x34, 7};
+    const uint32_t id = w.a().sendGame(1203, mossa, sizeof(mossa), w.net.now());
+    CHECK(id != 0);
+    auto& ra = w.net.rec(w.A);
+    auto& rc = w.net.rec(w.C);
+    CHECK(w.net.runUntil([&] { return !rc.games.empty(); }, 180000));
+    CHECK(w.net.runUntil([&] { return ra.gameDelivery.count(id) && ra.gameDelivery[id] == Delivery::DELIVERED; }, 120000));
+    w.net.run(60000);
+    CHECK_EQ(rc.games.size(), size_t(1));
+    if (!rc.games.empty()) {
+        CHECK_EQ(rc.games[0].first, Addr(1000));
+        CHECK(rc.games[0].second == std::vector<uint8_t>(mossa, mossa + sizeof(mossa)));
+    }
+    // Nessun SMS finto: la mossa non finisce tra i messaggi.
+    CHECK(rc.texts.empty());
+    // Troppo lunga, vuota o a se stessi: rifiutata subito.
+    std::vector<uint8_t> lunga(Phone::MAX_GAME_BYTES + 1, 0);
+    CHECK_EQ(w.a().sendGame(1203, lunga.data(), lunga.size(), w.net.now()), 0u);
+    CHECK_EQ(w.a().sendGame(1203, mossa, 0, w.net.now()), 0u);
+    CHECK_EQ(w.a().sendGame(1000, mossa, sizeof(mossa), w.net.now()), 0u);
+    // A un numero che non c'e': prima "riprovo", poi (dopo il giro piu' tardi) non raggiungibile.
+    const uint32_t id2 = w.a().sendGame(4321, mossa, sizeof(mossa), w.net.now());
+    CHECK(w.net.runUntil([&] { return ra.gameDelivery.count(id2) && ra.gameDelivery[id2] == Delivery::RETRYING; }, 400000));
+    CHECK(w.net.runUntil([&] { return ra.gameDelivery[id2] == Delivery::UNREACHABLE; }, 600000));
+}
+
+TEST(rete_sfida_tolta_dai_tentativi) {
+    // Un GAME tolto dai tentativi (un invito abbandonato): C, fuori portata quando e' partito, non lo
+    // riceve quando torna, e della sua consegna non si sa piu' niente. Gli altri GAME restano.
+    World w;
+    auto& ra = w.net.rec(w.A);
+    auto& rc = w.net.rec(w.C);
+    const uint8_t prima[] = {1, 4, 0x12, 0x34, 1, 0};  // A impara il certificato di C
+    const uint32_t id0 = w.a().sendGame(1203, prima, sizeof(prima), w.net.now());
+    CHECK(w.net.runUntil([&] { return ra.gameDelivery.count(id0) && ra.gameDelivery[id0] == Delivery::DELIVERED; }, 180000));
+    w.net.unlink(w.R3, w.C);
+    const uint8_t invito[] = {1, 1, 0x56, 0x78};
+    const uint32_t id1 = w.a().sendGame(1203, invito, sizeof(invito), w.net.now());
+    CHECK(id1 != 0);
+    w.net.run(15000);                    // un paio di tentativi senza risposta
+    w.a().cancelGame(1203, id1);
+    w.a().cancelGame(1203, id1 + 7);     // un id che non c'e': niente
+    w.a().cancelGame(1001, id1);         // un altro numero: niente
+    w.net.run(10000);
+    w.net.link(w.R3, w.C, 1.0f, -104);
+    const uint8_t dopo[] = {1, 4, 0x12, 0x34, 3, 8};
+    const uint32_t id2 = w.a().sendGame(1203, dopo, sizeof(dopo), w.net.now());
+    CHECK(w.net.runUntil([&] { return ra.gameDelivery.count(id2) && ra.gameDelivery[id2] == Delivery::DELIVERED; }, 180000));
+    w.net.run(600000);                   // anche il giro di tentativi piu' tardi
+    CHECK_EQ(rc.games.size(), size_t(2));
+    for (const auto& gm : rc.games) CHECK(gm.second != std::vector<uint8_t>(invito, invito + sizeof(invito)));
+    CHECK(!ra.gameDelivery.count(id1));  // ne' "riprovo" ne' "non raggiungibile"
+}
+
+TEST(ora_a_mano_resta_sul_telefono) {
+    // A ha l'ora messa a mano: la usa, ma nei beacon esce come non sincronizzata, quindi ne' R1 ne' B
+    // la prendono. Poi B ha l'ora dal GPS: col suo beacon arriva ad A (che non e' piu' "a mano") e a R1.
+    World w;
+    CHECK(!w.a().timeValid());
+    CHECK(w.a().setLocalTime(1794231120, w.net.now()));
+    CHECK(w.a().timeValid());
+    CHECK(w.a().timeLocal());
+    CHECK_EQ(w.a().unixTime(w.net.now()), 1794231120u);
+    w.net.run(6 * 60 * 1000);  // almeno un beacon di A
+    CHECK(!w.net.repeater(w.R1).timeValid());
+    CHECK(!w.b().timeValid());
+    CHECK(w.a().timeLocal());
+    // Ora del GPS su B: quella a mano non la sostituisce.
+    w.b().setUnixTime(1794231500, w.net.now(), true);
+    CHECK(!w.b().setLocalTime(1794000000, w.net.now()));
+    CHECK(!w.b().timeLocal());
+    // I beacon non si ripetono: se uno si scontra con un altro pacchetto si aspetta il successivo.
+    CHECK(w.net.runUntil([&] { return !w.a().timeLocal() && w.net.repeater(w.R1).timeValid(); }, 13 * 60 * 1000));
+    CHECK(w.a().timeValid());
+    const int64_t diff = int64_t(w.a().unixTime(w.net.now())) - int64_t(w.b().unixTime(w.net.now()));
+    CHECK(diff >= -2 && diff <= 2);
+}
+
+TEST(riassegnazione_dopo_una_data_sbagliata) {
+    // L'amministratore aveva messo a mano una data sbagliata nel futuro quando ha dato il 1500 al
+    // primo telefono. Con l'ora giusta lo stesso numero va a un altro telefono: il certificato nuovo
+    // deve battere il vecchio, sia per l'amministratore sia per B che conosceva il primo.
+    World w;
+    CHECK(w.a().setLocalTime(2900000000u, w.net.now()));  // anno 2061
+    auto& ra = w.net.rec(w.A);
+    auto& rb = w.net.rec(w.B);
+    // doppio: l'amministratore manda il numero due volte (il telefono non aveva ancora confermato) e
+    // il telefono tiene l'ultima offerta, piu' recente di un minuto.
+    auto assegna = [&](int n, bool doppio) {
+        Phone& p = w.net.phone(n);
+        auto& rn = w.net.rec(n);
+        p.setProvisioning(true);
+        const size_t prima = ra.hellos.size();
+        if (!w.net.runUntil([&] { return ra.hellos.size() > prima; }, 30000)) return false;
+        if (!w.a().provision(ra.hellos.back(), 1500, w.net.now())) return false;
+        if (!w.net.runUntil([&] { return rn.offerReceived; }, 30000)) return false;
+        if (doppio) {
+            w.net.run(60000);
+            rn.offerReceived = false;
+            if (!w.a().provision(ra.hellos.back(), 1500, w.net.now())) return false;
+            if (!w.net.runUntil([&] { return rn.offerReceived; }, 30000)) return false;
+        }
+        p.setCredentials(rn.offerCert, rn.offerAdmin);
+        return p.hasNumber();
+    };
+    const int N1 = w.net.addPhone(Identity::generate());
+    w.net.link(N1, w.A, 8.0f, -60);
+    w.net.link(N1, w.B, 5.0f, -90);
+    CHECK(assegna(N1, true));
+    w.net.phone(N1).sendText(1001, "primo", w.net.now());
+    CHECK(w.net.runUntil([&] { return rb.texts.size() == 1; }, 120000));
+    // Il primo telefono sparisce. Si riassegna il numero dopo piu' di mezz'ora: prima B scarterebbe i
+    // pacchetti del nuovo come doppioni del vecchio (un telefono nuovo numera i pacchetti da 1).
+    w.net.unlink(N1, w.A);
+    w.net.unlink(N1, w.B);
+    w.net.run(31 * 60 * 1000);
+    w.a().setUnixTime(1794231120u, w.net.now(), true);  // ora giusta dal GPS
+    const int N2 = w.net.addPhone(Identity::generate());
+    w.net.link(N2, w.A, 8.0f, -60);
+    w.net.link(N2, w.B, 5.0f, -90);
+    CHECK(assegna(N2, false));
+    CHECK(w.net.rec(N2).offerCert.issued > w.net.rec(N1).offerCert.issued);
+    const Cert* c = w.a().certOf(1500);
+    CHECK(c && c->edPublic == w.net.phone(N2).identity().edPublic);
+    // Scrivendo a B il nuovo gli manda il suo certificato, che B deve preferire al vecchio. (Il testo
+    // non si controlla: gli id dei messaggi del telefono nuovo ripartono da capo e B, che ricorda gli
+    // ultimi id di quel numero, lo prenderebbe per un doppione del "primo": limite che c'era gia'.)
+    w.net.phone(N2).sendText(1001, "secondo", w.net.now());
+    CHECK(w.net.runUntil([&] {
+        const Cert* cb = w.b().certOf(1500);
+        return cb && cb->edPublic == w.net.phone(N2).identity().edPublic;
+    }, 180000));
+}
+
+TEST(ora_ripresa_si_corregge_dalla_rete) {
+    // Dopo un riavvio A ritrova l'ora nell'orologio del chip, spostata di 5 minuti. Non la manda nei
+    // beacon, ma la corregge l'ora della rete: qui quella di R1, che non viene dal GPS (i ripetitori
+    // non lo dicono mai). L'ora messa a mano invece resta (ora_a_mano_resta_sul_telefono).
+    World w;
+    w.net.unlink(w.A, w.B);  // A sente solo R1
+    w.b().setUnixTime(1794231120u, w.net.now(), true);  // B ha il GPS
+    CHECK(w.net.runUntil([&] { return w.net.repeater(w.R1).timeValid(); }, 13 * 60 * 1000));
+    CHECK(w.a().setRestoredTime(w.b().unixTime(w.net.now()) + 300, w.net.now()));
+    CHECK(w.a().timeRestored());
+    CHECK(w.a().timeLocal());
+    CHECK(w.net.runUntil([&] { return !w.a().timeRestored(); }, 13 * 60 * 1000));
+    CHECK(!w.a().timeLocal());
+    const int64_t diff = int64_t(w.a().unixTime(w.net.now())) - int64_t(w.b().unixTime(w.net.now()));
+    CHECK(diff >= -2 && diff <= 2);
+}

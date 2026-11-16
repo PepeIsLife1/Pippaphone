@@ -79,18 +79,43 @@ constexpr int H_SCHERMO = PX(480, 240);
 constexpr int H_AREA = PX(412, 196);
 constexpr int H_TITOLO = PX(48, 28);
 
-// Colori.
-inline lv_color_t NERO() { return lv_color_hex(0x000000); }
-inline lv_color_t GRIGIO1() { return lv_color_hex(0x404040); }  // superfici, divisori
-inline lv_color_t GRIGIO2() { return lv_color_hex(0x808080); }  // testo terziario
-inline lv_color_t GRIGIO3() { return lv_color_hex(0xC0C0C0); }  // testo secondario
-inline lv_color_t BIANCO() { return lv_color_hex(0xFFFFFF); }
-inline lv_color_t AMBRA() { return lv_color_hex(0xFFB000); }    // elemento selezionato
-inline lv_color_t AMBRA_SCURO() { return lv_color_hex(0x805000); }  // nuvoletta inviata
-inline lv_color_t VERDE() { return lv_color_hex(0x00C040); }
-inline lv_color_t ROSSO() { return lv_color_hex(0xFF4040); }
-inline lv_color_t ROSSO_SCURO() { return lv_color_hex(0xC00000); }
-inline lv_color_t BLU() { return lv_color_hex(0x40A0FF); }
+// Temi. Carta (il normale): fondo bianco e testo nero come un foglio stampato, bordi neri al posto
+// delle superfici grigie, il selezionato pieno di blu inchiostro, l'arancio per le cose urgenti; si
+// legge al sole. Scuro: la grafica di prima, per la notte. La barra di stato e' nera in tutti e due.
+// I colori qui sotto hanno i nomi del tema scuro, dove valgono come prima (identico al pixel); con
+// Carta diventano: NERO il fondo bianco, BIANCO l'inchiostro nero, GRIGIO3 e GRIGIO2 i testi
+// secondari, AMBRA il blu del selezionato, ROSSO l'arancio. Tutti coi 5 livelli di rosso e blu.
+bool temaChiaro();
+void setTemaChiaro(bool chiaro);
+// Finche' esiste, i colori sono quelli del tema scuro (la barra di stato, nera in tutti e due).
+class TemaScuroFisso {
+public:
+    TemaScuroFisso();
+    ~TemaScuroFisso();
+    TemaScuroFisso(const TemaScuroFisso&) = delete;
+    TemaScuroFisso& operator=(const TemaScuroFisso&) = delete;
+};
+inline lv_color_t colore(uint32_t scuro, uint32_t carta) { return lv_color_hex(temaChiaro() ? carta : scuro); }
+
+inline lv_color_t NERO() { return colore(0x000000, 0xFFFFFF); }     // fondo
+inline lv_color_t GRIGIO1() { return colore(0x404040, 0x808080); }  // superfici, divisori (Carta: linee)
+inline lv_color_t GRIGIO2() { return colore(0x808080, 0x808080); }  // testo terziario
+inline lv_color_t GRIGIO3() { return colore(0xC0C0C0, 0x404040); }  // testo secondario
+inline lv_color_t BIANCO() { return colore(0xFFFFFF, 0x000000); }   // testo
+inline lv_color_t AMBRA() { return colore(0xFFB000, 0x0040C0); }    // elemento selezionato
+inline lv_color_t AMBRA_SCURO() { return colore(0x805000, 0x000000); }  // nuvoletta inviata
+inline lv_color_t VERDE() { return colore(0x00C040, 0x008040); }
+inline lv_color_t ROSSO() { return colore(0xFF4040, 0xC04000); }    // Carta: arancio
+inline lv_color_t ROSSO_SCURO() { return colore(0xC00000, 0xC00000); }
+inline lv_color_t BLU() { return colore(0x40A0FF, 0x004080); }
+// Riquadri: scuro pieni di grigio, Carta bianchi (col bordo nero, vedi superficie()).
+inline lv_color_t SUPERFICIE() { return colore(0x404040, 0xFFFFFF); }
+// Testo e icone sopra un colore pieno e scuro (nuvoletta inviata, avatar, rosso): bianco sempre.
+inline lv_color_t SU_COLORE() { return lv_color_hex(0xFFFFFF); }
+// Bordi decisi di Carta (scuro: come GRIGIO1).
+inline lv_color_t INCHIOSTRO() { return colore(0x404040, 0x000000); }
+// Riquadro: nello scuro pieno di grigio (come prima), in Carta bianco col bordo nero da 2 pixel.
+void superficie(lv_obj_t* o);
 // Colori degli avatar.
 lv_color_t avatarColor(uint16_t number);
 
@@ -129,11 +154,35 @@ lv_color_t avatarColor(uint16_t number);
 #define IC_AGGIUNGI_PERSONA "\xEF\x88\xB4"  // F234
 #define IC_INFO "\xEF\x81\xAA"        // F06A
 #define IC_SCARICA "\xEF\x80\x99"     // F019
+#define IC_MIRINO "\xEF\x81\x9B"      // F05B
+// Orologio, giochi e musica (13/11/2026).
+#define IC_SVEGLIA "\xEF\x83\xB3"     // F0F3 campanello
+#define IC_CRONOMETRO "\xEF\x8B\xB2"  // F2F2
+#define IC_CLESSIDRA "\xEF\x89\x92"   // F252
+#define IC_CALENDARIO "\xEF\x81\xB3"  // F073
+#define IC_GIOCHI "\xEF\x84\x9B"      // F11B gamepad
+#define IC_MELA "\xEF\x97\x91"        // F5D1 (serpente)
+#define IC_BOMBA "\xEF\x87\xA2"       // F1E2 (campo minato)
+#define IC_BANDIERA "\xEF\x80\xA4"    // F024
+#define IC_COPPA "\xEF\x82\x91"       // F091 record
+#define IC_NAVE "\xEF\x88\x9A"        // F21A (battaglia navale)
+#define IC_TRIS "\xEF\x8A\x92"        // F292 cancelletto
+#define IC_CHIUDI "\xEF\x80\x8D"      // F00D
+#define IC_RICOMINCIA "\xEF\x80\xA1"  // F021
+#define IC_MUSICA "\xEF\x80\x81"      // F001
+#define IC_PAUSA "\xEF\x81\x8C"       // F04C
+#define IC_STOP "\xEF\x81\x8D"        // F04D
+#define IC_PRECEDENTE "\xEF\x81\x88"  // F048
+#define IC_SUCCESSIVO "\xEF\x81\x91"  // F051
+#define IC_CASUALE "\xEF\x81\xB4"     // F074
+#define IC_RIPETI "\xEF\x81\xB9"      // F079
+#define IC_CARTELLA "\xEF\x81\xBB"    // F07B
+#define IC_TEMA "\xEF\x81\x82"        // F042 mezzo cerchio (tema Carta/Scuro, 14/11/2026)
 // Solo nei font del T-Deck:
 #define IC_CANCELLA "\xEF\x95\x9A"    // F55A tasto cancella
 #define IC_MAPPA "\xEF\x89\xB9"       // F279
-#define IC_MIRINO "\xEF\x81\x9B"      // F05B
 #define IC_PUNTINA "\xEF\x89\xB6"     // F276
+#define IC_CUFFIE "\xEF\x80\xA5"      // F025 cuffie USB-C (14/11/2026)
 
 // Stili comuni (creati una volta).
 void initStyles();

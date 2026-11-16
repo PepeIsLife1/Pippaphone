@@ -9,10 +9,11 @@
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "bus_spi.h"
 #include "scheda/display.h"
 #include "scheda/pins.h"
+#include "scheda/scheda.h"
 
 namespace scheda {
 
@@ -45,13 +46,11 @@ const Cmd INIT[] = {
     {0xE1, 14, {0xD0, 0x09, 0x0F, 0x08, 0x07, 0x14, 0x37, 0x44, 0x4D, 0x38, 0x15, 0x16, 0x2C, 0x3E}},
 };
 
-SemaphoreHandle_t g_done = nullptr;  // libero = nessun rettangolo in viaggio
 portMUX_TYPE g_blMux = portMUX_INITIALIZER_UNLOCKED;
 
+// Fine del rettangolo: il bus torna libero (il turno l'ha preso draw()).
 bool IRAM_ATTR onColorDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t*, void*) {
-    BaseType_t woken = pdFALSE;
-    xSemaphoreGiveFromISR(g_done, &woken);
-    return woken == pdTRUE;
+    return busSpiLasciaDaIsr();
 }
 }  // namespace
 
@@ -68,9 +67,6 @@ bool Display::begin() {
     gpio_config(&bl);
     gpio_set_level(PIN_LCD_BL, 0);
     level_ = 0;
-
-    g_done = xSemaphoreCreateBinary();
-    xSemaphoreGive(g_done);
 
     esp_lcd_panel_io_spi_config_t io = {};
     io.cs_gpio_num = PIN_LCD_CS;
@@ -93,6 +89,7 @@ bool Display::begin() {
         ESP_LOGE(TAG, "pannello ST7789 non creato");
         return false;
     }
+    busSpiPrendi();
     esp_lcd_panel_reset(panel_);  // reset software (0x01): il pannello non ha il pin di reset
     esp_lcd_panel_init(panel_);
     for (const Cmd& c : INIT) esp_lcd_panel_io_tx_param(io_, c.cmd, c.data, c.len);
@@ -100,19 +97,24 @@ bool Display::begin() {
     esp_lcd_panel_swap_xy(panel_, SWAP_XY);
     esp_lcd_panel_mirror(panel_, MIRROR_X, MIRROR_Y);
     esp_lcd_panel_disp_on_off(panel_, true);
+    busSpiLascia();
     ESP_LOGI(TAG, "ST7789 %dx%d pronto", WIDTH, HEIGHT);
     return true;
 }
 
 void Display::draw(int x1, int y1, int x2, int y2, const void* pixels) {
     if (!panel_) return;
-    // Aspetta che il rettangolo precedente sia arrivato (il suo buffer torna a LVGL).
-    if (xSemaphoreTake(g_done, pdMS_TO_TICKS(200)) != pdTRUE) ESP_LOGW(TAG, "rettangolo precedente in ritardo");
+    // Il turno sul bus: libero quando il rettangolo precedente e' arrivato (il suo buffer torna a
+    // LVGL) e LoRa e microSD non stanno trasmettendo. Lo restituisce onColorDone a invio finito.
+    if (!busSpiPrendiEntro(1000)) {
+        ESP_LOGW(TAG, "bus SPI occupato da 1 s: rettangolo saltato");
+        return;
+    }
     // RGB565 di LVGL (little endian) -> big endian per l'ST7789.
     uint16_t* p = static_cast<uint16_t*>(const_cast<void*>(pixels));
     const size_t n = size_t(x2 - x1) * size_t(y2 - y1);
     for (size_t i = 0; i < n; i++) p[i] = uint16_t((p[i] >> 8) | (p[i] << 8));
-    if (esp_lcd_panel_draw_bitmap(panel_, x1, y1, x2, y2, pixels) != ESP_OK) xSemaphoreGive(g_done);
+    if (esp_lcd_panel_draw_bitmap(panel_, x1, y1, x2, y2, pixels) != ESP_OK) busSpiLascia();
 }
 
 // Driver della retroilluminazione a impulsi (come setBrightness() di LilyGO): da spento si accende
@@ -159,8 +161,10 @@ void Display::backlight(uint8_t percent) {
 void Display::sleep() {
     setLevel(0);
     if (panel_) {
+        busSpiPrendi();
         esp_lcd_panel_disp_on_off(panel_, false);
         esp_lcd_panel_disp_sleep(panel_, true);
+        busSpiLascia();
     }
 }
 

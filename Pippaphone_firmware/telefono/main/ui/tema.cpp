@@ -2,6 +2,24 @@
 
 namespace ui {
 
+namespace {
+bool g_chiaro = true;   // Carta
+int g_scuroFisso = 0;   // TemaScuroFisso attivi
+}  // namespace
+
+bool temaChiaro() { return g_chiaro && g_scuroFisso == 0; }
+void setTemaChiaro(bool chiaro) { g_chiaro = chiaro; }
+TemaScuroFisso::TemaScuroFisso() { g_scuroFisso++; }
+TemaScuroFisso::~TemaScuroFisso() { g_scuroFisso--; }
+
+void superficie(lv_obj_t* o) {
+    fill(o, SUPERFICIE());
+    if (temaChiaro()) {
+        lv_obj_set_style_border_width(o, 2, 0);
+        lv_obj_set_style_border_color(o, INCHIOSTRO(), 0);
+    }
+}
+
 lv_color_t avatarColor(uint16_t number) {
     static const uint32_t colors[] = {0x004080, 0x408040, 0x804080, 0x806000, 0x008080, 0x800040};
     return lv_color_hex(colors[number % (sizeof(colors) / sizeof(colors[0]))]);

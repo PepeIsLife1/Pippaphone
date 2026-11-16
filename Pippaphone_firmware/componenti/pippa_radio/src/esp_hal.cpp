@@ -106,7 +106,10 @@ RadioLibTime_t EspHal::micros() { return RadioLibTime_t(esp_timer_get_time()); }
 
 long EspHal::pulseIn(uint32_t, uint32_t, RadioLibTime_t) { return 0; }
 
-void EspHal::spiBeginTransaction() { spi_device_acquire_bus(dev_, portMAX_DELAY); }
+void EspHal::spiBeginTransaction() {
+    if (busTake_) busTake_();
+    spi_device_acquire_bus(dev_, portMAX_DELAY);
+}
 
 void EspHal::spiTransfer(uint8_t* out, size_t len, uint8_t* in) {
     spi_transaction_t t = {};
@@ -116,6 +119,9 @@ void EspHal::spiTransfer(uint8_t* out, size_t len, uint8_t* in) {
     spi_device_polling_transmit(dev_, &t);
 }
 
-void EspHal::spiEndTransaction() { spi_device_release_bus(dev_); }
+void EspHal::spiEndTransaction() {
+    spi_device_release_bus(dev_);
+    if (busGive_) busGive_();
+}
 
 }  // namespace pippa

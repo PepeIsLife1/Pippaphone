@@ -33,18 +33,44 @@ lv_obj_t* bigCircle(lv_obj_t* parent, int size, lv_obj_t** icon) {
     return c;
 }
 
-lv_obj_t* bar(lv_obj_t* parent, int w, int h, lv_color_t color) {
+// Barra di avanzamento. Carta: bianca col bordo nero da 2 pixel e l'indicatore dentro il bordo,
+// alta hCarta (almeno 8: un indicatore sotto i 4 pixel LVGL lo allarga sopra il bordo).
+lv_obj_t* bar(lv_obj_t* parent, int w, int h, lv_color_t color, int hCarta) {
     lv_obj_t* b = lv_bar_create(parent);
     lv_obj_remove_style_all(b);
+    int ri = h / 2;  // raggio dell'indicatore
+    if (temaChiaro()) {
+        h = hCarta;
+        ri = (h - 4) / 2;
+        lv_obj_set_style_border_width(b, 2, 0);
+        lv_obj_set_style_border_color(b, INCHIOSTRO(), 0);
+        lv_obj_set_style_pad_all(b, 2, 0);
+    }
     lv_obj_set_size(b, w, h);
-    lv_obj_set_style_bg_color(b, GRIGIO1(), 0);
+    lv_obj_set_style_bg_color(b, temaChiaro() ? NERO() : GRIGIO1(), 0);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(b, h / 2, 0);
     lv_obj_set_style_bg_color(b, color, LV_PART_INDICATOR);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(b, h / 2, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(b, ri, LV_PART_INDICATOR);
     return b;
 }
+
+// Livello del microfono. Carta: senza fondo ne' bordo, si vede solo l'indicatore verde (sotto la
+// barra del tempo, una seconda barra vuota sembrerebbe una riga in piu').
+lv_obj_t* level(lv_obj_t* parent, int w, int h) {
+    lv_obj_t* b = bar(parent, w, h, VERDE(), h);
+    if (temaChiaro()) {
+        lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(b, 0, 0);
+        lv_obj_set_style_pad_all(b, 0, 0);
+        lv_obj_set_style_radius(b, h / 2, LV_PART_INDICATOR);
+    }
+    return b;
+}
+
+// Colore della barra mentre si ascolta un vocale: verde in tutti e due i temi, come il cerchio.
+lv_color_t playColor() { return VERDE(); }
 
 class Walkie;
 Walkie* g_walkie = nullptr;
@@ -85,9 +111,9 @@ public:
         lv_obj_set_width(sub_, PX(440, 300));
         lv_obj_set_style_text_align(sub_, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_long_mode(sub_, LV_LABEL_LONG_WRAP);
-        time_ = bar(mid, PX(360, 240), PX(10, 6), ROSSO());
+        time_ = bar(mid, PX(360, 240), PX(10, 6), ROSSO(), PX(14, 8));
         lv_bar_set_range(time_, 0, app::VOICE_MAX_MS / 100);
-        vu_ = bar(mid, PX(360, 240), PX(6, 4), VERDE());
+        vu_ = level(mid, PX(360, 240), PX(6, 4));
         lv_bar_set_range(vu_, 0, 100);
         // Ultimo vocale ricevuto da questo contatto.
         lv_obj_t* foot = row(col, PX(10, 6));
@@ -118,9 +144,11 @@ public:
         }
     }
 
-    // Aggiorna i colori e i testi secondo lo stato.
+    // Aggiorna i colori e i testi secondo lo stato. Carta: mentre si registra il cerchio e' pieno
+    // d'arancio con l'icona bianca (nel tema scuro anello rosso su fondo rosso scuro).
     void show() {
         lv_color_t ring = GRIGIO1(), inside = NERO();
+        bool full = false;
         std::string t, s;
         lv_obj_add_flag(vu_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(time_, LV_OBJ_FLAG_HIDDEN);
@@ -137,7 +165,8 @@ public:
                 t = "Registrazione " + durationMS(app::voce().recordedMs());
                 s = TXT("lascia PTT per inviare", ptt("lascia " IC_MICROFONO " per inviare", "ripremi shift+" IC_MICROFONO " per inviare"));
                 ring = ROSSO();
-                inside = ROSSO_SCURO();
+                inside = temaChiaro() ? ROSSO() : ROSSO_SCURO();
+                full = temaChiaro();
                 lv_obj_clear_flag(vu_, LV_OBJ_FLAG_HIDDEN);
                 lv_obj_clear_flag(time_, LV_OBJ_FLAG_HIDDEN);
                 break;
@@ -185,7 +214,7 @@ public:
         lv_obj_set_style_border_color(circle_, ring, 0);
         fill(circle_, inside);
         lv_label_set_text(icon_, state_ == PLAY ? IC_VOLUME : IC_MICROFONO);
-        lv_obj_set_style_text_color(icon_, ring, 0);
+        lv_obj_set_style_text_color(icon_, full ? SU_COLORE() : ring, 0);
         lv_label_set_text(title_, t.c_str());
         lv_label_set_text(sub_, s.c_str());
     }
@@ -236,7 +265,7 @@ public:
         playMs_ = ms;
         app::voce().play(file);
         state_ = PLAY;
-        lv_obj_set_style_bg_color(time_, VERDE(), LV_PART_INDICATOR);
+        lv_obj_set_style_bg_color(time_, playColor(), LV_PART_INDICATOR);
         lv_bar_set_range(time_, 0, std::max<int>(1, ms / 100));
         lv_bar_set_value(time_, 0, LV_ANIM_OFF);
         show();
@@ -371,12 +400,28 @@ public:
         lv_obj_t* r = row(mid, PX(12, 8));
         lv_obj_set_size(r, PX(420, 290), LV_SIZE_CONTENT);
         pos_ = label(r, &mono_20, BIANCO(), "0:00");
-        prog_ = bar(r, PX(300, 190), PX(10, 6), VERDE());
+        prog_ = bar(r, PX(300, 190), PX(10, 6), playColor(), PX(14, 10));
         lv_bar_set_range(prog_, 0, std::max<int>(1, ms_ / 100));
         label(r, &mono_20, GRIGIO3(), durationMS(ms_).c_str());
-        if (lost_)
-            label(mid, &font_18, AMBRA(),
-                  ("Qualche pezzo si è perso (" + std::to_string(lost_) + "): li senti come silenzio").c_str());
+        if (lost_) {
+            // Carta: arancio (attenzione), il blu sembrerebbe un collegamento.
+#if TDECK
+            // Una riga sola e piu' corta: andava da un bordo all'altro dello schermo, e su due righe
+            // la colonna non ci sta (avatar e testo tagliati).
+            const std::string t = std::to_string(lost_) + (lost_ == 1 ? " pezzo perso" : " pezzi persi") +
+                                  ": li senti come silenzio";
+#else
+            const std::string t = "Qualche pezzo si è perso (" + std::to_string(lost_) + "): li senti come silenzio";
+#endif
+            lv_obj_t* l = label(mid, &font_18, colore(0xFFB000, 0xC04000), t.c_str());
+#if TDECK
+            lv_obj_set_width(l, 300);
+            unaRiga(l);
+            lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+#else
+            (void)l;
+#endif
+        }
         if (!ms_) label(mid, &font_18, ROSSO(), "File del vocale non trovato");
         if (autoplay_ && ms_) {
             autoplay_ = false;

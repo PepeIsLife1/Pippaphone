@@ -8,10 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <!-- Pagina per caricare il firmware dal browser (Chrome o Edge, Web Serial). Questo e' il modello:
-     strumenti/flasher/prepara.py ci mette dentro esptool-js e i firmware compilati e scrive
-     build-flasher/pippaphone_flasher.html. -->
+     strumenti/flasher/prepara.py ci mette dentro esptool-js, MapLibre (la cartina per le mappe) e i
+     firmware compilati e scrive build-flasher/pippaphone_flasher.html. -->
+<style>/*MAPLIBRE_CSS*/</style>
 <style>
-/* Una colonna di passi numerati (scegli, come, collega, console): i colori e i caratteri sono
+/* Una colonna di passi numerati (scegli, come, collega, console, mappe): i colori e i caratteri sono
    quelli dell'interfaccia del telefono (AMBRA, Atkinson Hyperlegible, IBM Plex Mono). */
 :root {
   --bg: #eef1f3;
@@ -49,6 +50,8 @@ header p { margin: 8px 0 0; color: var(--muted); max-width: 66ch; }
 .step h2 { margin: 0; font-size: 1.15rem; display: flex; gap: 10px; align-items: center; }
 .step h2 .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-fill); color: #1d1400; font: 700 .95rem var(--font-mono); flex: none; }
 .step > p { margin: 0; color: var(--muted); }
+/* un contenuto lungo (per esempio il nome di una zona pronta) non allarga la pagina oltre lo schermo */
+.wrap > *, .step > * { min-width: 0; }
 
 .devices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 760px) { .devices { grid-template-columns: minmax(0, 1fr); } }
@@ -105,6 +108,20 @@ pre { margin: 8px 0 0; max-height: 240px; overflow: auto; background: var(--term
 .cmd input { flex: 1; min-width: 0; font: .9rem var(--font-mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
 footer { color: var(--muted); font-size: .85rem; }
 code, kbd { font-family: var(--font-mono); font-size: .9em; }
+
+/* 5. Mappe sulla microSD */
+.step h3 { margin: 4px 0 0; font-size: 1rem; }
+.tools select { font: inherit; font-size: .92rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-width: 0; max-width: 100%; }
+.tools input[type=text] { flex: 1 1 12em; min-width: 0; font: inherit; font-size: .92rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.tools .stato { flex: 1 1 18em; }
+.mappa { height: clamp(280px, 55vh, 460px); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+.piccolo { margin: 0; color: var(--muted); font-size: .88rem; }
+.piccolo a { color: inherit; }
+ul.piccolo { padding-left: 1.2em; display: grid; gap: 4px; }
+.avviso { margin: 0; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; }
+.avviso.err { border-color: var(--danger); background: var(--danger-soft); }
+.avviso button { margin-left: 8px; }
+#mStima { margin: 0; }
 </style>
 </head>
 <body>
@@ -166,10 +183,74 @@ code, kbd { font-family: var(--font-mono); font-size: .9em; }
     <form class="cmd" id="cmdForm"><input id="cmd" type="text" autocomplete="off" placeholder="comando, per esempio: info" aria-label="Comando"><button class="second" type="submit">Invia</button></form>
   </section>
 
+  <section class="step" id="s5" hidden>
+    <h2><span class="n">5</span> Mappe sulla microSD</h2>
+    <p>Le cartine da guardare sul telefono anche senza rete: scegli la zona, e la pagina disegna le tile e le mette sulla microSD del T-Deck, col cavo USB oppure, molto più in fretta, con la microSD nel lettore di schede del computer. Si può fare subito dopo il caricamento o quando vuoi.</p>
+
+    <h3>Il telefono</h3>
+    <div class="tools">
+      <button class="second" id="mCollega" type="button">Collega</button>
+      <p class="stato" id="mSd" aria-live="polite">Serve per la copia col cavo: accendi il telefono, collegalo alla USB e premi “Collega”.</p>
+    </div>
+
+    <h3>La zona</h3>
+    <p class="avviso" id="mNoNet" hidden><span id="mNoNetTesto"></span><button class="second" id="mRiprovaCartina" type="button">Riprova</button></p>
+    <div class="tools">
+      <label for="mPronta">Zone pronte</label>
+      <select id="mPronta"></select>
+      <button class="second" id="mSalvaZona" type="button" disabled>Salva questa zona</button>
+      <button class="second" id="mTogliZona" type="button" disabled>Togli</button>
+    </div>
+    <form class="tools" id="mNomeZona" hidden>
+      <label for="mNome">Nome della zona</label>
+      <input type="text" id="mNome" maxlength="60" required autocomplete="off" placeholder="per esempio: casa al mare">
+      <button class="second" type="submit">Salva</button>
+      <button class="second" id="mNomeNo" type="button">Annulla</button>
+    </form>
+    <div class="tools">
+      <label for="mStile">Cartina</label>
+      <select id="mStile"><option value="liberty">Classica</option><option value="bright">Colorata</option><option value="positron">Chiara</option></select>
+    </div>
+    <div class="mappa" id="mappa"></div>
+    <p class="piccolo">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" title="Dati con licenza ODbL">OpenStreetMap contributors</a> · <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · <a href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a></p>
+    <p class="piccolo">La cartina ha bisogno di internet solo qui sul computer: sul telefono le mappe stanno sulla microSD e vanno anche senza rete.</p>
+    <div class="tools">
+      <button class="second" id="mZona" type="button" disabled>Usa la zona che vedi</button>
+      <label for="mZmin">dallo zoom</label><input type="number" id="mZmin" min="6" max="17" value="10">
+      <label for="mZmax">allo zoom</label><input type="number" id="mZmax" min="6" max="17" value="16">
+      <span class="piccolo" id="mOra"></span>
+    </div>
+    <p id="mStima"></p>
+    <p class="avviso" id="mAvviso" hidden></p>
+
+    <h3>La copia</h3>
+    <ul class="piccolo" id="mCartelleNota">
+      <li data-cartelle><b>Salva in una cartella</b> è il modo più veloce: metti la microSD nel lettore di schede del computer e scegli la microSD stessa (per esempio <b>E:</b>), non una cartella che c’è dentro. Le mappe vanno subito al loro posto, nella cartella “mappe” della cartella principale, l’unico posto dove il telefono le cerca; alla fine espelli la microSD e rimettila nel telefono. Se il browser non apre la microSD, fai sulla microSD una cartella “mappe” e scegli quella.</li>
+      <li data-cartelle>Per tenere le mappe pronte sul computer scegli invece una cartella tua, per esempio “Mappe Pippaphone” dentro Documenti (Documenti, Desktop e Download interi il browser non li apre). Poi <b>Manda da una cartella</b> le manda al telefono col cavo senza disegnarle di nuovo; oppure copi tu la cartella “mappe” che c’è dentro nella cartella principale della microSD.</li>
+      <li><b>Copia sulla microSD</b> disegna le tile e le manda al telefono col cavo, senza cartelle: va bene per una zona piccola.</li>
+      <li>La microSD dev’essere FAT32, non exFAT: quelle fino a 32 GB escono già così, quelle più grandi di solito sono exFAT e il telefono non le legge.</li>
+    </ul>
+    <p class="avviso" id="mNoCartelle" hidden>Questo browser non può scrivere nelle cartelle del computer: per salvare le mappe in una cartella, o mandarle da lì, apri la pagina con Chrome o Edge sul computer.</p>
+    <div class="tools">
+      <button class="primary" id="mVia" type="button" disabled>Copia sulla microSD</button>
+      <button class="second" id="mSalva" type="button" disabled>Salva in una cartella…</button>
+      <button class="second" id="mManda" type="button" disabled>Manda da una cartella…</button>
+      <button class="second" id="mFerma" type="button" hidden>Ferma</button>
+      <button class="second" id="mAltra" type="button" hidden>Un’altra cartella…</button>
+    </div>
+    <div class="progress">
+      <div class="bar" id="mBar"><i></i></div>
+      <p class="stato" id="mStato" aria-live="polite"></p>
+      <p class="found" id="mDati"></p>
+    </div>
+    <p class="piccolo">Mentre la pagina disegna le tile (“Copia sulla microSD” e “Salva in una cartella”), tieni davanti questa scheda del browser: se ne guardi un’altra, il disegno aspetta che torni. Finché lavora, la pagina chiede di tenere acceso lo schermo; tu non bloccare il computer e non metterlo in sospensione (un portatile tienilo attaccato alla corrente): col computer bloccato il disegno aspetta, in sospensione si ferma tutto. Se ti fermi, la volta dopo le tile già copiate o salvate si saltano.</p>
+  </section>
+
   <footer id="foot"></footer>
 </div>
 
 <script>/*FIRMWARE*/</script>
+<script>/*MAPLIBRE_JS*/</script>
 <script type="module">/*ESPTOOL*/</script>
 <script type="module">
 const $ = s => document.querySelector(s);
@@ -205,6 +286,7 @@ const DEV = {
 };
 
 let scelto = null, busy = false, lastInfo = null;
+let copiando = false;   // si stanno copiando le mappe sulla microSD (sezione 5): la porta e' occupata
 const hasSerial = 'serial' in navigator;
 if (!hasSerial) $('#noserial').hidden = false;
 
@@ -225,7 +307,8 @@ box.addEventListener('change', e => { scelto = e.target.value; aggiorna(true); }
 $('#antenna').addEventListener('change', () => aggiorna(true));
 document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', () => aggiorna(true)));
 $('#foot').textContent = FW.creato
-  ? `Pagina preparata il ${FW.creato}${FW.git ? ' dai sorgenti ' + FW.git : ''}. Carica i firmware con esptool-js 0.7.0 di Espressif (Apache 2.0).`
+  ? `Pagina preparata il ${FW.creato}${FW.git ? ' dai sorgenti ' + FW.git : ''}. Carica i firmware con esptool-js 0.7.0 di Espressif (Apache 2.0)` +
+    (window.maplibregl ? `; disegna le mappe con MapLibre GL JS ${maplibregl.getVersion()} (BSD-3).` : '.')
   : 'Questa è la pagina modello: i firmware li mette dentro strumenti/flasher/prepara.py.';
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -233,7 +316,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<':
 // dalUtente: la scelta e' cambiata, si riscrive anche lo stato (non dopo un caricamento, che ha il suo).
 function aggiorna(dalUtente) {
   const d = scelto && DEV[scelto];
-  $('#go').disabled = !d || !hasSerial || busy || !$('#antenna').checked || !FW[scelto];
+  $('#go').disabled = !d || !hasSerial || busy || copiando || !$('#antenna').checked || !FW[scelto];
   if (d) {
     $('#txt-aggiorna').textContent = d.aggiorna;
     $('#txt-zero').textContent = d.zero;
@@ -245,6 +328,10 @@ function aggiorna(dalUtente) {
   } else {
     $('#rip').hidden = true;
   }
+  // Le mappe sono solo per il telefono (mentre si copiano o si salvano la sezione resta, qualunque sia la scelta).
+  $('#s5').hidden = !copiando && !salvando && (!d || d.ripetitore);
+  if (!$('#s5').hidden) mostraCartina();
+  aggiornaMappe();
   if (dalUtente && !busy && d) {
     barra(0);
     stato(!$('#antenna').checked ? 'Conferma che l’antenna è collegata.' : 'Pronto: premi “Collega e carica”.');
@@ -392,8 +479,10 @@ function scrivi(t) {
   term.scrollTop = term.scrollHeight;
 }
 function consoleAperta(on) {
-  $('#apri').disabled = on; $('#chiudi').disabled = !on; $('#reset').disabled = !on;
-  document.querySelectorAll('#rip button, #cmdForm button').forEach(b => b.disabled = !on);
+  // Mentre si copiano le mappe la porta serve a loro: niente comandi e niente riavvio.
+  $('#apri').disabled = on; $('#chiudi').disabled = !on; $('#reset').disabled = !on || copiando;
+  document.querySelectorAll('#rip button, #cmdForm button').forEach(b => b.disabled = !on || copiando);
+  $('#mCollega').textContent = on ? 'Controlla la microSD' : 'Collega';
 }
 consoleAperta(false);
 const stessa = p => {
@@ -408,6 +497,7 @@ async function apri(port) {
     await port.open({ baudRate: 115200 });
     try { await port.setSignals({ dataTerminalReady: false, requestToSend: false }); } catch (_) {}
     cport = port; cclosing = false; lastInfo = port.getInfo();
+    portaNuova();   // sezione 5: si ricomincia a leggere le righe da capo
     consoleAperta(true);
     scrivi('[console aperta]\n');
     leggi(port);
@@ -424,7 +514,8 @@ async function apriAuto() {
   if (p) { try { await apri(p); } catch (e) { scrivi(`[console: ${e.message}]\n`); } }
 }
 
-$('#apri').addEventListener('click', async () => {
+// La porta gia' usata (stesso VID/PID) o quella che sceglie l'utente; la usa anche la sezione 5.
+async function apriConsole() {
   if (!hasSerial || busy) return;
   try {
     const p = (await navigator.serial.getPorts()).find(stessa) || await navigator.serial.requestPort({ filters: FILTRI });
@@ -433,7 +524,8 @@ $('#apri').addEventListener('click', async () => {
   } catch (e) {
     if (e.name !== 'NotFoundError') scrivi(`[non riesco ad aprire la porta: ${e.message}. Se è aperta in un altro programma (per esempio idf.py monitor), chiudilo.]\n`);
   }
-});
+}
+$('#apri').addEventListener('click', apriConsole);
 
 async function leggi(port) {
   while (cport === port && port.readable && !cclosing) {
@@ -442,7 +534,7 @@ async function leggi(port) {
       for (;;) {
         const { value, done } = await creader.read();
         if (done) break;
-        scrivi(dec.decode(value, { stream: true }));
+        smista.testo(dec.decode(value, { stream: true }));   // le risposte "@PIPPA " vanno alla sezione 5
       }
     } catch (e) {
       if (!cclosing) scrivi(voleva ? '\n[la scheda si è riavviata: la console si riapre appena torna]\n' : `\n[porta persa: ${e.message}]\n`);
@@ -473,6 +565,7 @@ $('#chiudi').addEventListener('click', chiudiConsole);
 
 async function invia(riga) {
   if (!cport || !cport.writable) return;
+  if (copiando) { scrivi('[aspetta la fine della copia delle mappe]\n'); return; }
   const w = cport.writable.getWriter();
   try { await w.write(new TextEncoder().encode(riga + '\r\n')); } finally { w.releaseLock(); }
 }
@@ -501,6 +594,1935 @@ if (hasSerial) {
   navigator.serial.addEventListener('connect', e => { if (voleva && !cport && stessa(e.target)) setTimeout(apriAuto, 300); });
   navigator.serial.addEventListener('disconnect', e => { if (e.target === cport && !voleva) scrivi('\n[dispositivo scollegato]\n'); });
 }
+
+// ---------------------------------------------------------------- mappe sulla microSD (sezione 5, solo telefono)
+// La pagina disegna le tile con MapLibre (le tile vettoriali le da' OpenFreeMap) e le manda al telefono
+// sulla porta della console. Sono tile come quelle di OpenStreetMap: PNG di 256x256 pixel, z/x/y.png con
+// la y che parte da nord; il telefono le mette in /sd/mappe. Si parla a righe di testo; le risposte del
+// telefono iniziano con "@PIPPA " e arrivano in mezzo al suo registro, che nella console si vede come
+// prima (le risposte no):
+//   @PIPPA?                         -> ciao <versione> sd=<0|1> libero=<MB liberi>
+//   @HAI z/x/y.png <byte>           -> si (ce l'ha gia', della stessa grandezza: si salta) | no
+//   @FILE z/x/y.png <byte> <crc32>  -> pronto | errore <motivo>
+//     dopo "pronto" i byte a pezzi di 4096: dopo ogni pezzo intero che non e' l'ultimo -> +
+//     dopo l'ultimo byte            -> ok z/x/y.png | errore <motivo>
+//   @FINE                           -> fine <tile ricevute>
+// Un comando (o un pezzo) alla volta: il successivo parte solo dopo la risposta, perche' il telefono
+// non ha posto per altro e quello che non ci sta lo perde.
+const PREFISSO = '@PIPPA ', PEZZO = 4096, MAX_FILE = 1048576, ZMIN = 6, ZMAX = 17;
+const TEMPI = { ciao: 3000, risposta: 15000, fine: 30000, disegno: 30000 };   // millisecondi
+const TANTE = 15000, TROPPE = 400000;   // avviso oltre 15 000 tile, col cavo non si parte oltre 400 000
+// In una cartella (piu' sotto) il limite e' piu' alto. Quello del cavo viene dal tempo: a 8 tile al
+// secondo 400 000 tile sono 14 ore. Nella cartella si va alla velocita' del disegno (in prova, con una
+// scheda video dedicata: 44 tile al secondo sul centro di Genova, 280 sul mare) e le tile si disegnano
+// una volta sola per tutte le volte che servono: un milione (la zona della Liguria fino allo zoom 16 ne
+// ha 60 000) si fa in una notte, fermandosi e riprendendo quando si vuole. Oltre, quasi sempre la zona o
+// lo zoom sono scelti male (lo zoom 17 su una regione): giorni di computer acceso, decine di GB, e
+// milioni di richieste a OpenFreeMap, che e' gratis e senza chiavi.
+const TROPPE_CARTELLA = 1000000;
+let zona = null, telefono = null, conosciuto = false, controllando = false, fermati = false, riprendi = '';
+let apertaAlle = 0, attesa = null, cartina = null, cartinaInCorso = false;
+// Le mappe in una cartella: salvando (si disegnano le tile in una cartella: la porta resta libera),
+// leggendo (si legge una cartella da mandare); per "Continua" l'etichetta e la cartella di ognuna
+// (riprendiManda e' anche 'pronta': la cartella e' letta e manca solo da scegliere la porta del telefono).
+let salvando = false, leggendo = false, riprendiSalva = '', riprendiManda = '', cartellaSalva = null, pacco = null, mandaDa = null;
+let lavoro = '';   // cosa si sta facendo con le tile disegnate (lo stato dopo una pausa); '' se niente
+const puoCartelle = typeof window.showDirectoryPicker === 'function';
+// Per le stime: 15 kB, 8 tile al secondo col cavo e 30 in una cartella, finche' una copia vera non dice
+// quanto (in citta' le tile pesano di piu', in campagna di meno).
+let kbTile = 15, velocita = 8, velocitaCartella = 30;
+// Il peso e' la media di tutte le tile copiate o salvate davvero (kbPeso: su quante, al massimo PESO_MAX,
+// cosi' le ultime contano di piu'), non solo dell'ultima volta: riprendendo una copia fermata si scrivono
+// solo le tile che mancavano, magari tutte di mare o tutte di citta'.
+let kbPeso = 0;
+const PESO_MAX = 2000;
+function imparaPeso(byte, n) {
+  if (n < 50) return;
+  const w = Math.min(kbPeso, PESO_MAX);
+  kbTile = (kbTile * w + byte / 1024) / (w + n);
+  kbPeso = Math.min(w + n, PESO_MAX);
+}
+const pausa = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- le risposte in mezzo al registro
+// Quello che arriva va nella console subito, anche a meta' riga come prima, tranne quando puo' essere
+// l'inizio di "@PIPPA ": quella riga si aspetta intera e, se e' una risposta, non si mostra.
+function smistatore(mostra, risposta) {
+  let riga = '', fuori = false;   // fuori: l'inizio della riga in corso e' gia' nella console
+  const pulita = s => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/^[\r\0]+/, '');
+  return {
+    testo(t) {
+      while (t) {
+        const a = t.indexOf('\n'), pezzo = a < 0 ? t : t.slice(0, a + 1);
+        t = a < 0 ? '' : t.slice(a + 1);
+        if (fuori) { mostra(pezzo); fuori = a < 0; continue; }
+        riga += pezzo;
+        const p = pulita(riga);
+        if (a >= 0) {
+          if (p.startsWith(PREFISSO)) risposta(p.slice(PREFISSO.length).trim());
+          else mostra(riga);
+          riga = '';
+        } else if (!p.startsWith(PREFISSO) && !PREFISSO.startsWith(p)) {
+          mostra(riga); riga = ''; fuori = true;
+        }
+      }
+    },
+    azzera() { if (riga) mostra(riga); riga = ''; fuori = false; },
+  };
+}
+function rispostaTelefono(r) {
+  const a = attesa;
+  if (a && a.va(r)) { attesa = null; clearTimeout(a.timer); a.fatto(r); }
+  else scrivi(`[risposta del telefono non aspettata: ${r}]\n`);   // in ritardo, di un comando vecchio
+}
+const smista = smistatore(scrivi, rispostaTelefono);
+function portaNuova() { smista.azzera(); apertaAlle = Date.now(); }
+
+// ---- la porta: un comando o un pezzo di file, poi la risposta
+// La prova (provaMappe, in fondo) mette qui un telefono finto al posto della porta.
+const canale = {
+  aperto: () => !!cport,
+  // true se la porta e' aperta o si apre senza chiedere niente (quella gia' usata e permessa). Se invece va
+  // scelta, il browser ne apre la finestra solo subito dopo un clic.
+  async pronto() {
+    try { return !!cport || (hasSerial && (await navigator.serial.getPorts()).some(stessa)); } catch (_) { return false; }
+  },
+  async apri() {
+    if (!cport) await apriConsole();
+    for (let i = 0; !cport && aprendo && i < 30; i++) await pausa(100);   // si stava gia' aprendo da sola
+    return !!cport;
+  },
+  async scrivi(dati, ms) {
+    const p = cport;
+    if (!p || !p.writable) throw new Error('La porta è chiusa.');
+    const w = p.writable.getWriter();
+    let timer;
+    try {
+      await Promise.race([w.write(dati), new Promise((_, no) => {
+        timer = setTimeout(() => no(Object.assign(new Error('Il telefono non prende più i dati.'), { tempo: true })), ms);
+      })]);
+    } catch (e) {
+      w.abort(e).catch(() => {});
+      throw e;
+    } finally {
+      clearTimeout(timer);
+      w.releaseLock();
+    }
+  },
+};
+// Ritorna la risposta che va(r) accetta, o null se non arriva entro ms. Le altre sono risposte in
+// ritardo a comandi vecchi (dopo un tempo scaduto) e si lasciano perdere.
+function alTelefono(cosa, va, ms) {
+  if (attesa) return Promise.reject(new Error('Il telefono sta ancora rispondendo al comando di prima.'));
+  const dati = typeof cosa === 'string' ? new TextEncoder().encode(cosa + '\n') : cosa;
+  return new Promise((fatto, sbaglio) => {
+    const a = { va, fatto, timer: setTimeout(() => { if (attesa === a) attesa = null; fatto(null); }, ms) };
+    attesa = a;
+    canale.scrivi(dati, ms).catch(e => { if (attesa === a) { attesa = null; clearTimeout(a.timer); } sbaglio(e); });
+  });
+}
+
+// CRC-32 standard (lo stesso di zlib.crc32), in 8 cifre esadecimali minuscole.
+const CRC = new Uint32Array(256).map((_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n; });
+function crc32(u8) {
+  let c = ~0;
+  for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8);
+  return ~c >>> 0;
+}
+const esa8 = n => n.toString(16).padStart(8, '0');
+
+// ---- conti delle tile (le formule di OpenStreetMap)
+const lon2x = (lon, z) => (lon + 180) / 360 * 2 ** z;
+const lat2y = (lat, z) => (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z;
+const x2lon = (x, z) => x / 2 ** z * 360 - 180;
+const y2lat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI;
+function intervallo(zona, z) {
+  const n = 2 ** z, dentro = v => Math.min(n - 1, Math.max(0, Math.floor(v)));
+  return { x0: dentro(lon2x(zona.ovest, z)), x1: dentro(lon2x(zona.est, z) - 1e-9),
+           y0: dentro(lat2y(zona.nord, z)), y1: dentro(lat2y(zona.sud, z) - 1e-9) };
+}
+function contaTile(zona, a, b) {
+  let n = 0;
+  for (let z = a; z <= b; z++) { const r = intervallo(zona, z); n += Math.max(0, r.x1 - r.x0 + 1) * Math.max(0, r.y1 - r.y0 + 1); }
+  return n;
+}
+// I blocchi di 4x4 tile (allineati a multipli di 4) che toccano la zona, zoom per zoom, con le tile
+// che servono davvero: ai bordi della zona un blocco ne ha meno di 16.
+function* blocchi(zona, zmin, zmax) {
+  for (let z = zmin; z <= zmax; z++) {
+    const r = intervallo(zona, z);
+    for (let bx = r.x0 - r.x0 % BLOCCO; bx <= r.x1; bx += BLOCCO)
+      for (let by = r.y0 - r.y0 % BLOCCO; by <= r.y1; by += BLOCCO) {
+        const tile = [];
+        for (let x = Math.max(bx, r.x0); x <= Math.min(bx + BLOCCO - 1, r.x1); x++)
+          for (let y = Math.max(by, r.y0); y <= Math.min(by + BLOCCO - 1, r.y1); y++) tile.push([x, y]);
+        if (tile.length) yield { z, bx, by, tile };
+      }
+  }
+}
+
+// ---- numeri e stato in italiano
+const numero = n => Math.round(n).toLocaleString('it-IT');
+const decimali = (n, d) => n.toLocaleString('it-IT', { maximumFractionDigits: d });
+const spazio = mb => mb >= 1024 ? decimali(mb / 1024, 1) + ' GB' : decimali(mb, mb < 10 ? 1 : 0) + ' MB';
+const megabyte = b => spazio(b / 1048576);
+const km = v => decimali(v, v < 10 ? 1 : 0);
+function durata(s) {
+  const m = Math.round(s / 60);
+  if (m < 1) return 'meno di un minuto';
+  if (m < 60) return m === 1 ? 'un minuto' : `${m} minuti`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return (h === 1 ? 'un’ora' : `${h} ore`) + (r ? ` e ${r === 1 ? 'un minuto' : r + ' minuti'}` : '');
+}
+// quanto ci vuole a mandare n tile col cavo: "meno di un minuto", "circa 2 ore"
+const colCavo = n => { const d = durata(n / velocita); return d.startsWith('meno') ? d : 'circa ' + d; };
+// "dallo zoom 10 al 16", o "zoom 14" se e' uno solo
+const zoomDi = (a, b) => a === b ? `zoom ${a}` : `dallo zoom ${a} al ${b}`;
+function statoIn(sel, t, kind) { const e = $(sel); e.textContent = t; e.className = 'stato' + (kind ? ' ' + kind : ''); }
+const statoSd = (t, kind) => statoIn('#mSd', t, kind);
+const statoMappe = (t, kind) => statoIn('#mStato', t, kind);
+function barraMappe(frac, kind) {
+  const b = $('#mBar');
+  b.className = 'bar' + (kind ? ' ' + kind : '');
+  b.firstElementChild.style.width = Math.round(Math.min(1, frac || 0) * 100) + '%';
+}
+
+function aggiornaMappe() {
+  const opera = copiando || salvando, libero = !busy && !opera && !controllando && !leggendo, zz = leggiZoom();
+  const n = zona && zz ? contaTile(zona, zz[0], zz[1]) : 0;
+  $('#mCollega').disabled = !hasSerial || !libero;
+  $('#mZona').disabled = !cartina || opera;
+  $('#mStile').disabled = $('#mZmin').disabled = $('#mZmax').disabled = $('#mPronta').disabled = opera;
+  // senza la cartina (niente internet) non si potrebbero nemmeno disegnare le tile
+  $('#mVia').disabled = !hasSerial || !libero || !zona || !zz || !cartina || n > TROPPE;
+  $('#mVia').textContent = riprendi === 'continua' ? 'Continua' : riprendi === 'riprova' ? 'Riprova' : 'Copia sulla microSD';
+  $('#mSalva').disabled = !libero || !zona || !zz || !cartina || n > TROPPE_CARTELLA;
+  $('#mSalva').textContent = riprendiSalva === 'continua' ? 'Continua a salvare' : riprendiSalva === 'riprova' ? 'Riprova a salvare' : 'Salva in una cartella…';
+  $('#mManda').disabled = !hasSerial || !libero;
+  $('#mManda').textContent = riprendiManda === 'pronta' ? 'Manda al telefono' : riprendiManda === 'continua' ? 'Continua a mandare'
+    : riprendiManda === 'riprova' ? 'Riprova a mandare' : 'Manda da una cartella…';
+  // Con "Continua a ..." sul pulsante, per scegliere invece un'altra cartella (una sola delle due e' ripresa).
+  $('#mAltra').hidden = !puoCartelle || opera || !(riprendiSalva || riprendiManda);
+  $('#mAltra').disabled = riprendiSalva ? $('#mSalva').disabled : $('#mManda').disabled;
+  $('#mAltra').textContent = riprendiSalva ? 'Salva in un’altra cartella…' : 'Manda da un’altra cartella…';
+  $('#mFerma').hidden = !opera;
+}
+
+// ---- il telefono: "@PIPPA?". Appena aperta la porta forse si sta ancora avviando: si chiede tre volte.
+async function chiediCiao() {
+  const volte = Date.now() - apertaAlle < 10000 ? 3 : 1;
+  for (let i = 0; i < volte; i++) {
+    const r = await alTelefono('@PIPPA?', r => /^ciao\b/.test(r), TEMPI.ciao);
+    if (r) {
+      const v = /^ciao\s+([^\s=]+)(\s|$)/.exec(r), sd = /\bsd=(\d)/.exec(r), lib = /\blibero=(\d+)/.exec(r);
+      conosciuto = true;
+      return { versione: v ? v[1] : '?', sd: !!sd && sd[1] === '1', liberoMB: lib ? +lib[1] : null };
+    }
+  }
+  return null;
+}
+function nonRisponde() {
+  return conosciuto ? 'Il telefono non risponde più: controlla il cavo, riaccendilo e riprova.'
+    : 'Il telefono non risponde: forse ha un firmware vecchio. Aggiornalo qui sopra (“Aggiorna”) e riprova.';
+}
+function mostraTelefono() {
+  const t = telefono;
+  if (!t) statoSd(nonRisponde(), 'err');
+  else if (!t.sd) statoSd('Il telefono risponde, ma non trova la microSD: mettila e riaccendilo. Se c’è già, forse non è FAT32 (le exFAT il telefono non le legge) o è rovinata.', 'err');
+  else statoSd(`microSD presente${t.liberoMB == null ? '' : `, ${spazio(t.liberoMB)} liberi`} (telefono col firmware ${t.versione}).`, 'ok');
+}
+async function controlla() {
+  if (controllando || copiando || salvando || leggendo || busy) return;
+  controllando = true; aggiornaMappe();
+  try {
+    if (!canale.aperto()) statoSd('Scegli la porta del telefono…');
+    if (!await canale.apri()) { statoSd('La porta non è aperta: collega il telefono acceso e scegli la sua porta.', 'err'); return; }
+    statoSd('Chiedo al telefono…');
+    telefono = await chiediCiao();
+    mostraTelefono();
+  } catch (e) {
+    statoSd('Non riesco a parlare col telefono: ' + e.message, 'err');
+  } finally {
+    controllando = false; aggiornaMappe(); mostraStima();
+  }
+}
+$('#mCollega').addEventListener('click', controlla);
+
+// ---- la cartina per scegliere la zona
+const stili = {};   // nome -> lo stile di OpenFreeMap (JSON), scaricato una volta sola
+function stile(nome) {
+  return stili[nome] ??= fetch(`https://tiles.openfreemap.org/styles/${nome}`)
+    .then(r => { if (!r.ok) throw new Error(`il server delle cartine risponde ${r.status}`); return r.json(); })
+    .catch(e => { delete stili[nome]; throw e; });
+}
+const SERVE_RETE = 'Serve internet per la cartina: quando il computer è in rete, premi “Riprova”.';
+const senzaRete = e => !navigator.onLine || e instanceof TypeError;
+function avvisoCartina(testo, riprova) {
+  $('#mNoNet').hidden = !testo;
+  $('#mNoNetTesto').textContent = testo || '';
+  $('#mRiprovaCartina').hidden = !riprova;
+}
+async function mostraCartina() {
+  if (cartina) { cartina.resize(); return; }
+  if (cartinaInCorso) return;
+  if (!window.maplibregl) { avvisoCartina('La cartina non c’è in questa pagina: la mette dentro strumenti/flasher/prepara.py.'); return; }
+  cartinaInCorso = true;
+  try {
+    const json = await stile($('#mStile').value);
+    const m = new maplibregl.Map({
+      container: 'mappa', style: structuredClone(json),
+      ...(zona ? { bounds: [[zona.ovest, zona.sud], [zona.est, zona.nord]], fitBoundsOptions: { padding: 24 } } : { center: [12.4, 42.6], zoom: 4.6 }),
+      attributionControl: false,   // l'attribuzione e' sotto la cartina, sempre in vista
+      dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0,
+      renderWorldCopies: false, minZoom: 1, maxZoom: 17, cooperativeGestures: true,
+      locale: {
+        'Map.Title': 'Cartina', 'NavigationControl.ZoomIn': 'Ingrandisci', 'NavigationControl.ZoomOut': 'Rimpicciolisci',
+        'CooperativeGesturesHandler.WindowsHelpText': 'Per ingrandire la cartina usa Ctrl + rotellina',
+        'CooperativeGesturesHandler.MacHelpText': 'Per ingrandire la cartina usa ⌘ + rotellina',
+        'CooperativeGesturesHandler.MobileHelpText': 'Per spostare la cartina usa due dita',
+      },
+    });
+    m.touchZoomRotate.disableRotation();
+    m.keyboard.disableRotation();
+    m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    m.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+    m.on('style.load', disegnaZona);
+    m.on('moveend', mostraStima);
+    m.on('error', e => {
+      console.warn('cartina:', e.error);
+      if (e.tile || e.sourceId) avvisoCartina('Serve internet per la cartina: alcuni pezzi non si scaricano.', true);
+    });
+    m.on('sourcedata', e => { if (e.tile && !$('#mNoNet').hidden) avvisoCartina(''); });
+    cartina = m;
+    avvisoCartina('');
+  } catch (e) {
+    avvisoCartina(senzaRete(e) ? SERVE_RETE : 'La cartina non si apre: ' + (e.message || e), true);
+  } finally {
+    cartinaInCorso = false;
+    aggiornaMappe(); mostraStima();
+  }
+}
+async function cambiaStile() {
+  riprendi = riprendiSalva = ''; ricorda(); aggiornaMappe();
+  if (!cartina) return mostraCartina();
+  try {
+    cartina.setStyle(structuredClone(await stile($('#mStile').value)), { diff: false });
+    avvisoCartina('');
+  } catch (e) {
+    avvisoCartina(senzaRete(e) ? SERVE_RETE : 'La cartina non si apre: ' + (e.message || e), true);
+  }
+}
+$('#mStile').addEventListener('change', cambiaStile);
+$('#mRiprovaCartina').addEventListener('click', () => { avvisoCartina(''); if (cartina) cambiaStile(); else mostraCartina(); });
+window.addEventListener('online', () => { if (!cartina && !$('#s5').hidden) mostraCartina(); });
+
+// Il riquadro della zona scelta, sopra la cartina (si rimette a ogni cambio di stile).
+function disegnaZona() {
+  if (!cartina) return;
+  const z = zona, dati = z
+    ? { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[z.ovest, z.sud], [z.est, z.sud], [z.est, z.nord], [z.ovest, z.nord], [z.ovest, z.sud]]] } }
+    : { type: 'FeatureCollection', features: [] };
+  const s = cartina.getSource('zona');
+  if (s) { s.setData(dati); return; }
+  try {
+    cartina.addSource('zona', { type: 'geojson', data: dati });
+    cartina.addLayer({ id: 'zona', type: 'fill', source: 'zona', paint: { 'fill-color': '#ffb000', 'fill-opacity': 0.14 } });
+    cartina.addLayer({ id: 'zona-bordo', type: 'line', source: 'zona', paint: { 'line-color': '#8f5d00', 'line-width': 2.5 } });
+  } catch (_) {}   // lo stile si sta ancora caricando: la mette "style.load"
+}
+$('#mZona').addEventListener('click', () => {
+  if (!cartina || copiando || salvando) return;
+  const b = cartina.getBounds();
+  cambiaZona({ ovest: Math.max(-180, b.getWest()), sud: Math.max(-85.05, b.getSouth()), est: Math.min(180, b.getEast()), nord: Math.min(85.05, b.getNorth()) });
+});
+// Una zona nuova, dalla cartina o dalle zone pronte: "Continua" e "Continua a salvare" non valgono piu', e
+// il nome scritto per salvare quella di prima non va dato a questa.
+function cambiaZona(z) {
+  if (!stessaZona(z, zona)) { riprendi = riprendiSalva = ''; chiudiNome(false); }
+  zona = z;
+  ricorda(); disegnaZona(); mostraPronte(); mostraStima(); aggiornaMappe();
+}
+for (const id of ['#mZmin', '#mZmax']) $(id).addEventListener('input', () => { riprendi = riprendiSalva = ''; ricorda(); mostraStima(); aggiornaMappe(); });
+function leggiZoom() {
+  const a = Number($('#mZmin').value), b = Number($('#mZmax').value);
+  return Number.isInteger(a) && Number.isInteger(b) && a >= ZMIN && b <= ZMAX && a <= b ? [a, b] : null;
+}
+function mostraStima() {
+  // MapLibre allo zoom Z fa vedere quello che le tile da 256 pixel fanno vedere allo zoom Z+1
+  $('#mOra').textContent = cartina ? `(la cartina ora è come lo zoom ${Math.round(cartina.getZoom() + 1)})` : '';
+  const zz = leggiZoom();
+  let testo, avviso = '';
+  if (!zona) testo = 'Sposta e ingrandisci la cartina sulla zona che ti serve, poi premi “Usa la zona che vedi”.';
+  else if (!zz) testo = `Gli zoom vanno da ${ZMIN} a ${ZMAX}, e il primo non può essere più grande del secondo.`;
+  else {
+    const n = contaTile(zona, zz[0], zz[1]), mb = n * kbTile / 1024, lat = (zona.sud + zona.nord) / 2 * Math.PI / 180;
+    const larga = (zona.est - zona.ovest) * 111.32 * Math.cos(lat), alta = (zona.nord - zona.sud) * 110.57;
+    testo = `Zona di circa ${km(larga)} × ${km(alta)} km, ${zoomDi(zz[0], zz[1])}: ${numero(n)} tile, ` +
+      `circa ${spazio(mb)} sulla microSD e ${durata(n / velocita)} per copiarle col cavo` +
+      (puoCartelle ? ` (${durata(n / velocitaCartella)} per salvarle in una cartella).` : '.');
+    if (n > TROPPE_CARTELLA || (n > TROPPE && !puoCartelle))
+      avviso = `Sono troppe: stringi la zona o abbassa lo zoom massimo (al massimo ${numero(TROPPE)} tile per volta col cavo` +
+        (puoCartelle ? `, ${numero(TROPPE_CARTELLA)} in una cartella).` : ').');
+    else if (n > TROPPE)
+      avviso = `Sono troppe per il cavo (al massimo ${numero(TROPPE)} tile per volta): stringi la zona o abbassa lo zoom massimo, oppure salvale in una cartella (fino a ${numero(TROPPE_CARTELLA)}).`;
+    else if (n > TANTE)
+      avviso = 'Sono tante: la copia dura parecchio. Puoi fermarla quando vuoi e riprenderla dopo, le tile già copiate si saltano.' +
+        (puoCartelle ? ' Con la microSD nel lettore di schede del computer fai molto prima: “Salva in una cartella”.' : '');
+    if (telefono && telefono.liberoMB != null && mb > telefono.liberoMB)
+      avviso += (avviso ? ' ' : '') + `Sulla microSD ci sono solo ${spazio(telefono.liberoMB)} liberi: forse non bastano.`;
+  }
+  $('#mStima').textContent = testo;
+  $('#mAvviso').textContent = avviso;
+  $('#mAvviso').hidden = !avviso;
+}
+
+// ---- il disegno delle tile
+// Una seconda cartina, nascosta, grande 4x4 tile piu' un bordo di 128 pixel: per ogni blocco di 4x4 tile
+// si mette sul centro del blocco e se ne ritagliano le tile. MapLibre allo zoom Z disegna il mondo largo
+// 512*2^Z pixel, quindi la tile da 256 pixel dello zoom z e' lo zoom z-1 di MapLibre. Il bordo serve
+// perche' le scritte vicine al taglio fra due blocchi vengano intere da tutte e due le parti.
+const LATO = 256, BLOCCO = 4, BORDO = 128, TELA = BLOCCO * LATO + 2 * BORDO;
+let dis = null, codaDisegno = Promise.resolve();
+function perDisegnare(json) {
+  // niente dissolvenze: quando la cartina e' ferma deve essere gia' quella finale
+  const s = structuredClone(json);
+  s.transition = { duration: 0, delay: 0 };
+  for (const l of s.layers) if (l.type === 'raster') l.paint = { ...l.paint, 'raster-fade-duration': 0 };
+  return s;
+}
+async function disegnatore(nome) {
+  if (dis && dis.nome === nome) return dis;
+  const json = perDisegnare(await stile(nome));
+  if (!dis) {
+    const div = document.createElement('div');
+    div.setAttribute('aria-hidden', 'true');
+    div.style.cssText = `position:fixed;left:-${TELA + 1000}px;top:0;width:${TELA}px;height:${TELA}px;pointer-events:none`;
+    document.body.appendChild(div);
+    const mappa = new maplibregl.Map({
+      container: div, style: json, center: [0, 0], zoom: 1,
+      pixelRatio: 1, preserveDrawingBuffer: true, interactive: false, attributionControl: false,
+      fadeDuration: 0, trackResize: false, refreshExpiredTiles: false, validateStyle: false,
+    });
+    dis = { mappa, nome, errori: [], spostati: 0, disegnati: 0 };
+    mappa.on('error', e => { dis.errori.push(e); console.warn('disegno delle tile:', e.error); });
+  } else {
+    dis.mappa.setStyle(json, { diff: false });
+    dis.nome = nome;
+  }
+  return dis;
+}
+// Un blocco alla volta, anche se lo chiedono in due (la copia che disegna avanti e la prova).
+function disegna(b, nome = $('#mStile').value) {
+  const p = codaDisegno.then(() => disegnaBlocco(b, nome));
+  codaDisegno = p.catch(() => {});
+  return p;
+}
+function aspettaFerma(m, ms) {   // true quando la cartina ha finito di disegnare tutto (evento "idle"), false dopo ms
+  return new Promise(ok => {
+    // Se il browser da' pochi fotogrammi (finestra coperta o in un pannello) il disegno si spinge a mano.
+    const spinta = setInterval(() => m.redraw(), 250);
+    const fine = v => { clearTimeout(t); clearInterval(spinta); m.off('idle', f); ok(v); }, f = () => fine(true), t = setTimeout(() => fine(false), ms);
+    m.on('idle', f);
+  });
+}
+function visibile() {   // con la scheda nascosta il browser non disegna: si aspetta che torni
+  return !document.hidden ? Promise.resolve() : new Promise(ok => document.addEventListener('visibilitychange', function f() {
+    if (!document.hidden) { document.removeEventListener('visibilitychange', f); ok(); }
+  }));
+}
+// Lo schermo acceso finche' si copia o si salva (Screen Wake Lock, Chrome ed Edge): con lo schermo spento
+// o il computer bloccato la scheda risulta nascosta e il disegno aspetta, e in sospensione si ferma tutto.
+// Il browser lo toglie da solo quando la scheda si nasconde: si richiede appena torna. Se il browser dice
+// di no (per esempio col risparmio energetico) si lavora lo stesso.
+const sveglia = { voluta: false, blocco: null, chiede: false };
+async function chiediSveglia() {
+  if (!sveglia.voluta || sveglia.blocco || sveglia.chiede || document.hidden || !navigator.wakeLock) return;
+  sveglia.chiede = true;
+  try {
+    const b = await navigator.wakeLock.request('screen');
+    if (sveglia.voluta && !sveglia.blocco) {
+      sveglia.blocco = b;
+      b.addEventListener('release', () => { if (sveglia.blocco === b) sveglia.blocco = null; });
+    } else b.release().catch(() => {});
+  } catch (_) {
+  } finally {
+    sveglia.chiede = false;
+  }
+}
+function schermoAcceso(si) {
+  sveglia.voluta = si;
+  if (si) { chiediSveglia(); return; }
+  const b = sveglia.blocco;
+  sveglia.blocco = null;
+  if (b) b.release().catch(() => {});
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) chiediSveglia(); });
+// Chiudendo la pagina a meta' la copia si ferma (le tile fatte restano, e la volta dopo si saltano): prima
+// il browser chiede se uscire davvero.
+window.addEventListener('beforeunload', e => { if (copiando || salvando) { e.preventDefault(); e.returnValue = ''; } });
+const NO_CARTINA = 'Non riesco a scaricare la cartina: controlla che il computer sia in rete.';
+async function disegnaBlocco({ z, bx, by, tile }, nome) {
+  let d;
+  try { d = await disegnatore(nome); } catch (e) { throw senzaRete(e) ? new Error(NO_CARTINA) : e; }
+  const m = d.mappa;
+  for (let prova = 1; ; prova++) {
+    if (document.hidden) {
+      if (lavoro && !fermati) statoMappe('In pausa: torna su questa scheda del browser (e sblocca il computer, se si è bloccato): le tile si disegnano solo quando si vede.');
+      await visibile();
+      if (lavoro && !fermati) statoMappe(lavoro);
+    }
+    d.errori = [];
+    const pronta = aspettaFerma(m, TEMPI.disegno);
+    m.jumpTo({ center: [x2lon(bx + BLOCCO / 2, z), y2lat(by + BLOCCO / 2, z)], zoom: z - 1, bearing: 0, pitch: 0 });
+    const finita = await pronta, rotte = d.errori.filter(e => e.tile || e.sourceId).length;
+    if (finita && !rotte) break;
+    if (!finita && document.hidden) { prova--; continue; }   // nascosta a meta': non conta
+    if (prova >= 3) throw new Error(rotte || !navigator.onLine ? NO_CARTINA : 'La cartina non finisce di disegnarsi.');
+    await pausa(2000);
+    if (rotte) m.setStyle(perDisegnare(await stile(nome)), { diff: false });   // cosi' si riscarica tutto
+  }
+  // Dove cadono le tile sulla tela lo dice MapLibre, per gli angoli calcolati con le formule di
+  // OpenStreetMap: devono cadere su pixel interi, a 1024 pixel l'uno dall'altro, dentro la tela.
+  const tela = m.getCanvas(), lato = BLOCCO * LATO;
+  if (tela.width !== TELA || tela.height !== TELA || tela.clientWidth !== TELA)
+    throw new Error(`Errore della pagina: la tela è di ${tela.width}×${tela.height} pixel invece di ${TELA}×${TELA}.`);
+  const no = m.project([x2lon(bx, z), y2lat(by, z)]), se = m.project([x2lon(bx + BLOCCO, z), y2lat(by + BLOCCO, z)]);
+  const ox = Math.round(no.x), oy = Math.round(no.y);
+  if ([no.x - ox, no.y - oy, se.x - ox - lato, se.y - oy - lato].some(v => Math.abs(v) > 0.01) || ox < 0 || oy < 0 || ox + lato > TELA || oy + lato > TELA)
+    throw new Error(`Errore della pagina: il blocco ${z}/${bx}/${by} non torna con la numerazione delle tile (angolo a ${no.x.toFixed(2)}, ${no.y.toFixed(2)}).`);
+  if (ox !== BORDO || oy !== BORDO) d.spostati++;   // solo vicino ai poli, dove la cartina non va oltre il bordo del mondo
+  d.disegnati++;   // per la prova: i blocchi gia' completi nella cartella non si disegnano
+  // Le tile si ritagliano subito, tutte insieme, prima che la cartina possa disegnare altro.
+  return Promise.all(tile.map(async ([x, y]) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = LATO;
+    const g = c.getContext('2d', { alpha: false });
+    g.globalCompositeOperation = 'copy';
+    g.imageSmoothingEnabled = false;
+    g.drawImage(tela, ox + (x - bx) * LATO, oy + (y - by) * LATO, LATO, LATO, 0, 0, LATO, LATO);
+    const png = await new Promise((ok, no) => c.toBlob(b => b ? ok(b) : no(new Error('Il browser non riesce a fare il PNG.')), 'image/png'));
+    return { z, x, y, dati: new Uint8Array(await png.arrayBuffer()) };
+  }));
+}
+
+// ---- la copia
+// Una tile: "@HAI" e, se il telefono non ce l'ha uguale, "@FILE" coi byte a pezzi. Se il telefono dice
+// "errore" (per esempio il CRC non torna, o non sono arrivati tutti i byte) la tile si rimanda, fino a tre volte.
+async function mandaTile(t) {
+  const nome = `${t.z}/${t.x}/${t.y}.png`, n = t.dati.length;
+  if (!n || n > MAX_FILE) throw new Error(`La tile ${nome} è di ${numero(n)} byte: il telefono ne prende al massimo ${numero(MAX_FILE)}.`);
+  const hai = await alTelefono(`@HAI ${nome} ${n}`, r => r === 'si' || r === 'no' || r.startsWith('errore'), TEMPI.risposta);
+  if (hai === null) throw zitto(nome);
+  if (hai === 'si') return 'si';
+  if (hai !== 'no') throw new Error(`Per la tile ${nome} il telefono dice: ${motivoDi(hai)}.`);
+  const crc = esa8(crc32(t.dati));
+  let motivo = '';
+  for (let volta = 1; volta <= 3; volta++) {
+    motivo = await mandaFile(nome, t.dati, crc);
+    if (!motivo) return 'mandata';
+    scrivi(`[mappe: il telefono non ha salvato ${nome} (${motivo})${volta < 3 ? ', la rimando' : ''}]\n`);
+  }
+  throw new Error(`Il telefono non riesce a salvare la tile ${nome}: ${motivo}.`);
+}
+// '' se il telefono ha salvato il file, se no il motivo che dice.
+async function mandaFile(nome, dati, crc) {
+  const via = await alTelefono(`@FILE ${nome} ${dati.length} ${crc}`, r => r === 'pronto' || r.startsWith('errore'), TEMPI.risposta);
+  if (via === null) throw zitto(nome);
+  if (via !== 'pronto') return motivoDi(via);
+  for (let da = 0; da < dati.length; da += PEZZO) {
+    const ultimo = da + PEZZO >= dati.length;
+    const r = await alTelefono(dati.subarray(da, da + PEZZO), r => r === '+' || /^(ok|errore)\b/.test(r), TEMPI.risposta);
+    if (r === null) throw zitto(nome);
+    if (r.startsWith('errore')) return motivoDi(r);
+    if (ultimo !== r.startsWith('ok'))
+      throw new Error(ultimo ? `Il telefono aspetta altri byte della tile ${nome}: ne ha persi.` : `Il telefono ha chiuso la tile ${nome} prima della fine.`);
+    if (ultimo && r !== 'ok ' + nome) throw new Error(`Il telefono dice di aver salvato ${r.slice(3)} invece di ${nome}.`);
+  }
+  return '';
+}
+const motivoDi = r => r.replace(/^errore\s*/, '') || 'senza motivo';
+function zitto(nome) {
+  return Object.assign(new Error(`Il telefono non risponde più (aspettavo la risposta per la tile ${nome}): controlla il cavo.`), { tempo: true });
+}
+
+function progresso(c) {
+  // la velocita' degli ultimi 30 secondi; con c.gratis le tile che c'erano gia' non contano, non costano niente
+  const ora = performance.now(), lavorate = c.gratis ? c.fatte - c.saltate : c.fatte;
+  c.campioni.push([ora, lavorate]);
+  while (ora - c.campioni[0][0] > 30000) c.campioni.shift();
+  const [t0, f0] = c.campioni[0], misurata = ora - t0 >= 4000 ? (lavorate - f0) * 1000 / (ora - t0) : 0;
+  const resta = durata((c.totale - c.fatte) / (misurata || c.velocita));
+  barraMappe(c.fatte / c.totale);
+  $('#mDati').textContent = `${numero(c.fatte)} di ${numero(c.totale)} tile · ${megabyte(c.byte)} ${c.verbo}` +
+    (misurata ? ` · ${decimali(misurata, 1)} tile al secondo` : '') +
+    (c.fatte < c.totale ? ` · ancora ${resta.startsWith('meno') ? resta : 'circa ' + resta}` : '') +
+    (c.saltate ? ` · ${numero(c.saltate)} c’erano già` : '') +
+    (c.scartate ? ` · ${numero(c.scartate)} file rotti lasciati stare` : '');
+}
+// I conti di una copia: verbo "mandati" o "scritti", velocita' per le stime finche' non si misura,
+// gratis se le tile che c'erano gia' non costano tempo (nella cartella non si disegnano nemmeno).
+const contiNuovi = (totale, verbo, velocita, gratis = false) =>
+  ({ totale, fatte: 0, saltate: 0, mandate: 0, scartate: 0, byte: 0, campioni: [], inizio: 0, verbo, velocita, gratis });
+// Un blocco da disegnare; se non lo aspetta nessuno (ci si e' fermati prima) l'errore si lascia perdere.
+function avvia(b) { const p = disegna(b); p.catch(() => {}); return p; }
+
+$('#mVia').addEventListener('click', () => { const zz = leggiZoom(); if (zona && zz) eseguiCopia({ zona, zmin: zz[0], zmax: zz[1] }); });
+$('#mFerma').addEventListener('click', () => {
+  fermati = true; $('#mFerma').disabled = true;
+  statoMappe(salvando ? 'Mi fermo appena ho scritto le tile già disegnate…' : 'Mi fermo appena finisce questa tile…');
+});
+
+// Le tile della zona, disegnate a blocchi: mentre si mandano quelle di un blocco si disegna gia' il
+// blocco dopo. Dopo "Ferma" non ne da' piu'.
+async function* tileDisegnate(zona, zmin, zmax) {
+  const giro = blocchi(zona, zmin, zmax);
+  let b = giro.next(), avanti = b.done ? null : avvia(b.value);
+  while (avanti && !fermati) {
+    const pezzi = await avanti;
+    b = giro.next();
+    avanti = b.done ? null : avvia(b.value);
+    for (const t of pezzi) { if (fermati) return; yield t; }
+  }
+}
+function eseguiCopia({ zona, zmin, zmax }) {
+  return copiaAlTelefono({ conti: contiNuovi(contaTile(zona, zmin, zmax), 'mandati', velocita), tile: tileDisegnate(zona, zmin, zmax),
+    testo: 'Disegno le tile e le copio sulla microSD…', dove: 'della zona', impara: true, etichetta: e => { riprendi = e; } });
+}
+
+// Il giro della copia col telefono, uguale per le tile disegnate qui e per quelle di una cartella:
+// controlla il telefono, gli manda una alla volta le tile che da' "tile" (quelle che ha gia' le salta),
+// chiude con "@FINE" e dice com'e' andata. conti: nuovi, o quelli di prima per riprendere da li'.
+// etichetta(e) riceve cosa scrivere sul pulsante: '' (fatto), 'continua' (fermato) o 'riprova' (errore);
+// seguito e' quello che il pulsante ha dopo "Continua" e "Riprova" (" a mandare").
+async function copiaAlTelefono({ conti: c, tile, testo, dove, impara = false, etichetta, seguito = '' }) {
+  if (copiando || salvando || leggendo || busy || controllando) return null;
+  copiando = true; fermati = false; $('#mFerma').disabled = false;
+  schermoAcceso(true);
+  const prima = c.fatte;
+  c.campioni = []; c.inizio = performance.now(); c.porta = null;
+  let esito = 'errore', motivo = '', risponde = false, ricevute = null;
+  try {
+    aggiorna(false); consoleAperta(canale.aperto());
+    barraMappe(c.fatte / c.totale); $('#mDati').textContent = '';
+    statoMappe('Controllo il telefono…');
+    try {
+      if (!await canale.apri()) throw new Error('La porta non è aperta: collega il telefono acceso e scegli la sua porta.');
+      telefono = await chiediCiao();
+      mostraTelefono();
+      if (!telefono) throw new Error(nonRisponde());
+      if (!telefono.sd) throw new Error('Il telefono non trova la microSD: mettila e riaccendilo (se c’è già, forse non è FAT32 o è rovinata).');
+      risponde = true; c.porta = apertaAlle;   // la sessione della porta: per riprendere senza ricontrollare tutto
+      lavoro = testo; statoMappe(testo);
+      for await (const t of tile) {
+        if (fermati) break;
+        if (t.rotta) { c.fatte++; c.scartate++; progresso(c); continue; }   // un file della cartella che non e' una tile
+        const r = await mandaTile(t);
+        c.fatte++;
+        if (r === 'si') c.saltate++; else { c.mandate++; c.byte += t.dati.length; }
+        progresso(c);
+      }
+      esito = c.fatte < c.totale ? 'fermato' : 'fatto';
+    } catch (e) {
+      motivo = e.message || String(e);
+      if (e.tempo) risponde = false;
+      console.warn('mappe:', e);
+    }
+    // Anche dopo "Ferma" o un errore del telefono: rilegge l'elenco delle mappe e usa quelle che ha.
+    if (risponde) {
+      try {
+        const r = await alTelefono('@FINE', r => /^fine\b/.test(r) || r.startsWith('errore'), TEMPI.fine);
+        const m = r && /^fine\s+(\d+)/.exec(r);
+        if (m) ricevute = +m[1];
+        else if (esito === 'fatto') { esito = 'errore'; motivo = r ? `Alla fine il telefono dice: ${motivoDi(r)}.` : 'Alla fine il telefono non ha risposto.'; }
+      } catch (e) {
+        if (esito === 'fatto') { esito = 'errore'; motivo = e.message; }
+      }
+    }
+    const secondi = (performance.now() - c.inizio) / 1000;
+    if (impara && c.mandate >= 50) {   // per le prossime stime (solo con le tile disegnate qui, come quelle da stimare)
+      imparaPeso(c.byte, c.mandate);
+      if (c.saltate < c.fatte / 10) velocita = (c.fatte - prima) / secondi;
+      ricorda();
+    }
+    const quante = `${numero(c.mandate)} copiate${c.saltate ? `, ${numero(c.saltate)} c’erano già` : ''}`;
+    const rotte = !c.scartate ? '' : c.scartate === 1 ? ' Un file della cartella era vuoto o rotto: non l’ho mandato.'
+      : ` ${numero(c.scartate)} file della cartella erano vuoti o rotti: non li ho mandati.`;
+    if (esito === 'fatto') {
+      barraMappe(1, 'ok');
+      statoMappe(`Fatto: le ${numero(c.totale - c.scartate)} tile ${dove} sono sulla microSD (${quante}).${rotte}`, 'ok');
+    } else if (esito === 'fermato') {
+      barraMappe(c.fatte / c.totale);
+      statoMappe(`Fermato a ${numero(c.fatte)} tile su ${numero(c.totale)} (${quante}). Premi “Continua${seguito}” per riprendere: le tile già copiate si saltano.`);
+    } else {
+      barraMappe(c.totale ? c.fatte / c.totale : 1, 'err');
+      statoMappe(`${motivo} Premi “Riprova${seguito}”: le tile già copiate si saltano.`, 'err');
+    }
+    etichetta(esito === 'fatto' ? '' : esito === 'fermato' ? 'continua' : 'riprova');
+    if (ricevute != null) scrivi(`[mappe: ${numero(c.fatte - prima)} tile in ${durata(secondi)}; il telefono dice di averne ricevute ${ricevute}]\n`);
+  } finally {
+    copiando = false; lavoro = '';
+    schermoAcceso(false);
+    aggiorna(false); consoleAperta(canale.aperto());
+  }
+  return { esito, motivo, conti: c, ricevute };
+}
+
+// ---- le mappe in una cartella, per non disegnarle ogni volta (File System Access: Chrome ed Edge)
+// "Salva in una cartella" disegna le tile della zona con lo stesso disegno della copia e le scrive in
+// <cartella>/mappe/z/x/y.png, dove le cerca il telefono (/mappe sulla microSD), o in z/x/y.png se la
+// cartella scelta si chiama gia' "mappe". La cartella puo' essere la microSD stessa, nel lettore di schede
+// del computer: molto piu' veloce del cavo. Le tile che ci sono gia' (non vuote) si saltano e i blocchi gia'
+// completi non si disegnano nemmeno: una copia interrotta riprende da dove era.
+// "Manda da una cartella" manda al telefono col cavo, senza disegnare niente, tutte le tile che trova nella
+// cartella (mappe/z/x/y.png o z/x/y.png). Tutte e non solo quelle della zona e degli zoom scelti qui sopra:
+// la cartella e' gia' la scelta (fatta quando la si e' salvata, magari da piu' zone, o arrivata da un altro
+// computer), mentre la zona qui sopra intanto puo' essere cambiata, e con un filtro le tile rimaste fuori
+// non arriverebbero senza che nessuno se ne accorga.
+
+// Un errore della cartella, in italiano; cosa: quello che non si riesce a fare ("scrivere la tile 14/1/2.png").
+function erroreCartella(e, cosa) {
+  const perche = {
+    QuotaExceededError: 'non c’è più posto (il disco o la microSD sono pieni)',
+    NotFoundError: 'la cartella non c’è più (hai tolto la microSD?)',
+    NotReadableError: 'la cartella non si legge più (hai tolto la microSD?)',
+    NotAllowedError: 'il browser non ha più il permesso di usare la cartella',
+    SecurityError: 'il browser non ha più il permesso di usare la cartella',
+    NoModificationAllowedError: 'la cartella è in sola lettura o il file è aperto in un altro programma (se la microSD è in un adattatore SD, guarda la levetta del blocco sull’adattatore)',
+    InvalidModificationError: 'la cartella è in sola lettura o il file è aperto in un altro programma (se la microSD è in un adattatore SD, guarda la levetta del blocco sull’adattatore)',
+    InvalidStateError: 'la cartella è cambiata mentre la usavo',
+    TypeMismatchError: 'nella cartella c’è un file dove ci va una cartella, o il contrario',
+  }[e && e.name];
+  return new Error(`Non riesco a ${cosa}: ${perche || String((e && e.message) || e).replace(/\.$/, '')}.`);
+}
+// La cartella principale di un disco (la microSD nel lettore di schede, per esempio E:): per Chrome si
+// chiama "\". Nei messaggi la si chiama per quello che e'; le altre col loro nome: cartella «Mappe Liguria»
+// (da mettere dopo "la", "nella" o "della").
+const radiceDisco = h => /^([a-z]:)?[\\/]*$/i.test(String((h && h.name) || ''));
+function nomeCartella(h) {
+  const n = String((h && h.name) || '');
+  if (!radiceDisco(h)) return `cartella «${n}»`;
+  return /^[a-z]:/i.test(n) ? `cartella principale del disco ${n[0].toUpperCase()}:` : 'cartella principale del disco';
+}
+// La finestra del browser per scegliere la cartella (si apre dove era l'ultima volta); null se non se ne
+// sceglie nessuna, e lo stato dice perche'.
+async function scegliCartella(mode) {
+  try {
+    return await window.showDirectoryPicker({ id: 'pippaphone-mappe', mode });
+  } catch (e) {
+    if (e.name === 'AbortError') statoMappe('Nessuna cartella scelta.');
+    else if (e.name === 'NotAllowedError') statoMappe(mode === 'read' ? 'Senza il permesso di leggere la cartella non posso mandare le tile.' : 'Senza il permesso di modificare i file non posso salvarci le tile.', 'err');
+    else statoMappe(`Il browser non apre la cartella: ${String(e.message || e.name).replace(/\.$/, '')}.`, 'err');
+    return null;
+  }
+}
+// Per "Continua" e "Riprova" la cartella e' quella di prima: se il browser intanto ha tolto il permesso
+// lo richiede (c'e' il clic sul pulsante, che il browser vuole).
+async function permesso(h, mode) {
+  try {
+    if (!h.queryPermission || await h.queryPermission({ mode }) === 'granted' || await h.requestPermission({ mode }) === 'granted') return true;
+  } catch (_) {}
+  statoMappe(mode === 'read' ? 'Senza il permesso di leggere la cartella non posso mandare le tile.' : 'Senza il permesso di modificare i file non posso salvarci le tile.', 'err');
+  return false;
+}
+
+// Le tile dentro la cartella delle mappe: ce(z, x, y) se c'e' gia', non vuota, e scrivi(t). Le cartelle z
+// e z/x si ricordano una volta trovate o create.
+function tileInCartella(radice) {
+  const viste = new Map();
+  async function cartella(z, x, crea) {
+    const k = z + '/' + x;
+    if (viste.has(k)) return viste.get(k);
+    let dz = viste.get('' + z), dx;
+    try {
+      if (!dz) viste.set('' + z, dz = await radice.getDirectoryHandle('' + z, { create: crea }));
+      dx = await dz.getDirectoryHandle('' + x, { create: crea });
+    } catch (e) {
+      if (!crea && e.name === 'NotFoundError') return null;
+      throw e;
+    }
+    viste.set(k, dx);
+    return dx;
+  }
+  return {
+    async ce(z, x, y) {
+      try {
+        const d = await cartella(z, x, false);
+        return !!d && (await (await d.getFileHandle(y + '.png')).getFile()).size > 0;
+      } catch (e) {
+        if (e.name === 'NotFoundError') return false;
+        throw erroreCartella(e, `leggere la cartella ${z}/${x}`);
+      }
+    },
+    // Il file vero cambia solo alla chiusura (Chrome scrive prima in un file accanto): una tile a meta' non
+    // resta mai. Se la pagina si chiude prima, resta al massimo un file vuoto, che la volta dopo si rifa'.
+    async scrivi({ z, x, y, dati }) {
+      let w = null;
+      try {
+        const f = await (await cartella(z, x, true)).getFileHandle(y + '.png', { create: true });
+        w = await f.createWritable();
+        await w.write(dati);
+        await w.close();
+      } catch (e) {
+        if (w) w.abort().catch(() => {});
+        throw erroreCartella(e, `scrivere la tile ${z}/${x}/${y}.png`);
+      }
+    },
+  };
+}
+
+// La cartina con cui sono disegnate le tile di una cartella delle mappe, nel file cartina.txt accanto alle
+// cartelle degli zoom (il telefono guarda solo quelle coi numeri). Lo scrive il primo salvataggio nella
+// cartella ancora senza tile: salvando di nuovo con un'altra cartina, le tile che ci sono gia' si saltano e
+// restano dell'altra, e lo si dice. Con tile e senza il file (fatta a mano, o prima di questa pagina): non si sa.
+const FILE_CARTINA = 'cartina.txt';
+const nomeStile = v => [...$('#mStile').options].find(o => o.value === v)?.textContent || v;
+// '' se nella cartella non ci sono ancora tile, il nome dello stile se ci sono, null se non si sa di che cartina
+async function cartinaDi(radice) {
+  let tile = false;
+  try {
+    for await (const [n, h] of radice.entries()) if (h.kind === 'directory' && /^\d+$/.test(n)) { tile = true; break; }
+  } catch (_) { return null; }
+  if (!tile) return '';
+  try { return (await (await (await radice.getFileHandle(FILE_CARTINA)).getFile()).text()).trim().split(/\s+/)[0] || null; }
+  catch (_) { return null; }
+}
+async function scriviCartina(radice, stile) {   // al telefono non serve: se non si riesce, si salva lo stesso
+  let w = null;
+  try {
+    w = await (await radice.getFileHandle(FILE_CARTINA, { create: true })).createWritable();
+    await w.write(new TextEncoder().encode(stile + '\n'));
+    await w.close();
+  } catch (_) { if (w) w.abort().catch(() => {}); }
+}
+
+async function eseguiSalva({ zona, zmin, zmax, cartella }) {
+  if (copiando || salvando || leggendo || busy || controllando) return null;
+  salvando = true; fermati = false; $('#mFerma').disabled = false;
+  schermoAcceso(true);
+  cartellaSalva = cartella; riprendiManda = '';   // si riprende una cartella sola alla volta (vedi "mAltra")
+  const c = contiNuovi(contaTile(zona, zmin, zmax), 'scritti', velocitaCartella, true), nome = nomeCartella(cartella);
+  const inMappe = /^mappe$/i.test(cartella.name), stile = $('#mStile').value;
+  c.inizio = performance.now();
+  let esito = 'errore', motivo = '', gia = '', altra = '';
+  try {
+    aggiorna(false);
+    barraMappe(0); $('#mDati').textContent = '';
+    statoMappe(`Apro la ${nome}…`);
+    try {
+      let radice;
+      try { radice = inMappe ? cartella : await cartella.getDirectoryHandle('mappe', { create: true }); }
+      catch (e) { throw erroreCartella(e, `fare la cartella “mappe” nella ${nome}`); }
+      gia = await cartinaDi(radice);   // la cartina delle tile che ci sono gia'
+      if (gia === '') await scriviCartina(radice, stile);
+      altra = gia && gia !== stile ? nomeStile(gia) : '';
+      const posto = tileInCartella(radice), giro = blocchi(zona, zmin, zmax);
+      // Il prossimo blocco con qualche tile che manca, e solo quelle: le altre si contano come gia' fatte.
+      const prossimo = async () => {
+        for (let b; !fermati && !(b = giro.next()).done;) {
+          const manca = [];
+          for (const [x, y] of b.value.tile) if (!await posto.ce(b.value.z, x, y)) manca.push([x, y]);
+          const ci = b.value.tile.length - manca.length;
+          if (ci) { c.fatte += ci; c.saltate += ci; progresso(c); }
+          if (manca.length) return { ...b.value, tile: manca };
+        }
+        return null;
+      };
+      lavoro = (inMappe ? `Disegno le tile e le salvo nella ${nome}…` : `Disegno le tile e le salvo in “mappe”, nella ${nome}…`) +
+        (altra ? ` Quelle che ci sono già sono della cartina “${altra}”: si saltano e restano così.` : '');
+      statoMappe(lavoro);
+      // Mentre si scrivono le tile di un blocco si disegna gia' il blocco dopo. Quelle di un blocco si
+      // scrivono insieme: il browser ci mette un po' a chiudere ogni file, e intanto chiude gli altri.
+      let b = await prossimo(), avanti = b && avvia(b);
+      while (avanti && !fermati) {
+        const pezzi = await avanti;
+        b = fermati ? null : await prossimo();
+        avanti = b && avvia(b);
+        const scritte = await Promise.allSettled(pezzi.map(async t => {
+          await posto.scrivi(t);
+          c.fatte++; c.mandate++; c.byte += t.dati.length;
+          progresso(c);
+        }));
+        const rotta = scritte.find(s => s.status === 'rejected');
+        if (rotta) throw rotta.reason;
+      }
+      esito = c.fatte < c.totale ? 'fermato' : 'fatto';
+    } catch (e) {
+      motivo = e.message || String(e);
+      console.warn('mappe nella cartella:', e);
+    }
+    const secondi = (performance.now() - c.inizio) / 1000;
+    if (c.mandate >= 50) {   // per le prossime stime
+      imparaPeso(c.byte, c.mandate);
+      if (c.saltate < c.fatte / 10) velocitaCartella = c.mandate / secondi;
+      ricorda();
+    }
+    const quante = `${numero(c.mandate)} disegnate ora${c.saltate ? `, ${numero(c.saltate)} c’erano già` : ''}`;
+    // Le tile che c'erano si saltano qualunque sia la cartina: se sono di un'altra (o non si sa), lo si dice.
+    const rimaste = !c.saltate ? '' : altra
+      ? ` Le ${numero(c.saltate)} che c’erano già sono della cartina “${altra}” e sono rimaste così: per averle tutte “${nomeStile(stile)}”, svuota prima la cartella “mappe” e salva di nuovo.`
+      : gia === null ? ' Quelle che c’erano già sono rimaste com’erano: per rifarle, per esempio con un’altra cartina, svuota prima la cartella “mappe” e salva di nuovo.' : '';
+    // Il telefono cerca le mappe solo in "mappe" nella cartella principale della microSD.
+    const dove = radiceDisco(cartella)
+      ? 'Se è la microSD del telefono, le mappe sono già al loro posto: espellila dal computer, rimettila nel telefono spento e accendilo.'
+      : inMappe
+        ? 'Se è la cartella “mappe” nella cartella principale della microSD, le mappe sono già al loro posto: espellila dal computer, rimettila nel telefono spento e accendilo. Se è sul computer, mandale al telefono con “Manda da una cartella”, o copia questa cartella “mappe” nella cartella principale della microSD.'
+        : `Sono nella sua cartella “mappe”: se hai scelto la microSD stessa sono già al loro posto, espellila dal computer, rimettila nel telefono spento e accendilo. Se invece la ${nome} è dentro la microSD, il telefono lì non le cerca: sposta la sua cartella “mappe” nella cartella principale della microSD, o salva di nuovo scegliendo la microSD stessa. Se è sul computer, mandale al telefono con “Manda da una cartella”, o copia la sua cartella “mappe” nella cartella principale della microSD.`;
+    if (esito === 'fatto') {
+      barraMappe(1, 'ok');
+      statoMappe(`Fatto: le ${numero(c.totale)} tile della zona sono nella ${nome} (${quante}).${rimaste} ${dove}`, 'ok');
+    } else if (esito === 'fermato') {
+      barraMappe(c.fatte / c.totale);
+      statoMappe(`Fermato a ${numero(c.fatte)} tile su ${numero(c.totale)} (${quante}). Premi “Continua a salvare” per riprendere: le tile già salvate si saltano.`);
+    } else {
+      barraMappe(c.fatte / c.totale, 'err');
+      statoMappe(`${motivo} Premi “Riprova a salvare”: le tile già salvate si saltano.`, 'err');
+    }
+    riprendiSalva = esito === 'fatto' ? '' : esito === 'fermato' ? 'continua' : 'riprova';
+  } finally {
+    salvando = false; lavoro = '';
+    schermoAcceso(false);
+    aggiorna(false);
+  }
+  return { esito, motivo, conti: c };
+}
+
+// Le tile di una cartella salvata prima: la sua sottocartella "mappe" se c'e', se no la cartella stessa
+// (z/x/y.png). Solo i nomi come li vuole il telefono (cifre senza zeri davanti, zoom da 0 a 20); il resto
+// (anche i file .crswap che Chrome lascia se si chiude a meta') si lascia stare. In ordine di zoom, x e y,
+// come la copia: prima gli zoom piccoli, che sul telefono servono subito.
+async function leggiPacco(cartella) {
+  const cifre = (n, max) => /^(0|[1-9]\d{0,6})$/.test(n) && +n < max ? +n : -1;
+  async function voci(d, va) {   // [numero, nome, voce] delle voci di d per cui va() da' un numero, in ordine
+    const v = [];
+    for await (const [nome, h] of d.entries()) { const n = va(nome, h); if (n >= 0) v.push([n, nome, h]); }
+    return v.sort((a, b) => a[0] - b[0]);
+  }
+  let radice = cartella;
+  for await (const [nome, h] of cartella.entries()) if (h.kind === 'directory' && nome.toLowerCase() === 'mappe') { radice = h; break; }
+  const p = { nome: nomeCartella(cartella), cartella, colonne: [], totale: 0, zmin: null, zmax: null };
+  for (const [z, , dz] of await voci(radice, (n, h) => h.kind === 'directory' ? cifre(n, 21) : -1))
+    for (const [x, , dx] of await voci(dz, (n, h) => h.kind === 'directory' ? cifre(n, 2 ** z) : -1)) {
+      const file = (await voci(dx, (n, h) => h.kind === 'file' && /\.png$/i.test(n) ? cifre(n.slice(0, -4), 2 ** z) : -1)).map(([y, nome]) => [y, nome]);
+      if (!file.length) continue;
+      p.colonne.push({ z, x, cartella: dx, file });
+      p.totale += file.length;
+      p.zmin ??= z; p.zmax = z;
+    }
+  return p;
+}
+const FIRMA_PNG = [137, 80, 78, 71, 13, 10, 26, 10];
+// Le tile del pacco una alla volta, dalla da-esima in poi (quelle prima si saltano senza leggerle). Un file
+// vuoto (salvataggio interrotto), troppo grande o che non e' un PNG non si manda: { rotta: true }.
+async function* tileDelPacco(p, da = 0) {
+  for (const col of p.colonne) {
+    if (da >= col.file.length) { da -= col.file.length; continue; }
+    for (const [y, nome] of col.file.slice(da)) {
+      if (fermati) return;
+      let dati;
+      try {
+        dati = new Uint8Array(await (await (await col.cartella.getFileHandle(nome)).getFile()).arrayBuffer());
+      } catch (e) {
+        if (e.name !== 'NotFoundError') throw erroreCartella(e, `leggere la tile ${col.z}/${col.x}/${nome}`);
+        dati = new Uint8Array(0);   // tolta intanto dalla cartella
+      }
+      const buona = dati.length > 8 && dati.length <= MAX_FILE && FIRMA_PNG.every((b, i) => dati[i] === b);
+      yield buona ? { z: col.z, x: col.x, y, dati } : { z: col.z, x: col.x, y, rotta: true };
+    }
+    da = 0;
+  }
+}
+// Dopo "Ferma" o un errore si riparte da dove ci si era fermati, se la cartella e' la stessa e la porta
+// non si e' chiusa: le tile prima il telefono le ha confermate ("si" o "ok") in questa stessa sessione, e
+// richiederle una a una con "@HAI", per decine di migliaia di tile, vorrebbe dire minuti. Se la porta si e'
+// riaperta (il telefono si e' riavviato, magari con un'altra microSD) si riparte da capo, saltando con
+// "@HAI" quelle che ci sono.
+async function eseguiManda(p) {
+  if (copiando || salvando || leggendo || busy || controllando) return null;
+  const di = mandaDa && mandaDa.pacco === p && canale.aperto() && mandaDa.porta === apertaAlle ? mandaDa.conti : null;
+  pacco = p; riprendiSalva = '';   // si riprende una cartella sola alla volta (vedi "mAltra")
+  const resto = p.totale - (di ? di.fatte : 0);
+  const r = await copiaAlTelefono({
+    conti: di || contiNuovi(p.totale, 'mandati', velocita), tile: tileDelPacco(p, di ? di.fatte : 0), seguito: ' a mandare',
+    testo: `Mando al telefono le ${numero(resto)} tile ${di ? 'che mancano ' : ''}della ${p.nome} (${zoomDi(p.zmin, p.zmax)}), in ${colCavo(resto)}…`,
+    dove: `della ${p.nome}`, etichetta: e => { riprendiManda = e; } });
+  if (r) mandaDa = r.esito !== 'fatto' && r.conti.porta != null && r.conti.porta === apertaAlle ? { pacco: p, conti: r.conti, porta: apertaAlle } : null;
+  return r;
+}
+// La cartella da mandare: la legge e dice se non ci sono tile (null).
+async function leggiCartella(cartella) {
+  const nome = nomeCartella(cartella);
+  leggendo = true; aggiornaMappe();
+  barraMappe(0); $('#mDati').textContent = '';
+  statoMappe(`Leggo la ${nome}…`);
+  try {
+    const p = await leggiPacco(cartella);
+    if (p.totale) return p;
+    statoMappe(`Nella ${nome} non trovo tile: scegli la cartella dove le hai salvate (quella che contiene “mappe”, o “mappe” stessa).`, 'err');
+  } catch (e) {
+    statoMappe(erroreCartella(e, `leggere la ${nome}`).message, 'err');
+  } finally {
+    leggendo = false; aggiornaMappe();
+  }
+  return null;
+}
+// Col cavo non si mandano piu' di TROPPE tile per volta, come per "Copia sulla microSD": '' se si puo'.
+function troppePerIlCavo(p) {
+  return p.totale <= TROPPE ? '' : `Nella ${p.nome} ci sono ${numero(p.totale)} tile (${zoomDi(p.zmin, p.zmax)}): troppe per il cavo, ` +
+    `che ne manda al massimo ${numero(TROPPE)} per volta (ci vorrebbero ${colCavo(p.totale)}). Metti invece la microSD nel lettore di ` +
+    'schede del computer e copia le mappe nella sua cartella “mappe”, nella cartella principale.';
+}
+// "Un’altra cartella…" non andata (finestra chiusa, cartella sbagliata o senza tile): il pulsante resta per
+// la cartella di prima, e lo stato lo dice.
+function restaPer(pulsante, h) {
+  if (h) $('#mStato').textContent += ` Il pulsante “${$(pulsante).textContent}” resta per la ${nomeCartella(h)}.`;
+}
+// I pulsanti. nuova: un'altra cartella anche se il pulsante dice "Continua" (il pulsante "mAltra").
+// Ritornano quello che ritorna eseguiSalva o eseguiManda (per la prova), niente se non si parte.
+async function clicSalva(nuova) {
+  if (!puoCartelle || copiando || salvando || leggendo || busy || controllando) return;
+  let cartella = !nuova && riprendiSalva ? cartellaSalva : null;
+  if (cartella) { if (!await permesso(cartella, 'readwrite')) return; }
+  else {
+    const prima = riprendiSalva ? cartellaSalva : null;
+    if (!(cartella = await scegliCartella('readwrite'))) { restaPer('#mSalva', prima); return; }
+    // Una cartella che si chiama con un numero e' uno zoom (o una x) dentro "mappe": le tile finirebbero
+    // in mappe/14/mappe/..., dove il telefono non le cerca.
+    if (/^\d+$/.test(cartella.name)) {
+      statoMappe(`La ${nomeCartella(cartella)} sembra una di quelle dentro “mappe”: scegli la cartella che contiene “mappe” (sulla microSD, la microSD stessa) o “mappe” stessa.`, 'err');
+      restaPer('#mSalva', prima);
+      return;
+    }
+  }
+  const zz = leggiZoom();
+  if (zona && zz) return eseguiSalva({ zona, zmin: zz[0], zmax: zz[1], cartella });
+}
+async function clicManda(nuova) {
+  if (!puoCartelle || copiando || salvando || leggendo || busy || controllando) return;
+  let p = !nuova && riprendiManda ? pacco : null;
+  if (p) { if (!await permesso(p.cartella, 'read')) return; }
+  else {
+    const prima = riprendiManda && pacco ? pacco.cartella : null;
+    const cartella = await scegliCartella('read');
+    if (!cartella || !(p = await leggiCartella(cartella))) { restaPer('#mManda', prima); return; }
+    const troppe = troppePerIlCavo(p);
+    if (troppe) { barraMappe(0); statoMappe(troppe, 'err'); restaPer('#mManda', prima); return; }
+    // Se la porta del telefono va ancora scelta, il browser ne apre la finestra solo subito dopo un clic, e
+    // quello sul pulsante e' gia' passato da un pezzo (c'e' stata la scelta della cartella): ne serve un altro.
+    if (!await canale.pronto()) {
+      pacco = p; mandaDa = null; riprendiManda = 'pronta'; riprendiSalva = '';
+      barraMappe(0);
+      statoMappe(`Nella ${p.nome} ci sono ${numero(p.totale)} tile (${zoomDi(p.zmin, p.zmax)}), da mandare col cavo in ${colCavo(p.totale)}. ` +
+        'Collega il telefono acceso alla USB e premi “Manda al telefono”: poi scegli la sua porta.');
+      aggiornaMappe();
+      return;
+    }
+  }
+  return eseguiManda(p);
+}
+$('#mSalva').addEventListener('click', () => clicSalva(false));
+$('#mManda').addEventListener('click', () => clicManda(false));
+$('#mAltra').addEventListener('click', () => riprendiSalva ? clicSalva(true) : clicManda(true));
+if (!puoCartelle) {   // le note sulla copia col cavo e sulla FAT32 restano
+  $('#mSalva').hidden = $('#mManda').hidden = true;
+  $('#mNoCartelle').hidden = false;
+  document.querySelectorAll('#mCartelleNota [data-cartelle]').forEach(li => { li.hidden = true; });
+}
+
+// ---- le zone pronte: quelle della pagina e quelle salvate da chi la usa (nel browser, come la memoria qui
+// sotto). Scegliendone una si usa quella zona e la cartina ci va sopra; gli zoom restano come sono.
+const PRONTE = [
+  { nome: 'Liguria (da Finale Ligure a Sestri Levante, Genova)', ovest: 8.20, sud: 44.13, est: 9.79, nord: 44.73 },
+];
+const MEMORIA_ZONE = 'pippaphone-zone';
+let mie = [];   // le zone salvate: { nome, ovest, sud, est, nord }, in ordine di nome
+const zonaBuona = z => !!z && ['ovest', 'sud', 'est', 'nord'].every(k => Number.isFinite(z[k])) && z.ovest >= -180 && z.est <= 180
+  && z.ovest < z.est && z.sud >= -85.06 && z.nord <= 85.06 && z.sud < z.nord;
+const stessaZona = (a, b) => !!a && !!b && ['ovest', 'sud', 'est', 'nord'].every(k => Math.abs(a[k] - b[k]) < 1e-9);
+const soloZona = z => ({ ovest: z.ovest, sud: z.sud, est: z.est, nord: z.nord });
+// Le zone salvate, dalla memoria del browser. Si rileggono prima di cambiarle e quando le cambia un'altra
+// scheda con la pagina (evento "storage"): cosi' quelle salvate di la' restano. Se la memoria non si legge,
+// resta l'elenco che c'e'.
+function leggiMie() {
+  let v;
+  try { v = JSON.parse(localStorage.getItem(MEMORIA_ZONE) || '[]'); } catch (_) { return; }
+  mie = [];
+  if (Array.isArray(v)) for (const z of v) if (zonaBuona(z) && typeof z.nome === 'string' && z.nome.trim()) mie.push({ nome: z.nome.trim().slice(0, 60), ...soloZona(z) });
+}
+function scriviMie() { try { localStorage.setItem(MEMORIA_ZONE, JSON.stringify(mie)); } catch (_) {} }
+const zonaDellaVoce = v => v[0] === 'p' ? PRONTE[+v.slice(1)] : v[0] === 'm' ? mie[+v.slice(1)] : null;
+// tieni: la voce da lasciare scelta, se e' ancora la zona di adesso (di solito quella appena scelta
+// nell'elenco: cosi' una zona salvata con gli stessi confini di una pronta non prende il suo posto); se no
+// la zona salvata uguale a quella di adesso, o quella pronta.
+function mostraPronte(tieni = $('#mPronta').value) {
+  const s = $('#mPronta'), voce = (v, t) => `<option value="${v}">${esc(t)}</option>`;
+  s.innerHTML = voce('', zona ? 'La zona scelta sulla cartina' : 'Nessuna zona scelta') +
+    `<optgroup label="Pronte">${PRONTE.map((z, i) => voce('p' + i, z.nome)).join('')}</optgroup>` +
+    (mie.length ? `<optgroup label="Salvate da te">${mie.map((z, i) => voce('m' + i, z.nome)).join('')}</optgroup>` : '');
+  const m = mie.findIndex(z => stessaZona(z, zona)), p = PRONTE.findIndex(z => stessaZona(z, zona));
+  s.value = tieni && stessaZona(zonaDellaVoce(tieni), zona) ? tieni : m >= 0 ? 'm' + m : p >= 0 ? 'p' + p : '';
+  $('#mSalvaZona').disabled = !zona;
+  $('#mTogliZona').disabled = s.value[0] !== 'm';
+}
+window.addEventListener('storage', e => { if (e.key === MEMORIA_ZONE || e.key === null) { leggiMie(); mostraPronte(); } });
+// La cartina ci va sopra volando, o subito (per la prova).
+function scegliZona(z, subito = false) {
+  if (!z || copiando || salvando) return;
+  cambiaZona(soloZona(z));
+  if (cartina) cartina.fitBounds([[z.ovest, z.sud], [z.est, z.nord]], { padding: 24, ...(subito ? { duration: 0 } : {}) });
+}
+// Salva la zona di adesso col nome dato (se c'e' gia' una zona con quel nome, la cambia); false senza nome.
+function salvaZona(nome) {
+  nome = String(nome || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  if (!nome || !zona) return false;
+  leggiMie();
+  const i = mie.findIndex(z => z.nome.toLowerCase() === nome.toLowerCase()), z = { nome, ...soloZona(zona) };
+  if (i >= 0) mie[i] = z; else mie.push(z);
+  mie.sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+  scriviMie(); mostraPronte('m' + mie.indexOf(z));
+  return true;
+}
+function togliZona(i) {
+  const nome = mie[i]?.nome;
+  if (!nome) return;
+  leggiMie();
+  const j = mie.findIndex(z => z.nome === nome);
+  if (j >= 0) mie.splice(j, 1);
+  scriviMie(); mostraPronte('');
+}
+$('#mPronta').addEventListener('change', () => {
+  const z = zonaDellaVoce($('#mPronta').value);
+  if (z) scegliZona(z); else mostraPronte();
+});
+// Il nome per salvare la zona. Chiuso (anche cambiando zona), il cursore torna su "Salva questa zona".
+function chiudiNome(fuoco) {
+  const aperto = !$('#mNomeZona').hidden;
+  $('#mNomeZona').hidden = true;
+  $('#mNome').setCustomValidity('');
+  if (aperto && fuoco) $('#mSalvaZona').focus();
+}
+$('#mSalvaZona').addEventListener('click', () => {
+  if (!zona) return;
+  const v = $('#mPronta').value;
+  $('#mNome').value = v[0] === 'm' ? zonaDellaVoce(v)?.nome || '' : '';   // quella salvata che si vede: per cambiarla
+  $('#mNome').setCustomValidity('');
+  $('#mNomeZona').hidden = false;
+  $('#mNome').focus();
+});
+$('#mNomeZona').addEventListener('submit', e => {
+  e.preventDefault();
+  if (salvaZona($('#mNome').value)) { chiudiNome(true); return; }
+  $('#mNome').setCustomValidity('Scrivi un nome per la zona.');   // solo spazi: a "required" bastano
+  $('#mNome').reportValidity();
+});
+$('#mNome').addEventListener('input', () => $('#mNome').setCustomValidity(''));
+$('#mNomeNo').addEventListener('click', () => chiudiNome(true));
+$('#mNome').addEventListener('keydown', e => { if (e.key === 'Escape') chiudiNome(true); });
+$('#mTogliZona').addEventListener('click', () => {
+  const v = $('#mPronta').value;
+  if (v[0] === 'm') togliZona(+v.slice(1));
+  $('#mPronta').focus();   // "Togli" ora e' spento
+});
+
+// ---- quello che la pagina ricorda (zona, zoom, stile, peso e velocita' misurati): solo per comodita'
+// (le zone salvate hanno la loro voce, MEMORIA_ZONE)
+const MEMORIA = 'pippaphone-mappe';
+function ricorda() {
+  try {
+    localStorage.setItem(MEMORIA, JSON.stringify({ zona, zmin: $('#mZmin').value, zmax: $('#mZmax').value, stile: $('#mStile').value, velocita, velocitaCartella, kbTile, kbPeso }));
+  } catch (_) {}
+}
+try {
+  const m = JSON.parse(localStorage.getItem(MEMORIA) || '{}') || {};
+  if (zonaBuona(m.zona)) zona = soloZona(m.zona);
+  if (m.zmin >= ZMIN && m.zmin <= ZMAX) $('#mZmin').value = m.zmin;
+  if (m.zmax >= ZMIN && m.zmax <= ZMAX) $('#mZmax').value = m.zmax;
+  if ([...$('#mStile').options].some(o => o.value === m.stile)) $('#mStile').value = m.stile;
+  if (m.velocita > 0.5 && m.velocita < 500) velocita = m.velocita;
+  if (m.velocitaCartella > 0.5 && m.velocitaCartella < 5000) velocitaCartella = m.velocitaCartella;
+  if (m.kbTile > 1 && m.kbTile < 500) { kbTile = m.kbTile; if (m.kbPeso >= 0 && m.kbPeso <= PESO_MAX) kbPeso = m.kbPeso; }
+} catch (_) {}
+leggiMie(); mostraPronte();
+mostraStima();
+
+// ---- prova, per chi sviluppa: dalla console del browser, await provaMappe()
+// Controlla CRC e conti delle tile coi valori calcolati a parte (Python: zlib.crc32 e le formule di
+// OSM), le risposte "@PIPPA " in mezzo al registro spezzato a caso, il disegno (PNG 256x256, tile di
+// blocchi diversi che si attaccano, la stessa tile uguale da due blocchi) e tutto il giro della copia
+// di 16 tile intorno a Siena (zoom 13 e 14) con un telefono finto al posto della porta: "Ferma" e
+// "Continua", un CRC sbagliato, risposte perse. Serve internet; la porta USB vera non si tocca.
+// Poi le mappe in una cartella, con una cartella finta in memoria al posto di quella vera: "Salva in una
+// cartella" (i percorsi, una cartella che si chiama "mappe", cosa dice alla fine su dove il telefono cerca le
+// mappe, la ripresa che salta le tile che ci sono e rifa' i file vuoti, "Ferma", il disco pieno, cartina.txt
+// e l'avviso salvando con un'altra cartina, lo schermo acceso e la domanda prima di chiudere la pagina, il
+// peso medio per le stime) e "Manda da una cartella" al telefono finto (solo i nomi giusti, le tile che ha
+// gia', il CRC, "Ferma" e "Continua", i file rotti); i pulsanti delle cartelle con una finestra delle
+// cartelle finta (la microSD nel lettore di schede, "Nessuna cartella scelta", "Ferma" e "Continua a
+// salvare", "Salva in un'altra cartella", "Manda al telefono" quando la porta va ancora scelta, "Un'altra
+// cartella" che non va, il massimo col cavo); e le zone pronte (la Liguria, anche con una zona salvata
+// uguale, la stima, salvare e togliere una zona, due schede, il nome solo di spazi, il cursore). Con la
+// pagina servita da http (non aperta da file) prova anche con una cartella vera del browser (OPFS). Zona,
+// zoom, cartina, zone salvate, console e stato delle mappe alla fine tornano come erano.
+// Con { mostra: true } lascia sotto la barra le quattro tile dove si incontrano quattro blocchi.
+// Con { misura: { ovest, sud, est, nord, zmin, zmax } } invece disegna e basta tutte le tile di quella
+// zona e dice quanto pesano, zoom per zoom, e quante ne disegna al secondo.
+window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
+  if (misura) {
+    const per = {}, t0 = performance.now();
+    let tutte = 0, byte = 0;
+    for (const b of blocchi(misura, misura.zmin, misura.zmax)) {
+      for (const t of await disegna(b)) {
+        const p = per[t.z] ??= { tile: 0, kBmedi: 0, kBmax: 0 };
+        p.kBmedi += t.dati.length; p.kBmax = Math.max(p.kBmax, t.dati.length); p.tile++;
+        tutte++; byte += t.dati.length;
+      }
+    }
+    for (const p of Object.values(per)) { p.kBmedi = +(p.kBmedi / p.tile / 1024).toFixed(1); p.kBmax = +(p.kBmax / 1024).toFixed(1); }
+    const s = (performance.now() - t0) / 1000;
+    return { tile: tutte, MB: +(byte / 1048576).toFixed(1), kBmedi: +(byte / tutte / 1024).toFixed(1), secondi: +s.toFixed(1), tileAlSecondo: +(tutte / s).toFixed(1), perZoom: per };
+  }
+  const esiti = [], prova = (cosa, ok, ...dettagli) => { esiti.push({ cosa, ok: !!ok, dettagli: dettagli.join(' ') }); return ok; };
+  prova('CRC-32 di "123456789" = cbf43926', esa8(crc32(new TextEncoder().encode('123456789'))) === 'cbf43926');
+  prova('Siena (43,318 N 11,331 E): 13/4353/3000 e 17/69661/48003', Math.floor(lon2x(11.331, 13)) === 4353 && Math.floor(lat2y(43.318, 13)) === 3000
+    && Math.floor(lon2x(11.331, 17)) === 69661 && Math.floor(lat2y(43.318, 17)) === 48003);
+  prova('angoli della tile 13/4353/3000', x2lon(4353, 13) === 11.2939453125 && x2lon(4354, 13) === 11.337890625
+    && Math.abs(y2lat(3000, 13) - 43.32517767999295) < 1e-9 && Math.abs(y2lat(3001, 13) - 43.29320031385282) < 1e-9);
+
+  // Le risposte in mezzo al registro, coi pezzi spezzati a caso come arrivano dalla USB.
+  const registro = 'I (812) avvio: Pippaphone\r\n\x1b[0;32mI (900) radio: pronta\x1b[0m\r\n@PIPPA ciao 0.1.0 sd=1 libero=14321\r\n' +
+    'W (950) sd: lenta\n@PIPPA si\n@PIPPA ok 14/8707/6000.png\r\n@PIPPAX non e\' una risposta\n@PIP neanche questa\n\r@PIPPA errore crc sbagliato\r\nriga senza a capo';
+  const visto = 'I (812) avvio: Pippaphone\r\n\x1b[0;32mI (900) radio: pronta\x1b[0m\r\nW (950) sd: lenta\n@PIPPAX non e\' una risposta\n@PIP neanche questa\nriga senza a capo';
+  const attese = JSON.stringify(['ciao 0.1.0 sd=1 libero=14321', 'si', 'ok 14/8707/6000.png', 'errore crc sbagliato']);
+  let giusti = 0;
+  for (let giro = 0; giro < 300; giro++) {
+    let fuori = '';
+    const risposte = [], s = smistatore(t => { fuori += t; }, r => risposte.push(r));
+    for (let i = 0; i < registro.length;) { const n = giro ? 1 + Math.floor(Math.random() * 9) : registro.length; s.testo(registro.slice(i, i + n)); i += n; }
+    if (fuori === visto && JSON.stringify(risposte) === attese) giusti++;
+  }
+  prova('risposte riconosciute nel registro spezzato a caso', giusti === 300, `${giusti} su 300`);
+
+  // Un telefono finto: fa quello che fa il firmware (file in memoria, CRC, pezzi da 4096 col "+", tempo
+  // scaduto) e risponde in mezzo a righe di registro, a pezzi. perdi(r) decide le risposte che si perdono.
+  function telefonoFinto({ perdi = () => false, rovina = -1, fermaDopo = 0, scaduto = 800 } = {}) {
+    const file = new Map(), errori = [], comandi = [], dec = new TextDecoder();
+    let arrivo = null, timer = 0, completati = 0, ricevute = 0;
+    const rispondi = r => {
+      if (perdi(r)) return;
+      const t = (Math.random() < 0.3 ? 'I (4242) usb: una riga di registro in mezzo\r\n' : '') + PREFISSO + r + '\r\n';
+      setTimeout(() => { for (let i = 0; i < t.length;) { const n = 1 + Math.floor(Math.random() * 16); smista.testo(t.slice(i, i + n)); i += n; } }, 1 + Math.random() * 3);
+    };
+    const aspetta = () => { clearTimeout(timer); timer = setTimeout(() => { arrivo = null; rispondi('errore tempo scaduto'); }, scaduto); };
+    return { file, errori, comandi, canale: {
+      aperto: () => true,
+      pronto: async () => true,
+      apri: async () => true,
+      async scrivi(dati) {
+        await pausa(1);
+        if (arrivo) {
+          const a = arrivo, atteso = Math.min(PEZZO, a.n - a.preso);
+          if (dati.length !== atteso) errori.push(`${a.nome}: pezzo di ${dati.length} byte invece di ${atteso}`);
+          const k = Math.min(dati.length, a.n - a.preso);
+          a.buf.set(dati.subarray(0, k), a.preso);
+          a.preso += k;
+          if (a.preso < a.n) { if (a.preso % PEZZO === 0) { rispondi('+'); aspetta(); } return; }
+          clearTimeout(timer); arrivo = null;
+          if (completati++ === rovina) a.buf[a.n >> 1] ^= 0xff;   // un byte rovinato per strada
+          if (esa8(crc32(a.buf)) !== a.crc) return rispondi('errore crc sbagliato');
+          file.set(a.nome, a.buf); ricevute++;
+          if (fermaDopo && file.size === fermaDopo) fermati = true;   // come se qui si premesse "Ferma"
+          return rispondi('ok ' + a.nome);
+        }
+        const riga = dec.decode(dati), cmd = riga.slice(0, -1);
+        if (riga.indexOf('\n') !== riga.length - 1) return errori.push('comando senza un solo a capo alla fine: ' + JSON.stringify(riga));
+        comandi.push(cmd);
+        let m;
+        if (cmd === '@PIPPA?') rispondi('ciao 0.0-finto sd=1 libero=14321');
+        else if ((m = /^@HAI (\d+\/\d+\/\d+\.png) (\d+)$/.exec(cmd))) rispondi(file.get(m[1])?.length === +m[2] ? 'si' : 'no');
+        else if ((m = /^@FILE ((\d+)\/\d+\/\d+\.png) (\d+) ([0-9a-f]{8})$/.exec(cmd)) && +m[2] <= 20 && +m[3] >= 1 && +m[3] <= MAX_FILE) {
+          arrivo = { nome: m[1], n: +m[3], crc: m[4], buf: new Uint8Array(+m[3]), preso: 0 };
+          rispondi('pronto'); aspetta();
+        } else if (cmd === '@FINE') { rispondi('fine ' + ricevute); ricevute = 0; }
+        else { errori.push('comando sbagliato: ' + cmd); rispondi('errore comando sbagliato'); }
+      },
+    } };
+  }
+  async function pixel(dati) {
+    const bmp = await createImageBitmap(new Blob([dati], { type: 'image/png' }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    const c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
+    g.drawImage(bmp, 0, 0);
+    return { w: bmp.width, h: bmp.height, px: g.getImageData(0, 0, bmp.width, bmp.height).data };
+  }
+  // differenza media (0-255) fra i pixel di a e quelli di b spostati di dx, dy; e quanti sono proprio uguali
+  function confronta(a, b, dx = 0, dy = 0) {
+    let uguali = 0, somma = 0, n = 0;
+    for (let y = 0; y < 256 - dy; y++) for (let x = 0; x < 256 - dx; x++) {
+      const i = (y * 256 + x) * 4, j = ((y + dy) * 256 + x + dx) * 4;
+      const d = Math.abs(a.px[i] - b.px[j]) + Math.abs(a.px[i + 1] - b.px[j + 1]) + Math.abs(a.px[i + 2] - b.px[j + 2]);
+      if (!d) uguali++;
+      somma += d; n++;
+    }
+    return { diff: +(somma / n / 3).toFixed(3), uguali: +(uguali / n).toFixed(4) };
+  }
+  // differenza media fra la colonna (o riga) i di a e la j di b
+  function linea(a, i, b, j, colonna) {
+    let s = 0;
+    for (let k = 0; k < 256; k++) {
+      const p = colonna ? (k * 256 + i) * 4 : (i * 256 + k) * 4, q = colonna ? (k * 256 + j) * 4 : (j * 256 + k) * 4;
+      s += Math.abs(a.px[p] - b.px[q]) + Math.abs(a.px[p + 1] - b.px[q + 1]) + Math.abs(a.px[p + 2] - b.px[q + 2]);
+    }
+    return s / 768;
+  }
+
+  // Una cartella finta in memoria, come quelle di File System Access: getDirectoryHandle e getFileHandle
+  // (con create), entries, keys e values, getFile, createWritable con write, close e abort. Come in Chrome
+  // il file cambia solo alla chiusura, e getFileHandle con create fa subito il file vuoto (quello che resta
+  // se la pagina si chiude a meta'). dopoChiusura(n, percorso) dopo l'n-esima tile (file .png) chiusa: se
+  // da' un errore, la chiusura fallisce con quello. Ogni passo aspetta un poco, come un disco.
+  function cartellaFinta(nome, { dopoChiusura = () => null } = {}) {
+    let chiusi = 0;
+    const lento = () => pausa(Math.random() * 2);
+    const file = (nome, percorso) => {
+      const h = { kind: 'file', name: nome, dati: new Uint8Array(0),
+        async getFile() { await lento(); return new File([h.dati], nome, { type: 'image/png' }); },
+        async createWritable() {
+          await lento();
+          let pezzi = [], finito = false;
+          return {
+            async write(d) {
+              if (finito) throw new TypeError('file già chiuso');
+              await lento();
+              pezzi.push(d instanceof Blob ? new Uint8Array(await d.arrayBuffer()) : ArrayBuffer.isView(d) ? new Uint8Array(d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength)) : new Uint8Array(d));
+            },
+            async close() {
+              if (finito) throw new TypeError('file già chiuso');
+              finito = true;
+              await lento();
+              const e = percorso.endsWith('.png') ? dopoChiusura(++chiusi, percorso) : null;
+              if (e) throw e;
+              const tutto = new Uint8Array(pezzi.reduce((s, p) => s + p.length, 0));
+              pezzi.reduce((k, p) => (tutto.set(p, k), k + p.length), 0);
+              h.dati = tutto;
+            },
+            async abort() { finito = true; pezzi = []; },
+          };
+        },
+      };
+      return h;
+    };
+    const cartella = (nome, percorso) => {
+      const voci = new Map();
+      const voce = async (n, tipo, crea) => {
+        await lento();
+        if (typeof n !== 'string' || !n || /[\\/]/.test(n) || n === '.' || n === '..') throw new TypeError(`nome non valido: ${n}`);
+        let v = voci.get(n);
+        if (v && v.kind !== tipo) throw new DOMException(`${percorso}${n} non è ${tipo === 'file' ? 'un file' : 'una cartella'}`, 'TypeMismatchError');
+        if (!v) {
+          if (!crea) throw new DOMException(`${percorso}${n} non c’è`, 'NotFoundError');
+          voci.set(n, v = tipo === 'file' ? file(n, percorso + n) : cartella(n, percorso + n + '/'));
+        }
+        return v;
+      };
+      const h = { kind: 'directory', name: nome,
+        getDirectoryHandle: (n, { create = false } = {}) => voce(n, 'directory', create),
+        getFileHandle: (n, { create = false } = {}) => voce(n, 'file', create),
+        async *entries() { for (const v of [...voci]) { await lento(); yield v; } },
+        async *keys() { for await (const [n] of h.entries()) yield n; },
+        async *values() { for await (const [, v] of h.entries()) yield v; },
+        [Symbol.asyncIterator]() { return h.entries(); },
+      };
+      return h;
+    };
+    return cartella(nome, '');
+  }
+  // Tutte le tile (i file .png) di una cartella finta: percorso -> byte
+  async function tutti(d, su = '', acc = new Map()) {
+    for await (const [n, h] of d.entries()) { if (h.kind === 'directory') await tutti(h, su + n + '/', acc); else if (n.endsWith('.png')) acc.set(su + n, h.dati); }
+    return acc;
+  }
+  // Il testo di un file di una cartella finta, null se non c'e'
+  async function testoDi(d, percorso) {
+    try {
+      const parti = percorso.split('/');
+      for (const p of parti.slice(0, -1)) d = await d.getDirectoryHandle(p);
+      return new TextDecoder().decode((await d.getFileHandle(parti.at(-1))).dati);
+    } catch (_) { return null; }
+  }
+  // Un file in una cartella finta, con le cartelle che servono (senza passare da createWritable)
+  async function metti(d, percorso, dati) {
+    const parti = percorso.split('/');
+    for (const p of parti.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+    (await d.getFileHandle(parti.at(-1), { create: true })).dati = dati;
+  }
+  const png256 = d => !!d && d.length > 24 && FIRMA_PNG.every((b, i) => d[i] === b)
+    && new DataView(d.buffer, d.byteOffset, d.byteLength).getUint32(16) === 256 && new DataView(d.buffer, d.byteOffset, d.byteLength).getUint32(20) === 256;
+  const uguali = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
+
+  const area = { ovest: 11.300, sud: 43.300, est: 11.362, nord: 43.336 }, copia = () => eseguiCopia({ zona: area, zmin: 13, zmax: 14 });
+  const nomi = [];
+  for (const b of blocchi(area, 13, 14)) for (const [x, y] of b.tile) nomi.push(`${b.z}/${x}/${y}.png`);
+  const prima = { canale: { ...canale }, tempi: { ...TEMPI }, telefono, conosciuto, riprendi, velocita, kbTile, kbPeso, sd: [$('#mSd').textContent, $('#mSd').className],
+    zona, riprendiSalva, riprendiManda, cartellaSalva, pacco, mandaDa, velocitaCartella, apertaAlle, zoom: [$('#mZmin').value, $('#mZmax').value],
+    camera: cartina && { center: cartina.getCenter(), zoom: cartina.getZoom() }, finestra: window.showDirectoryPicker, stile: $('#mStile').value, voce: $('#mPronta').value,
+    // quello che si vede: la console (dove il telefono finto scrive), lo stato, i conti e la barra delle mappe
+    term: term.textContent, stato: [$('#mStato').textContent, $('#mStato').className], dati: $('#mDati').textContent,
+    barra: [$('#mBar').className, $('#mBar').firstElementChild.style.width] };
+  let zoneSalvate = null;
+  try { zoneSalvate = localStorage.getItem(MEMORIA_ZONE); } catch (_) {}
+  Object.assign(TEMPI, { ciao: 1500, risposta: 2000, fine: 2000 });
+  const fuori = { devicePixelRatio, nomi: nomi.length };
+  try {
+    // La prima volta MapLibre scarica lo stile e prepara tutto, e il browser puo' restare fermo piu' degli
+    // 0,8 s che il telefono finto aspetta i pezzi di un file (quello vero ne aspetta 5): si disegna prima
+    // la zona a vuoto, cosi' la prova non dipende da quanto e' lento il primo disegno.
+    for (const b of blocchi(area, 13, 14)) await disegna(b);
+    // 1. copia completa
+    let f = telefonoFinto();
+    Object.assign(canale, f.canale);
+    let t0 = performance.now(), r = await copia();
+    fuori.secondiCopia = +((performance.now() - t0) / 1000).toFixed(1);
+    prova('copia completa: 16 tile e “fine 16”', r?.esito === 'fatto' && f.file.size === 16 && r.ricevute === 16, r?.esito, r?.motivo, `file=${f.file.size}`, `fine=${r?.ricevute}`);
+    prova('solo le tile dentro la zona', nomi.length === 16 && nomi.every(n => f.file.has(n)) && [...f.file.keys()].every(n => nomi.includes(n)));
+    prova('nessun errore di protocollo visto dal telefono finto', !f.errori.length, f.errori.slice(0, 3).join('; '));
+    prova('nessun blocco spostato dal suo posto sulla tela', dis && dis.spostati === 0, `spostati=${dis?.spostati}`);
+    const im = {}, byte = [];
+    let buoni = 0, tipi = new Set();
+    for (const [n, d] of f.file) {
+      const v = new DataView(d.buffer, d.byteOffset, d.byteLength);
+      const firma = [137, 80, 78, 71, 13, 10, 26, 10].every((b, i) => d[i] === b);
+      im[n] = await pixel(d);
+      if (firma && v.getUint32(16) === 256 && v.getUint32(20) === 256 && im[n].w === 256 && im[n].h === 256) buoni++;
+      tipi.add(d[25]); byte.push(d.length);
+    }
+    fuori.byteTile = { min: Math.min(...byte), medio: Math.round(byte.reduce((a, b) => a + b, 0) / byte.length), max: Math.max(...byte) };
+    fuori.tipoColorePng = [...tipi];   // 2 = RGB, 6 = RGBA
+    prova('ogni file è un PNG di 256×256 pixel', buoni === 16, `${buoni} su 16`);
+    // 2. tile di blocchi diversi che si toccano: 14/8707|8708 (fra due blocchi in x) e 5999|6000 (in y)
+    const A = im['14/8707/6000.png'], B = im['14/8708/6000.png'], C = im['14/8707/5999.png'];
+    const taglioX = linea(A, 255, B, 0, true), dentroX = (linea(A, 254, A, 255, true) + linea(B, 0, B, 1, true)) / 2;
+    const taglioY = linea(C, 255, A, 0, false), dentroY = (linea(C, 254, C, 255, false) + linea(A, 0, A, 1, false)) / 2;
+    const lontano = linea(A, 0, B, 255, true);   // per confronto: due colonne lontane
+    fuori.taglio = { taglioX: +taglioX.toFixed(2), dentroX: +dentroX.toFixed(2), taglioY: +taglioY.toFixed(2), dentroY: +dentroY.toFixed(2), lontano: +lontano.toFixed(2) };
+    prova('tile di blocchi diversi si attaccano senza salti', taglioX <= 2 * dentroX + 3 && taglioY <= 2 * dentroY + 3, JSON.stringify(fuori.taglio));
+    // 3. la stessa tile disegnata in due blocchi diversi (in un altro posto della tela) deve venire uguale;
+    //    spostata di un pixel invece no
+    const T1 = (await disegna({ z: 14, bx: 8704, by: 6000, tile: [[8707, 6000]] }))[0], T2 = (await disegna({ z: 14, bx: 8706, by: 5998, tile: [[8707, 6000]] }))[0];
+    const P1 = await pixel(T1.dati), P2 = await pixel(T2.dati);
+    fuori.stessaTile = { uguale: confronta(P1, P2), unPixelX: confronta(P1, P2, 1, 0), unPixelY: confronta(P1, P2, 0, 1) };
+    prova('la stessa tile da due blocchi diversi è uguale al pixel', fuori.stessaTile.uguale.diff * 4 < fuori.stessaTile.unPixelX.diff
+      && fuori.stessaTile.uguale.diff * 4 < fuori.stessaTile.unPixelY.diff && fuori.stessaTile.uguale.uguali > 0.9, JSON.stringify(fuori.stessaTile));
+    fuori.ridisegnoIdentico = T1.dati.length === f.file.get('14/8707/6000.png').length && T1.dati.every((b, i) => b === f.file.get('14/8707/6000.png')[i]);
+    if (mostra) {
+      const box = document.createElement('div');
+      box.id = 'mProva';
+      box.title = 'Prova: le tile 14/8707-8708/5999-6000, da quattro blocchi diversi';
+      box.style.cssText = 'display:grid;grid-template-columns:256px 256px;width:max-content;max-width:100%;overflow:auto;border:1px solid var(--line)';
+      for (const n of ['14/8707/5999.png', '14/8708/5999.png', '14/8707/6000.png', '14/8708/6000.png']) {
+        const img = new Image(256, 256);
+        img.src = URL.createObjectURL(new Blob([f.file.get(n)], { type: 'image/png' }));
+        img.alt = img.title = n;
+        box.append(img);
+      }
+      $('#mProva')?.remove();
+      $('#mDati').after(box);
+    }
+    // 4. "Ferma" dopo 5 tile e poi "Continua": le 5 si saltano (se il disegno viene uguale)
+    f = telefonoFinto({ fermaDopo: 5 });
+    Object.assign(canale, f.canale);
+    r = await copia();
+    prova('“Ferma”: si ferma dopo la tile in corso e manda @FINE', r?.esito === 'fermato' && f.file.size === 5 && r.ricevute === 5 && f.comandi.at(-1) === '@FINE',
+      r?.esito, `file=${f.file.size}`, `fine=${r?.ricevute}`);
+    r = await copia();
+    prova('“Continua”: finisce, e le tile che c’erano si saltano', r?.esito === 'fatto' && f.file.size === 16 && r.conti.saltate === 5,
+      `saltate=${r?.conti.saltate}`, `mandate=${r?.conti.mandate}`);
+    // 5. un byte rovinato: il telefono dice "errore crc", la tile si rimanda
+    f = telefonoFinto({ rovina: 2 });
+    Object.assign(canale, f.canale);
+    r = await copia();
+    prova('CRC sbagliato: la tile si rimanda da sola', r?.esito === 'fatto' && f.file.size === 16 && f.comandi.filter(c => c.startsWith('@FILE')).length === 17, r?.esito, r?.motivo);
+    // 6. "pronto" o "+" persi: il telefono, senza dati, dice "errore tempo scaduto" e la tile si rimanda
+    let persi = 0;
+    f = telefonoFinto({ perdi: r => (r === 'pronto' && persi === 0) || (r === '+' && persi === 1) ? ++persi : false });
+    Object.assign(canale, f.canale);
+    r = await copia();
+    prova('“pronto” e “+” persi: tempo scaduto sul telefono, tile rimandata', r?.esito === 'fatto' && f.file.size === 16 && persi === 2 && !f.errori.length,
+      r?.esito, r?.motivo, `persi=${persi}`, f.errori.join('; '));
+    // 7. una risposta a "@HAI" persa: dopo il tempo massimo errore e "Riprova"; poi riparte e finisce
+    let no = 0;
+    f = telefonoFinto({ perdi: r => r === 'no' && ++no === 4 });
+    Object.assign(canale, f.canale);
+    r = await copia();
+    const r2 = await copia();
+    prova('risposta persa: “non risponde”, poi “Riprova” finisce', r?.esito === 'errore' && /non risponde/.test(r.motivo) && riprendi === '' && r2?.esito === 'fatto' && f.file.size === 16,
+      r?.motivo, r2?.esito);
+
+    // ---- le mappe in una cartella (finta; e vera, del browser, se c'e')
+    const disegnati = () => dis ? dis.disegnati : 0, salvaIn = (cartella, zmin = 13, zmax = 14) => eseguiSalva({ zona: area, zmin, zmax, cartella });
+    // 8. "Salva in una cartella": le 16 tile in mappe/z/x/y.png, PNG di 256x256, senza telefono
+    let d = cartellaFinta('Scheda');
+    t0 = performance.now();
+    let s = await salvaIn(d);
+    fuori.secondiSalva = +((performance.now() - t0) / 1000).toFixed(1);
+    let dentro = await tutti(d);
+    const scheda = d, testoScheda = $('#mStato').textContent;
+    prova('salva in una cartella: le 16 tile in mappe/z/x/y.png', s?.esito === 'fatto' && dentro.size === 16 && nomi.every(n => dentro.has('mappe/' + n)) && riprendiSalva === '',
+      s?.esito, s?.motivo, `file=${dentro.size}`);
+    prova('nella cartella ogni file è un PNG di 256×256 pixel', [...dentro.values()].filter(png256).length === 16);
+    // 9. una cartella che si chiama gia' "mappe": le tile vanno subito in z/x/y.png
+    d = cartellaFinta('mappe');
+    s = await salvaIn(d, 13, 13);
+    dentro = await tutti(d);
+    const nomi13 = nomi.filter(n => n.startsWith('13/')), testoMappe = $('#mStato').textContent;
+    prova('cartella “mappe”: le tile vanno in z/x/y.png', s?.esito === 'fatto' && dentro.size === nomi13.length && nomi13.every(n => dentro.has(n)),
+      s?.esito, s?.motivo, [...dentro.keys()].slice(0, 2).join(' '));
+    // 9b. alla fine si dice dove il telefono cerca le mappe ("mappe" nella cartella principale della microSD):
+    //     una cartella qualsiasi le ha nella sua "mappe", che sulla microSD va spostata; "mappe" stessa va bene
+    //     solo nella cartella principale (la cartella principale del disco e' nella prova 23)
+    prova('alla fine si dice dove il telefono cerca le mappe, per la cartella scelta',
+      testoScheda.includes('Sono nella sua cartella “mappe”') && testoScheda.includes('il telefono lì non le cerca') && testoScheda.includes('scegliendo la microSD stessa')
+      && testoMappe.includes('Se è la cartella “mappe” nella cartella principale della microSD') && !testoMappe.includes('lì non le cerca'),
+      testoScheda, '|', testoMappe);
+    // 10. ripresa: le tile che ci sono (non vuote) restano come sono, il file vuoto lasciato da un salvataggio
+    //     interrotto si rifa', il blocco gia' completo non si disegna nemmeno
+    const giro = [...blocchi(area, 13, 14)], segno = Uint8Array.from([...FIRMA_PNG, 1, 2, 3]);
+    d = cartellaFinta('Pacchetto');
+    for (const [x, y] of giro[0].tile) await metti(d, `mappe/${giro[0].z}/${x}/${y}.png`, segno);
+    await metti(d, `mappe/${giro[1].z}/${giro[1].tile[0][0]}/${giro[1].tile[0][1]}.png`, segno);
+    const vuoto = `mappe/${giro[2].z}/${giro[2].tile[0][0]}/${giro[2].tile[0][1]}.png`, gia = giro[0].tile.length + 1;
+    await metti(d, vuoto, new Uint8Array(0));
+    await codaDisegno;
+    let n0 = disegnati();
+    s = await salvaIn(d);
+    dentro = await tutti(d);
+    prova('ripresa: le tile che c’erano restano, il file vuoto si rifà, il blocco completo non si disegna',
+      s?.esito === 'fatto' && dentro.size === 16 && [...dentro.values()].filter(v => v === segno).length === gia && s.conti.saltate === gia
+      && s.conti.mandate === 16 - gia && png256(dentro.get(vuoto)) && disegnati() - n0 === giro.length - 1,
+      s?.esito, s?.motivo, `saltate=${s?.conti.saltate}`, `scritte=${s?.conti.mandate}`, `blocchi disegnati=${disegnati() - n0} su ${giro.length}`);
+    // 11. tutto gia' nella cartella: "fatto" senza disegnare niente
+    await codaDisegno;
+    n0 = disegnati();
+    s = await salvaIn(d);
+    prova('cartella già completa: “fatto” senza disegnare niente', s?.esito === 'fatto' && s.conti.saltate === 16 && s.conti.mandate === 0 && disegnati() === n0,
+      s?.esito, `saltate=${s?.conti.saltate}`, `disegnati=${disegnati() - n0}`);
+    // 12. "Ferma" alla terza tile scritta, poi "Continua a salvare": finisce, saltando quelle scritte prima
+    d = cartellaFinta('Ferma', { dopoChiusura: n => { if (n === 3) fermati = true; return null; } });
+    s = await salvaIn(d);
+    const scrittePrima = (await tutti(d)).size, etichetta1 = riprendiSalva, pulsante1 = $('#mSalva').textContent;
+    let s2 = await salvaIn(d);
+    prova('“Ferma” nella cartella, poi “Continua a salvare” finisce', s?.esito === 'fermato' && scrittePrima >= 3 && scrittePrima < 16 && etichetta1 === 'continua'
+      && pulsante1 === 'Continua a salvare' && s2?.esito === 'fatto' && (await tutti(d)).size === 16 && s2.conti.saltate === scrittePrima && riprendiSalva === '',
+      s?.esito, `prima=${scrittePrima}`, s2?.esito, `saltate=${s2?.conti.saltate}`);
+    // 13. disco pieno dalla quarta tile: errore chiaro e "Riprova a salvare"; liberato il posto finisce, e
+    //     anche il file rimasto vuoto si rifa'
+    let pieno = true;
+    d = cartellaFinta('Piena', { dopoChiusura: n => pieno && n >= 4 ? new DOMException('finito lo spazio', 'QuotaExceededError') : null });
+    s = await salvaIn(d);
+    const etichetta2 = riprendiSalva, vuoti = [...(await tutti(d)).values()].filter(v => !v.length).length;
+    pieno = false;
+    s2 = await salvaIn(d);
+    dentro = await tutti(d);
+    prova('disco pieno: “non c’è più posto”, poi “Riprova a salvare” finisce', s?.esito === 'errore' && /non c’è più posto/.test(s.motivo) && etichetta2 === 'riprova'
+      && vuoti >= 1 && s2?.esito === 'fatto' && dentro.size === 16 && [...dentro.values()].every(png256), s?.motivo, `vuoti=${vuoti}`, s2?.esito);
+    // 13b. la cartina della cartella: il primo salvataggio scrive mappe/cartina.txt; di nuovo con la stessa
+    //      cartina nessun avviso; con un'altra le tile che ci sono restano (si saltano) e lo si dice; in una
+    //      cartella con le tile ma senza cartina.txt (fatta a mano) il file non si scrive e si dice che restano
+    //      com'erano. Le tile non si ridisegnano, quindi l'altra cartina non serve nemmeno scaricarla
+    const stileOra = $('#mStile').value, altroStile = [...$('#mStile').options].map(o => o.value).find(v => v !== stileOra);
+    d = cartellaFinta('Cartine');
+    s = await salvaIn(d);
+    const segnata = await testoDi(d, 'mappe/cartina.txt');
+    s2 = await salvaIn(d);
+    const testoStessa = $('#mStato').textContent;
+    let s3 = null;
+    $('#mStile').value = altroStile;
+    try { s3 = await salvaIn(d); } finally { $('#mStile').value = stileOra; }
+    const testoAltra = $('#mStato').textContent, segnata2 = await testoDi(d, 'mappe/cartina.txt');
+    const aMano = cartellaFinta('A mano');
+    for (const n of nomi) await metti(aMano, 'mappe/' + n, segno);
+    const s4 = await salvaIn(aMano), testoAMano = $('#mStato').textContent, senzaFile = await testoDi(aMano, 'mappe/cartina.txt') === null;
+    prova('la cartina della cartella: si scrive la prima volta, e salvando con un’altra si dice che quelle che c’erano restano',
+      s?.esito === 'fatto' && segnata === stileOra + '\n' && s2?.esito === 'fatto' && s2.conti.saltate === 16 && !/cartina “|com’erano/.test(testoStessa)
+      && s3?.esito === 'fatto' && s3.conti.saltate === 16 && s3.conti.mandate === 0 && segnata2 === segnata
+      && testoAltra.includes(`sono della cartina “${nomeStile(stileOra)}” e sono rimaste così: per averle tutte “${nomeStile(altroStile)}”, svuota prima la cartella “mappe”`)
+      && s4?.esito === 'fatto' && s4.conti.saltate === 16 && testoAMano.includes('sono rimaste com’erano') && senzaFile,
+      JSON.stringify(segnata), testoStessa, '|', testoAltra, '|', testoAMano);
+    // 13c. lo schermo acceso mentre si salva o si copia (Screen Wake Lock, finto): si chiede "screen", si
+    //      richiede quando il browser lo toglie (scheda nascosta e tornata), alla fine si lascia; intanto
+    //      chiudendo la pagina il browser chiede prima. Se il browser dice di no, si salva lo stesso
+    const chieste = [], lasciati = [];
+    let rifiuta = false, tenuto = null, chiedeUscita = null;
+    const bloccoFinto = tipo => {
+      const b = new EventTarget();
+      b.type = tipo; b.released = false;
+      b.release = async () => { if (b.released) return; b.released = true; lasciati.push(b); b.dispatchEvent(new Event('release')); };
+      return b;
+    };
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async tipo => {
+      chieste.push(tipo); await pausa(1);
+      if (rifiuta) throw new DOMException('Risparmio energetico.', 'NotAllowedError');
+      return bloccoFinto(tipo);
+    } } });
+    let dopoSalva, dopoCopia, s5, rc, uscitaDopo;
+    try {
+      d = cartellaFinta('Schermo', { dopoChiusura: n => {
+        if (n !== 2) return null;
+        tenuto = !!sveglia.blocco && !sveglia.blocco.released;
+        const ev = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(ev); chiedeUscita = ev.defaultPrevented;
+        sveglia.blocco?.release();   // come fa il browser quando la scheda si nasconde...
+        document.dispatchEvent(new Event('visibilitychange'));   // ...e quando torna (qui non si e' mai nascosta)
+        return null;
+      } });
+      s = await salvaIn(d);
+      dopoSalva = { chieste: chieste.length, lasciati: lasciati.length, blocco: !!sveglia.blocco };
+      const ev = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev); uscitaDopo = !ev.defaultPrevented;
+      f = telefonoFinto();
+      Object.assign(canale, f.canale);
+      rc = await copia();
+      dopoCopia = { chieste: chieste.length, lasciati: lasciati.length, blocco: !!sveglia.blocco };
+      rifiuta = true;
+      s5 = await salvaIn(cartellaFinta('Schermo no'));
+    } finally {
+      delete navigator.wakeLock;   // torna quello vero del browser
+    }
+    prova('lo schermo resta acceso mentre si salva o si copia, poi no; se il browser dice di no si salva lo stesso',
+      s?.esito === 'fatto' && chieste[0] === 'screen' && tenuto && chiedeUscita && dopoSalva.chieste === 2 && dopoSalva.lasciati === 2 && !dopoSalva.blocco && uscitaDopo
+      && rc?.esito === 'fatto' && dopoCopia.chieste === 3 && dopoCopia.lasciati === 3 && !dopoCopia.blocco
+      && s5?.esito === 'fatto' && chieste.length === 4 && !sveglia.blocco && !sveglia.voluta,
+      s?.esito, `tenuto=${tenuto}`, `uscita=${chiedeUscita}`, JSON.stringify(dopoSalva), rc?.esito, JSON.stringify(dopoCopia), s5?.esito, `chieste=${chieste.length}`);
+    // 13d. il peso per le stime: la media di tutte le tile misurate (223 da 40 kB, poi 180 da 10 kB), non
+    //      quella dell'ultima volta; meno di 50 tile non contano
+    const pesoPrima = [kbTile, kbPeso];
+    kbTile = 15; kbPeso = 0;
+    imparaPeso(223 * 40 * 1024, 223);
+    const k1 = kbTile;
+    imparaPeso(180 * 10 * 1024, 180);
+    const k2 = kbTile;
+    imparaPeso(30 * 99 * 1024, 30);
+    const k3 = kbTile;
+    [kbTile, kbPeso] = pesoPrima;
+    prova('il peso per le stime è la media di tutte le tile misurate, non dell’ultima volta', Math.abs(k1 - 40) < 1e-9
+      && Math.abs(k2 - (223 * 40 + 180 * 10) / 403) < 1e-9 && k3 === k2, k1, k2, k3);
+
+    // 14. la cartella da mandare: solo i nomi giusti (niente .crswap, zeri davanti, zoom o x fuori misura),
+    //     in ordine di zoom, x e y; con "mappe" dentro o scegliendo "mappe" stessa
+    const ordinati = nomi.map(n => n.slice(0, -4).split('/').map(Number)).sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map(v => v.join('/') + '.png');
+    const finte = new Map(), pac = cartellaFinta('Liguria');
+    for (const n of ordinati) {   // "PNG" finti da 3 a 13 kB: anche piu' pezzi da 4096 byte
+      const b = new Uint8Array(3000 + Math.floor(Math.random() * 10000));
+      crypto.getRandomValues(b); b.set(FIRMA_PNG);
+      finte.set(n, b); await metti(pac, 'mappe/' + n, b);
+    }
+    for (const n of ['leggimi.txt', 'mappe/13/leggimi.txt', 'mappe/13/4353/x.png', 'mappe/13/4353/02999.png', 'mappe/25/1/1.png', 'mappe/13/9999/1.png', `mappe/${ordinati[0]}.crswap`])
+      await metti(pac, n, segno);
+    let pk = await leggiPacco(pac);
+    const sola = cartellaFinta('mappe'), vuota = cartellaFinta('Vuota');
+    await metti(sola, ordinati[0], finte.get(ordinati[0]));
+    await metti(vuota, 'leggimi.txt', segno);
+    const pSola = await leggiPacco(sola), pVuota = await leggiPacco(vuota), elenco = q => q.colonne.flatMap(c => c.file.map(([y]) => `${c.z}/${c.x}/${y}.png`));
+    prova('la cartella da mandare: solo le tile coi nomi giusti, in ordine', pk.totale === 16 && pk.zmin === 13 && pk.zmax === 14 && JSON.stringify(elenco(pk)) === JSON.stringify(ordinati)
+      && pSola.totale === 1 && elenco(pSola)[0] === ordinati[0] && pVuota.totale === 0, `tile=${pk.totale}`, elenco(pk).slice(0, 3).join(' '));
+    // 15. "Manda da una cartella" al telefono finto: le 16 tile con gli stessi byte, "fine 16", niente disegno
+    f = telefonoFinto();
+    Object.assign(canale, f.canale);
+    await codaDisegno;
+    n0 = disegnati();
+    let m = await eseguiManda(pk);
+    prova('manda da una cartella: le 16 tile, gli stessi byte, “fine 16”, niente disegno', m?.esito === 'fatto' && f.file.size === 16 && m.ricevute === 16
+      && ordinati.every(n => uguali(f.file.get(n), finte.get(n))) && !f.errori.length && disegnati() === n0 && riprendiManda === '',
+      m?.esito, m?.motivo, f.errori.slice(0, 2).join('; '));
+    // 16. il telefono ne ha gia' 5 uguali: "@HAI" dice si e non si rimandano
+    f = telefonoFinto();
+    for (const n of ordinati.slice(0, 5)) f.file.set(n, finte.get(n));
+    Object.assign(canale, f.canale);
+    m = await eseguiManda(pk);
+    prova('manda: le tile che il telefono ha già si saltano', m?.esito === 'fatto' && m.conti.saltate === 5 && m.conti.mandate === 11
+      && f.comandi.filter(c => c.startsWith('@FILE')).length === 11 && f.file.size === 16, m?.esito, `saltate=${m?.conti.saltate}`);
+    // 17. un byte rovinato per strada: il telefono dice "errore crc", la tile si rimanda
+    f = telefonoFinto({ rovina: 2 });
+    Object.assign(canale, f.canale);
+    m = await eseguiManda(pk);
+    prova('manda: CRC sbagliato, la tile si rimanda da sola', m?.esito === 'fatto' && f.comandi.filter(c => c.startsWith('@FILE')).length === 17
+      && ordinati.every(n => uguali(f.file.get(n), finte.get(n))), m?.esito, m?.motivo);
+    // 18. "Ferma" dopo 5 tile, poi "Continua a mandare": riparte dalla sesta, senza richiedere le prime
+    f = telefonoFinto({ fermaDopo: 5 });
+    Object.assign(canale, f.canale);
+    m = await eseguiManda(pk);
+    const hai = () => f.comandi.filter(c => c.startsWith('@HAI')).length, h1 = hai(), fine1 = f.comandi.at(-1);
+    const etichetta3 = riprendiManda, pulsante3 = $('#mManda').textContent, altra = !$('#mAltra').hidden && $('#mAltra').textContent;
+    let m2 = await eseguiManda(pk);
+    prova('manda: “Ferma”, poi “Continua a mandare” riparte da lì', m?.esito === 'fermato' && fine1 === '@FINE' && etichetta3 === 'continua' && pulsante3 === 'Continua a mandare'
+      && (!puoCartelle || altra === 'Manda da un’altra cartella…') && m2?.esito === 'fatto' && hai() - h1 === 11 && m2.conti.mandate === 16 && f.file.size === 16 && riprendiManda === '',
+      m?.esito, `@HAI dopo=${hai() - h1}`, m2?.esito, `altra=${altra}`);
+    // 19. come la 18, ma intanto la porta si e' riaperta (il telefono si e' riavviato): da capo, saltando con "@HAI"
+    f = telefonoFinto({ fermaDopo: 5 });
+    Object.assign(canale, f.canale);
+    m = await eseguiManda(pk);
+    const porta = apertaAlle, h2 = hai();
+    apertaAlle = porta + 1;   // come portaNuova()
+    m2 = await eseguiManda(pk);
+    apertaAlle = porta;
+    prova('manda: dopo una porta riaperta si ricontrolla tutto', m?.esito === 'fermato' && m2?.esito === 'fatto' && hai() - h2 === 16 && m2.conti.saltate === 5 && f.file.size === 16,
+      `@HAI dopo=${hai() - h2}`, `saltate=${m2?.conti.saltate}`);
+    // 20. file vuoti o che non sono PNG nella cartella: non si mandano, si dice quanti, e la copia finisce
+    const rotta = cartellaFinta('Rotta');
+    for (const n of ordinati.slice(0, 3)) await metti(rotta, 'mappe/' + n, finte.get(n));
+    await metti(rotta, 'mappe/' + ordinati[3], new Uint8Array(0));
+    await metti(rotta, 'mappe/' + ordinati[4], Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+    f = telefonoFinto();
+    Object.assign(canale, f.canale);
+    m = await eseguiManda(await leggiPacco(rotta));
+    prova('manda: i file vuoti o rotti non si mandano e si contano', m?.esito === 'fatto' && m.conti.scartate === 2 && f.file.size === 3 && !f.errori.length
+      && /2 file della cartella erano vuoti o rotti/.test($('#mStato').textContent), m?.esito, $('#mStato').textContent);
+    // 21. salva e poi manda: il telefono ha proprio le tile disegnate nella cartella della prova 8
+    f = telefonoFinto();
+    Object.assign(canale, f.canale);
+    pk = await leggiPacco(scheda);
+    m = await eseguiManda(pk);
+    const daScheda = await tutti(scheda);
+    prova('salva e poi manda: il telefono ha le stesse tile della cartella', m?.esito === 'fatto' && pk.totale === 16 && f.file.size === 16
+      && [...daScheda].every(([n, v]) => uguali(f.file.get(n.slice('mappe/'.length)), v)), m?.esito, m?.motivo);
+    // 22. con una cartella vera del browser (OPFS: c'e' con la pagina servita da http, non aperta da file)
+    let privata = null;
+    try { privata = await navigator.storage.getDirectory(); } catch (_) {}
+    if (privata) {
+      const nome = 'pippaphone-prova-' + Date.now();
+      try {
+        const vera = await privata.getDirectoryHandle(nome, { create: true });
+        s = await salvaIn(vera);
+        s2 = await salvaIn(vera);   // la seconda volta c'e' gia' tutto
+        f = telefonoFinto();
+        Object.assign(canale, f.canale);
+        pk = await leggiPacco(vera);
+        m = await eseguiManda(pk);
+        prova('con una cartella vera del browser (OPFS): salva, riprende e manda', s?.esito === 'fatto' && s2?.esito === 'fatto' && s2.conti.saltate === 16
+          && pk.totale === 16 && m?.esito === 'fatto' && f.file.size === 16, s?.motivo, s2?.motivo, m?.motivo);
+      } finally {
+        await privata.removeEntry(nome, { recursive: true }).catch(() => {});
+      }
+    } else fuori.cartellaVera = 'non c’è con la pagina aperta da file: provata solo la cartella finta';
+
+    // ---- i pulsanti delle cartelle (clicSalva e clicManda, quello che fanno "Salva in una cartella…",
+    //      "Manda da una cartella…" e "mAltra"), con una finestra delle cartelle finta al posto di
+    //      showDirectoryPicker: da' la cartella che c'e' in daScegliere, o la lancia se e' un errore
+    if (puoCartelle) {
+      const scelte = [];   // le opzioni di ogni volta che si apre la finestra
+      let daScegliere = null;
+      window.showDirectoryPicker = async o => { scelte.push(o); await pausa(1); if (daScegliere instanceof Error) throw daScegliere; return daScegliere; };
+      cambiaZona(soloZona(area)); $('#mZmin').value = 13; $('#mZmax').value = 14;
+      riprendiSalva = riprendiManda = ''; aggiornaMappe();
+      // 23. la microSD nel lettore di schede: la finestra si apre per scrivere; la cartella principale del disco
+      //     (per Chrome si chiama "\") prende mappe/z/x/y.png, e il messaggio lo dice a parole. Chiusa la
+      //     finestra: "Nessuna cartella scelta". Una cartella "14" (uno zoom dentro "mappe"): no
+      const sd = cartellaFinta('\\');
+      daScegliere = sd;
+      s = await clicSalva(false);
+      dentro = await tutti(sd);
+      const testoSd = $('#mStato').textContent;
+      daScegliere = new DOMException('La finestra è stata chiusa.', 'AbortError');
+      const chiusa = await clicSalva(false), testoChiusa = $('#mStato').textContent;
+      const zoom14 = cartellaFinta('14');
+      daScegliere = zoom14;
+      const numerata = await clicSalva(false), testoNumerata = $('#mStato').textContent, vuota14 = !(await tutti(zoom14)).size;
+      prova('“Salva in una cartella…” sulla microSD nel lettore di schede: mappe/z/x/y.png, detto a parole',
+        s?.esito === 'fatto' && scelte.length === 3 && scelte.every(o => o.mode === 'readwrite' && o.id === 'pippaphone-mappe')
+        && dentro.size === 16 && nomi.every(n => dentro.has('mappe/' + n)) && /cartella principale del disco/.test(testoSd) && /già al loro posto/.test(testoSd)
+        && !testoSd.includes('«') && chiusa === undefined && testoChiusa === 'Nessuna cartella scelta.' && numerata === undefined && vuota14
+        && /dentro “mappe”/.test(testoNumerata), s?.esito, s?.motivo, testoSd, '|', testoChiusa, '|', testoNumerata);
+      // 24. "Ferma" (il pulsante vero) alla terza tile scritta, poi "Continua a salvare": la stessa cartella,
+      //     senza riaprire la finestra, e finisce. Fermati di nuovo, "Salva in un’altra cartella…" la riapre
+      const fermaAlla3 = n => { if (n === 3) $('#mFerma').click(); return null; };
+      const ferma = cartellaFinta('Mappe Liguria', { dopoChiusura: fermaAlla3 });
+      daScegliere = ferma; scelte.length = 0;
+      s = await clicSalva(false);
+      const pulsanteF = $('#mSalva').textContent, altraF = !$('#mAltra').hidden && $('#mAltra').textContent, scritteF = (await tutti(ferma)).size;
+      s2 = await clicSalva(false);
+      const finestreF = scelte.length, tutteF = (await tutti(ferma)).size;
+      const ferma2 = cartellaFinta('Mappe Genova', { dopoChiusura: fermaAlla3 }), altraCartella = cartellaFinta('Altra');
+      daScegliere = ferma2;
+      const s3 = await clicSalva(false);
+      // chiusa la finestra di "Salva in un’altra cartella…", il pulsante resta per «Mappe Genova» e lo si dice
+      daScegliere = new DOMException('La finestra è stata chiusa.', 'AbortError');
+      await clicSalva(true);
+      const testoNoAltra = $('#mStato').textContent, pulsanteNoAltra = $('#mSalva').textContent;
+      daScegliere = altraCartella;
+      const s4 = await clicSalva(true);
+      prova('“Ferma”, “Continua a salvare” senza la finestra, “Salva in un’altra cartella…” con la finestra',
+        s?.esito === 'fermato' && pulsanteF === 'Continua a salvare' && altraF === 'Salva in un’altra cartella…' && scritteF >= 3 && scritteF < 16
+        && s2?.esito === 'fatto' && finestreF === 1 && tutteF === 16 && s2.conti.saltate === scritteF && s3?.esito === 'fermato' && s4?.esito === 'fatto'
+        && testoNoAltra === 'Nessuna cartella scelta. Il pulsante “Continua a salvare” resta per la cartella «Mappe Genova».' && pulsanteNoAltra === 'Continua a salvare'
+        && scelte.length === 4 && (await tutti(altraCartella)).size === 16 && (await tutti(ferma2)).size < 16
+        && $('#mSalva').textContent === 'Salva in una cartella…' && $('#mAltra').hidden,
+        s?.esito, pulsanteF, altraF, `scritte=${scritteF}`, s2?.esito, `finestre=${finestreF}`, s3?.esito, testoNoAltra, s4?.esito);
+      // 25. "Manda da una cartella…" col telefono non ancora collegato: la finestra per leggere, poi il pulsante
+      //     dice "Manda al telefono" (la porta si sceglie solo subito dopo un clic) e il clic dopo manda tutto.
+      //     Senza il permesso di leggere la cartella, lo si dice
+      f = telefonoFinto();
+      let aperta = false;
+      Object.assign(canale, f.canale, { aperto: () => aperta, pronto: async () => aperta, apri: async () => (aperta = true) });
+      daScegliere = new DOMException('Permesso negato.', 'NotAllowedError'); scelte.length = 0;
+      const negata = await clicManda(false), testoNegata = $('#mStato').textContent;
+      daScegliere = scheda;   // la cartella della prova 8
+      const primoClic = await clicManda(false);
+      const testoPronta = $('#mStato').textContent, pulsanteP = $('#mManda').textContent, altraP = !$('#mAltra').hidden && $('#mAltra').textContent, comandiP = f.comandi.length;
+      m = await clicManda(false);
+      prova('“Manda da una cartella…” senza la porta aperta: prima la cartella, poi “Manda al telefono” manda tutto',
+        negata === undefined && /permesso di leggere/.test(testoNegata) && primoClic === undefined && scelte.length === 2 && scelte.every(o => o.mode === 'read')
+        && pulsanteP === 'Manda al telefono' && altraP === 'Manda da un’altra cartella…' && comandiP === 0 && /16 tile \(dallo zoom 13 al 14\), da mandare col cavo in /.test(testoPronta)
+        && m?.esito === 'fatto' && aperta && f.file.size === 16 && m.ricevute === 16 && $('#mManda').textContent === 'Manda da una cartella…' && riprendiManda === '',
+        testoNegata, '|', testoPronta, '|', pulsanteP, m?.esito, m?.motivo);
+      // 25b. "Manda da un’altra cartella…" che non va (una cartella senza tile, la finestra chiusa): il pulsante
+      //      resta per la cartella di prima e lo stato lo dice. E col cavo non oltre 400 000 tile, come per
+      //      "Copia sulla microSD", dicendo quanto ci vorrebbe
+      aperta = false;
+      daScegliere = scheda;
+      await clicManda(false);
+      const pronta2 = riprendiManda === 'pronta' && $('#mManda').textContent === 'Manda al telefono';
+      daScegliere = vuota;   // c'e' solo leggimi.txt (prova 14)
+      await clicManda(true);
+      const testoVuota = $('#mStato').textContent, pulsanteV = $('#mManda').textContent;
+      daScegliere = new DOMException('La finestra è stata chiusa.', 'AbortError');
+      await clicManda(true);
+      const testoChiusa2 = $('#mStato').textContent, ancoraScheda = pacco?.cartella === scheda && riprendiManda === 'pronta';
+      riprendiManda = ''; pacco = null; aggiornaMappe();
+      const tante = troppePerIlCavo({ nome: 'cartella «Tante»', totale: TROPPE + 1, zmin: 10, zmax: 17 });
+      const giuste = troppePerIlCavo({ nome: 'cartella «Giuste»', totale: TROPPE, zmin: 10, zmax: 16 });
+      prova('“Manda da un’altra cartella…” che non va: il pulsante resta per quella di prima e lo si dice; col cavo al massimo 400 000 tile',
+        pronta2 && /non trovo tile/.test(testoVuota) && testoVuota.endsWith(' Il pulsante “Manda al telefono” resta per la cartella «Scheda».') && pulsanteV === 'Manda al telefono'
+        && testoChiusa2 === 'Nessuna cartella scelta. Il pulsante “Manda al telefono” resta per la cartella «Scheda».' && ancoraScheda
+        && /troppe per il cavo/.test(tante) && /ci vorrebbero circa /.test(tante) && /lettore di schede/.test(tante) && giuste === '',
+        testoVuota, '|', testoChiusa2, '|', tante);
+    } else fuori.pulsanti = 'questo browser non ha File System Access: i pulsanti delle cartelle non si provano';
+
+    // ---- le zone pronte. Senza le zone salvate da chi usa la pagina, che non devono cambiare i risultati
+    //      (tornano alla fine, come erano)
+    try { localStorage.removeItem(MEMORIA_ZONE); } catch (_) {}
+    leggiMie(); mostraPronte();
+    // 26. la Liguria, coi conti fatti a parte (Python, formule di OSM): 59 927 tile dallo zoom 10 al 16 e
+    //     2 847 al 14, dove c'e' anche 14/8590/5927
+    const lig = PRONTE.find(z => z.nome.startsWith('Liguria')), zoomPrima = [$('#mZmin').value, $('#mZmax').value], r14 = lig && intervallo(lig, 14);
+    prova('zona pronta “Liguria”: 8,20–9,79 E e 44,13–44,73 N, 59 927 tile dallo zoom 10 al 16', !!lig && lig.ovest === 8.2 && lig.sud === 44.13
+      && lig.est === 9.79 && lig.nord === 44.73 && contaTile(lig, 10, 16) === 59927 && contaTile(lig, 14, 14) === 2847
+      && r14.x0 <= 8590 && 8590 <= r14.x1 && r14.y0 <= 5927 && 5927 <= r14.y1, lig && contaTile(lig, 10, 16));
+    scegliZona(lig, true);
+    const sopra = !cartina || (b => b.getWest() <= lig.ovest + 1e-6 && b.getEast() >= lig.est - 1e-6 && b.getSouth() <= lig.sud + 1e-6 && b.getNorth() >= lig.nord - 1e-6)(cartina.getBounds());
+    prova('scegliere la Liguria: la zona, la cartina sopra, gli zoom come prima', stessaZona(zona, lig) && $('#mPronta').value === 'p' + PRONTE.indexOf(lig)
+      && $('#mZmin').value === zoomPrima[0] && $('#mZmax').value === zoomPrima[1] && sopra, cartina ? 'con la cartina' : 'senza la cartina (sezione nascosta)');
+    // 26b. una zona salvata coi confini della Liguria (solo qui, non nel browser): scegliendo nell'elenco la
+    //      Liguria resta scritto Liguria, e scegliendo quella salvata resta quella, con "Togli"
+    const pLig = 'p' + PRONTE.indexOf(lig);
+    mie = [{ nome: 'Liguria mia', ...soloZona(lig) }];
+    mostraPronte();
+    const scegli = v => { $('#mPronta').value = v; $('#mPronta').dispatchEvent(new Event('change')); return { v: $('#mPronta').value, togli: !$('#mTogliZona').disabled }; };
+    const conLig = scegli(pLig), conMia = scegli('m0'), conLig2 = scegli(pLig);
+    cartina?.stop();
+    mie = []; mostraPronte();
+    prova('una zona salvata uguale alla Liguria non prende il suo posto nell’elenco', conLig.v === pLig && !conLig.togli && conMia.v === 'm0' && conMia.togli
+      && conLig2.v === pLig && stessaZona(zona, lig), JSON.stringify([conLig, conMia, conLig2]));
+    // 26c. la stima della Liguria: "zoom 14" quando e' uno solo, e i GB quando sono tanti
+    $('#mZmin').value = 14; $('#mZmax').value = 14; mostraStima();
+    const stima14 = $('#mStima').textContent, kbStima = kbTile;
+    kbTile = 20; $('#mZmin').value = 10; $('#mZmax').value = 17; mostraStima();
+    const stimaGB = $('#mStima').textContent;
+    kbTile = kbStima; [$('#mZmin').value, $('#mZmax').value] = zoomPrima; mostraStima();
+    prova('la stima: “zoom 14” quando è uno solo, e i GB quando sono tanti', /, zoom 14: 2\.?847 tile, /.test(stima14) && !stima14.includes('dallo zoom 14 al 14')
+      && /circa \d+(,\d)? GB sulla microSD/.test(stimaGB), stima14, '|', stimaGB);
+    // 27. salvare una zona: nell'elenco e nel browser, anche dopo una "ricarica"; scelta dall'elenco torna; poi si toglie
+    const nomeProva = 'Prova di provaMappe ' + Math.random().toString(36).slice(2, 7);
+    const nellaMemoria = () => { try { return JSON.parse(localStorage.getItem(MEMORIA_ZONE) || '[]').some(z => z.nome === nomeProva && stessaZona(z, area)); } catch (_) { return false; } };
+    cambiaZona(soloZona(area));
+    const salvata = salvaZona(`  ${nomeProva}  `), inMemoria = nellaMemoria();
+    leggiMie(); mostraPronte();   // come ricaricare la pagina
+    const dopoRicarica = mie.some(z => z.nome === nomeProva && stessaZona(z, area));
+    const inElenco = $('#mPronta').selectedOptions[0]?.textContent === nomeProva && !$('#mTogliZona').disabled;
+    scegliZona(lig, true);
+    scegliZona(mie.find(z => z.nome === nomeProva), true);
+    const tornata = stessaZona(zona, area) && $('#mPronta').selectedOptions[0]?.textContent === nomeProva;
+    const senzaNome = !salvaZona('   ');
+    togliZona(mie.findIndex(z => z.nome === nomeProva));
+    const tolta = !mie.some(z => z.nome === nomeProva) && !nellaMemoria() && ![...$('#mPronta').options].some(o => o.textContent === nomeProva)
+      && stessaZona(zona, area) && $('#mTogliZona').disabled;
+    prova('salvare una zona (resta dopo una ricarica), sceglierla dall’elenco, toglierla', salvata && inMemoria && dopoRicarica && inElenco && tornata && senzaNome && tolta,
+      `salvata=${salvata}`, `memoria=${inMemoria}`, `ricarica=${dopoRicarica}`, `elenco=${inElenco}`, `tornata=${tornata}`, `tolta=${tolta}`);
+    // 27b. due schede con la pagina: le zone salvate nell'altra restano salvando e togliendo una zona qui (si
+    //      rilegge la memoria prima di cambiarla), e con l'evento "storage" si vedono subito nell'elenco
+    const nomiSalvati = () => { try { return JSON.parse(localStorage.getItem(MEMORIA_ZONE) || '[]').map(z => z.nome).sort().join(' | '); } catch (_) { return '?'; } };
+    const diLa = (...n) => { try { localStorage.setItem(MEMORIA_ZONE, JSON.stringify(n.map(nome => ({ nome, ...area })))); } catch (_) {} };
+    diLa('Da un’altra scheda');
+    window.dispatchEvent(new StorageEvent('storage', { key: MEMORIA_ZONE }));
+    const vistaDiLa = [...$('#mPronta').options].some(o => o.textContent === 'Da un’altra scheda');
+    diLa('Da un’altra scheda', 'Ancora di là');   // senza l'evento
+    cambiaZona(soloZona(lig));
+    salvaZona('Di questa scheda');
+    const dopoSalvata = nomiSalvati();
+    diLa('Da un’altra scheda', 'Ancora di là', 'Di questa scheda', 'Terza di là');
+    togliZona(mie.findIndex(z => z.nome === 'Di questa scheda'));
+    const dopoTolta = nomiSalvati();
+    try { localStorage.removeItem(MEMORIA_ZONE); } catch (_) {}
+    leggiMie(); mostraPronte();
+    prova('due schede: le zone salvate nell’altra restano, e qui si vedono', vistaDiLa && dopoSalvata === 'Ancora di là | Da un’altra scheda | Di questa scheda'
+      && dopoTolta === 'Ancora di là | Da un’altra scheda | Terza di là', dopoSalvata, '|', dopoTolta);
+    // 27c. il nome della zona: solo spazi non si salva, e lo si dice; scritto un nome si salva, il modulo si
+    //      chiude e il cursore torna su "Salva questa zona"; riaperto ha quel nome; cambiando zona si chiude da
+    //      solo; dopo "Togli" (che si spegne) il cursore va sull'elenco
+    const s5nascosta = $('#s5').hidden;
+    $('#s5').hidden = false;   // il cursore va solo dove si vede
+    let modulo = null;
+    try {
+      cambiaZona(soloZona(area));
+      $('#mSalvaZona').click();
+      const aperto = !$('#mNomeZona').hidden && document.activeElement === $('#mNome');
+      $('#mNome').value = '   ';
+      $('#mNomeZona').requestSubmit();
+      const spazi = !$('#mNomeZona').hidden && $('#mNome').validationMessage === 'Scrivi un nome per la zona.' && !mie.length;
+      $('#mNome').value = 'Siena di prova';
+      $('#mNome').dispatchEvent(new Event('input'));
+      const ripulito = $('#mNome').validity.valid;
+      $('#mNomeZona').requestSubmit();
+      const salvato = $('#mNomeZona').hidden && mie.some(z => z.nome === 'Siena di prova') && document.activeElement === $('#mSalvaZona');
+      $('#mSalvaZona').click();
+      const conNome = !$('#mNomeZona').hidden && $('#mNome').value === 'Siena di prova';
+      cambiaZona(soloZona(lig));
+      const chiusoDaSolo = $('#mNomeZona').hidden;
+      scegliZona(mie.find(z => z.nome === 'Siena di prova'), true);
+      $('#mTogliZona').click();
+      const dopoTogli = document.activeElement === $('#mPronta') && $('#mTogliZona').disabled && !mie.some(z => z.nome === 'Siena di prova');
+      modulo = { aperto, spazi, ripulito, salvato, conNome, chiusoDaSolo, dopoTogli };
+    } finally {
+      $('#s5').hidden = s5nascosta;
+    }
+    prova('il nome della zona: solo spazi no (e lo si dice), il modulo si chiude cambiando zona, il cursore non si perde',
+      !!modulo && Object.values(modulo).every(Boolean), JSON.stringify(modulo));
+    // 28. zone rovinate nella memoria del browser: si tiene solo quella buona
+    try { localStorage.setItem(MEMORIA_ZONE, JSON.stringify([{ nome: 'buona', ...area }, { nome: ' ', ...area }, { nome: 'storta', ovest: 10, sud: 44, est: 9, nord: 45 }, { nome: 'testo', ovest: 'a' }, null, 7])); } catch (_) {}
+    leggiMie();
+    prova('zone rovinate nella memoria: si tiene solo quella buona', mie.length === 1 && mie[0].nome === 'buona', JSON.stringify(mie));
+  } catch (e) {
+    prova('la prova è arrivata in fondo', false, e.stack || e.message);
+  } finally {
+    Object.assign(canale, prima.canale); Object.assign(TEMPI, prima.tempi);
+    if (puoCartelle) window.showDirectoryPicker = prima.finestra;
+    ({ telefono, conosciuto, riprendi, velocita, kbTile, kbPeso, zona, riprendiSalva, riprendiManda, cartellaSalva, pacco, mandaDa, velocitaCartella, apertaAlle } = prima);
+    fermati = false;
+    [$('#mZmin').value, $('#mZmax').value] = prima.zoom;
+    $('#mStile').value = prima.stile;
+    try { if (zoneSalvate == null) localStorage.removeItem(MEMORIA_ZONE); else localStorage.setItem(MEMORIA_ZONE, zoneSalvate); } catch (_) {}
+    leggiMie(); chiudiNome(false);
+    if (prima.camera) { cartina?.stop(); cartina?.jumpTo(prima.camera); }
+    statoSd(prima.sd[0]); $('#mSd').className = prima.sd[1];
+    // Come prima della prova: niente "Fatto: ... sulla microSD" del telefono finto, che sembrerebbe vero, e
+    // niente righe sue nella console; ma lo stato di una copia vera fermata ("Premi Continua") resta.
+    term.textContent = prima.term; term.scrollTop = term.scrollHeight;
+    $('#mStato').textContent = prima.stato[0]; $('#mStato').className = prima.stato[1];
+    $('#mDati').textContent = prima.dati;
+    $('#mBar').className = prima.barra[0]; $('#mBar').firstElementChild.style.width = prima.barra[1];
+    ricorda(); disegnaZona(); mostraPronte(prima.voce); consoleAperta(!!cport); aggiornaMappe(); mostraStima();
+  }
+  const risultato ={ tutto: esiti.every(e => e.ok), giusti: esiti.filter(e => e.ok).length, su: esiti.length, esiti, ...fuori };
+  window.ultimaProvaMappe = risultato;
+  return risultato;
+};
+
 aggiorna(false);
 </script>
 </body>

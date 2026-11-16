@@ -53,6 +53,8 @@ public:
     uint32_t unixTime(Millis now) const;
     bool timeValid() const { return timeValid_; }
     bool timeFromGps() const { return timeFromGps_; }
+    // Ora del GPS arrivata da meno di 6 ore: un'ora d'altra provenienza non la sostituisce.
+    bool gpsTimeFresh(Millis now) const { return timeFromGps_ && now - millisAtSync_ < 6 * 3600 * 1000ULL; }
 
     // ---- interfaccia verso la piattaforma ----
     void onReceive(const uint8_t* data, size_t len, const RxInfo& info, Millis now);

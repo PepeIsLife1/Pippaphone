@@ -1,5 +1,8 @@
-// Impostazioni, segnale, aggiornamento del firmware via Wi-Fi, amministrazione della rete.
+// Impostazioni, data e ora, segnale, aggiornamento del firmware via Wi-Fi, amministrazione della rete.
+#include <algorithm>
 #include <cstdio>
+#include <cstring>
+#include <ctime>
 
 #include "app/aggiorna.h"
 #include "app/dati.h"
@@ -14,6 +17,9 @@
 #include "scheda/scheda.h"
 #include "ui/schermate.h"
 #include "ui/widget.h"
+#if TDECK
+#include "app/cuffie.h"
+#endif
 
 namespace ui {
 
@@ -58,11 +64,12 @@ public:
         in_.setFocused(true);
         msg_ = label(body, &font_20, ROSSO(), "");
 #if TDECK
-        lv_obj_t* h = label(body, &font_16, GRIGIO2(), "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
+        lv_obj_t* h = label(body, &font_16, colore(0x808080, 0x404040),
+                            "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
         lv_obj_set_width(h, 300);
         lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP);
 #else
-        label(body, &font_16, GRIGIO2(), "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
+        label(body, &font_16, colore(0x808080, 0x404040), "Cifre: W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0");
 #endif
     }
     bool onKey(Key k, bool pressed) override {
@@ -108,11 +115,220 @@ private:
     lv_obj_t* msg_ = nullptr;
 };
 
+// ================================================================ data e ora
+
+static const char* timeSourceText(app::Rete::TimeSource s) {
+    switch (s) {
+        case app::Rete::TimeSource::GPS: return "dal GPS";
+        case app::Rete::TimeSource::NETWORK: return "dalla rete";
+        case app::Rete::TimeSource::LOCAL: return "a mano";
+        case app::Rete::TimeSource::RESTORED: return "dal telefono";
+        default: return "da impostare";
+    }
+}
+
+// Giorno, mese, anno, ore e minuti: frecce sinistra/destra per scegliere, su/giu' per cambiare, o
+// le cifre dei tasti (W E R = 1 2 3, S D F = 4 5 6, Z X C = 7 8 9, microfono = 0). L'ora messa
+// a mano vale solo per questo telefono e la corregge il GPS appena ce l'ha.
+class SetTime : public Screen {
+public:
+    SetTime() {
+        std::tm tm{};
+        uint32_t t = app::rete().unixTime();
+        // Ora persa (interruttore del T-Deck, batteria scarica): si riparte dall'ultima nota, salvata
+        // ogni 10 minuti, cosi' di solito basta correggere ore e minuti.
+        if (!t) t = app::loadLastTime();
+        if (t >= 1767225600) {  // dal 1/1/2026, come MIN qui sotto
+            const time_t tt = time_t(t);
+            localtime_r(&tt, &tm);
+        } else {
+            // Nessuna ora: si parte dal giorno in cui e' stato compilato il firmware, alle 12.
+            static const char* months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+            char m[4] = {};
+            int d = 1, y = 2026;
+            std::sscanf(__DATE__, "%3s %d %d", m, &d, &y);
+            const char* p = std::strstr(months, m);
+            tm.tm_mon = p ? int(p - months) / 3 : 0;
+            tm.tm_mday = d;
+            tm.tm_year = y - 1900;
+            tm.tm_hour = 12;
+        }
+        f_[0] = tm.tm_mday;
+        f_[1] = tm.tm_mon + 1;
+        f_[2] = std::max(MIN[2], std::min(MAX[2], tm.tm_year + 1900));
+        f_[3] = tm.tm_hour;
+        f_[4] = tm.tm_min;
+    }
+    void build(lv_obj_t* root) override {
+        lv_obj_t* col = column(root, PX(10, 4));
+        lv_obj_set_size(col, W_SCHERMO, H_AREA);
+        header(col, IC_CALENDARIO, "Data e ora", timeSourceText(app::rete().timeSource()));
+        lv_obj_t* body = column(col, PX(12, 6));
+        lv_obj_set_size(body, W_SCHERMO, LV_SIZE_CONTENT);
+        pad(body, PX(6, 2), PX(20, 10), 0, PX(20, 10));
+        lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_t* r1 = row(body, PX(6, 4));
+        lv_obj_set_size(r1, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        cell(r1, 0);
+        label(r1, &mono_28, GRIGIO2(), "/");
+        cell(r1, 1);
+        label(r1, &mono_28, GRIGIO2(), "/");
+        cell(r1, 2);
+        lv_obj_t* r2 = row(body, PX(6, 4));
+        lv_obj_set_size(r2, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        cell(r2, 3);
+        label(r2, &mono_28, GRIGIO2(), ":");
+        cell(r2, 4);
+        day_ = label(body, &font_22, GRIGIO3(), "");
+        note_ = label(body, &font_16, colore(0x808080, 0x404040), noteText());
+        lv_obj_set_width(note_, PX(440, 300));
+        lv_label_set_long_mode(note_, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(note_, LV_TEXT_ALIGN_CENTER, 0);
+        refresh();
+    }
+    // Nota in fondo. T-Deck senza ora: di solito e' stato spento con l'interruttore, che stacca la
+    // batteria. "Spegni" (SYM+spazio tenuto = PWR) c'e' solo col modo raw della tastiera: col ripiego
+    // (firmware vecchio del C3) non c'e'. Il modo si capisce al primo tasto del C3: vedi tick().
+    static const char* noteText() {
+#if TDECK
+        if (app::rete().timeSource() == app::Rete::TimeSource::NONE)
+            return scheda::tastiera().rawMode()
+                       ? "Per non perdere l'ora spegni con SYM+spazio tenuto: l'interruttore stacca la batteria."
+                       : "L'interruttore stacca la batteria e l'ora si perde: per spegnere senza perderla serve il "
+                         "firmware nuovo della tastiera.";
+#endif
+        return "Vale solo per questo telefono: appena il GPS ha l'ora, la corregge.";
+    }
+#if TDECK
+    // Il modo della tastiera puo' arrivare dopo (primo tasto del C3): la nota lo segue.
+    void tick() override {
+        const char* t = noteText();
+        if (note_ && std::strcmp(lv_label_get_text(note_), t) != 0) lv_label_set_text(note_, t);
+    }
+#endif
+    // Carta: riquadri bianchi col bordo nero (blu pieno quello scelto); il bordo prende il posto di
+    // un po' di margine, cosi' le misure restano quelle del tema scuro.
+    void cell(lv_obj_t* parent, int i) {
+        lv_obj_t* c = box(parent);
+        lv_obj_set_size(c, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        radius(c, PX(8, 5));
+        if (temaChiaro()) {
+            lv_obj_set_style_border_width(c, 2, 0);
+            pad(c, PX(2, 0), PX(8, 4), PX(2, 0), PX(8, 4));
+        } else {
+            pad(c, PX(4, 2), PX(10, 6), PX(4, 2), PX(10, 6));
+        }
+        cells_[i] = c;
+        texts_[i] = label(c, &mono_28, BIANCO(), "");
+    }
+    static int daysIn(int month, int year) {
+        static const int D[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        const bool leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+        return month == 2 && leap ? 29 : D[(month + 11) % 12];
+    }
+    void refresh() {
+        for (int i = 0; i < 5; i++) {
+            char b[8];
+            snprintf(b, sizeof(b), i == 2 ? "%04d" : "%02d", f_[i]);
+            lv_label_set_text(texts_[i], b);
+            const bool on = i == sel_;
+            fill(cells_[i], on ? AMBRA() : SUPERFICIE());
+            if (temaChiaro()) lv_obj_set_style_border_color(cells_[i], on ? AMBRA() : INCHIOSTRO(), 0);
+            lv_obj_set_style_text_color(texts_[i], on ? NERO() : BIANCO(), 0);
+        }
+        lv_label_set_text(day_, dateLong(toUnix()).c_str());
+    }
+    // Il giorno si scrive fino a 31 prima di mese e anno (31/12 partendo da novembre): l'ultimo giorno
+    // del mese si applica solo qui, per la data mostrata sotto e per quella salvata (31/11 -> 30/11).
+    uint32_t toUnix() const {
+        std::tm tm{};
+        tm.tm_mday = std::min(f_[0], daysIn(f_[1], f_[2]));
+        tm.tm_mon = f_[1] - 1;
+        tm.tm_year = f_[2] - 1900;
+        tm.tm_hour = f_[3];
+        tm.tm_min = f_[4];
+        tm.tm_isdst = -1;  // ora legale decisa dal fuso (CET/CEST)
+        const time_t t = mktime(&tm);
+        return t > 0 ? uint32_t(t) : 0;
+    }
+    bool onKey(Key k, bool pressed) override {
+        if (!pressed) return false;
+        switch (k) {
+            case Key::LEFT:
+            case Key::RIGHT:
+                clampAll();
+                sel_ = (sel_ + (k == Key::RIGHT ? 1 : 4)) % 5;
+                typed_ = 0;
+                break;
+            case Key::UP:
+            case Key::DOWN: {
+                const int lo = MIN[sel_], hi = MAX[sel_], n = hi - lo + 1;
+                f_[sel_] = lo + (f_[sel_] - lo + (k == Key::UP ? 1 : n - 1)) % n;
+                typed_ = 0;
+                break;
+            }
+            case Key::OK:
+            case Key::ENTER: save(); return true;
+            case Key::BACK: return false;  // indietro senza cambiare
+            default: {
+                const uint32_t c = k == Key::ZERO_MIC ? '0' : scheda::altCharOf(k);
+                if (c < '0' || c > '9') return false;
+                type(int(c - '0'));
+                break;
+            }
+        }
+        refresh();
+        return true;
+    }
+    // Cifre scritte: due per campo (quattro per l'anno), poi si passa al campo dopo.
+    void type(int d) {
+        const int width = sel_ == 2 ? 4 : 2;
+        f_[sel_] = typed_ == 0 ? d : f_[sel_] * 10 + d;
+        if (++typed_ < width) return;
+        f_[sel_] = std::max(MIN[sel_], std::min(MAX[sel_], f_[sel_]));
+        typed_ = 0;
+        if (sel_ < 4) sel_++;
+    }
+    // Valori a meta' (cifre scritte solo in parte) riportati nei limiti.
+    void clampAll() {
+        for (int i = 4; i >= 0; i--) f_[i] = std::max(MIN[i], std::min(MAX[i], f_[i]));
+    }
+    void save() {
+        clampAll();
+        const uint32_t t = toUnix();
+        if (!t) return;
+        if (app::rete().setManualTime(t)) toast("Data e ora impostate", dateLong(t) + " · " + timeHM(t), VERDE());
+        else toast("L'ora arriva dal GPS", "È già quella giusta: non serve impostarla", GRIGIO3());
+        pop();
+    }
+    std::vector<Hint> hints() override { return {{"NAV", "scegli e cambia"}, {"OK", "salva"}, {"BACK", "annulla"}}; }
+#if TDECK
+    bool typesDigits() const override { return true; }
+#endif
+
+private:
+    // Dal 2026: un'ora prima l'orologio del chip non la tiene nei riavvii (vedi Rete::restoreClock).
+    static constexpr int MIN[5] = {1, 1, 2026, 0, 0};
+    static constexpr int MAX[5] = {31, 12, 2079, 23, 59};
+    int f_[5] = {1, 1, 2026, 12, 0};
+    int sel_ = 0, typed_ = 0;
+    lv_obj_t* cells_[5] = {};
+    lv_obj_t* texts_[5] = {};
+    lv_obj_t* day_ = nullptr;
+    lv_obj_t* note_ = nullptr;
+};
+
+Screen* makeSetTime() { return new SetTime(); }
+
 // ================================================================ impostazioni
 
 class Settings : public Screen {
 public:
-    enum Row { RING, VOLUME, VIBRA, BRIGHT, SCREEN, KEYLIGHT, PIN, POWER, NUMBER, ADMIN, OTA, INFO, RESET };
+    enum Row { RING, VOLUME, VIBRA, BRIGHT, THEME, SCREEN, KEYLIGHT, DATETIME, PIN, POWER, NUMBER, ADMIN, OTA, INFO, RESET,
+#if TDECK
+               CUFFIE, VOLUME_CUFFIE,  // cuffie USB-C (in fondo all'elenco: i numeri delle altre restano quelli)
+#endif
+    };
 
     void build(lv_obj_t* root) override {
         lv_obj_t* col = column(root, 0);
@@ -123,12 +339,18 @@ public:
         values_.clear();
         add(RING, IC_VOLUME, "Suoneria");
         add(VOLUME, IC_VOLUME, "Volume");
+#if TDECK
+        add(CUFFIE, IC_CUFFIE, "Cuffie USB-C");
+        add(VOLUME_CUFFIE, IC_VOLUME, "Volume cuffie");
+#endif
 #if !TDECK
         add(VIBRA, IC_TELEFONO, "Vibrazione");  // il T-Deck non ha il motore della vibrazione
 #endif
         add(BRIGHT, IC_INFO, "Luminosità");
+        add(THEME, IC_TEMA, "Tema");
         add(SCREEN, IC_OROLOGIO, "Spegni lo schermo dopo");
         add(KEYLIGHT, IC_INFO, "Luce della tastiera");
+        add(DATETIME, IC_CALENDARIO, "Data e ora");
         add(PIN, IC_LUCCHETTO, "Blocco con PIN");
         add(POWER, IC_TORRE, "Potenza radio");
         add(NUMBER, IC_PERSONA, "Il mio numero");
@@ -146,6 +368,17 @@ public:
         List::text(row, &font_22, red ? ROSSO() : BIANCO(), text, true);
         values_.push_back(List::text(row, &font_20, AMBRA(), ""));
         rows_.push_back(r);
+#if TDECK
+        if (r == CUFFIE) {
+            // Il nome delle cuffie (fino a 32 caratteri): mezza riga, coi puntini, allineato a destra come gli altri
+            // valori. Larghezza fissa: con quella del contenuto LVGL mette i puntini prima di sapere quanto e' larga
+            // l'etichetta, e resterebbero solo "...".
+            lv_obj_t* v = values_.back();
+            lv_obj_set_width(v, W_SCHERMO / 2);
+            lv_obj_set_style_text_align(v, LV_TEXT_ALIGN_RIGHT, 0);
+            unaRiga(v);
+        }
+#endif
     }
     std::string value(Row r) {
         const app::Settings s = app::dati().settings();
@@ -154,13 +387,19 @@ public:
             case VOLUME: return std::to_string(s.volume) + "/10";
             case VIBRA: return s.vibration ? "sì" : "no";
             case BRIGHT: return std::to_string(s.brightness) + "%";
+            case THEME: return s.temaScuro ? "Scuro" : "Carta";
             case SCREEN: return s.screenOffS < 60 ? std::to_string(s.screenOffS) + " s" : std::to_string(s.screenOffS / 60) + " min";
             case KEYLIGHT: return s.keyLight ? "sì" : "no";
+            case DATETIME: return timeSourceText(app::rete().timeSource());
             case PIN: return s.pin.empty() ? "no" : "attivo";
             case POWER:
                 return s.txPower ? std::to_string(s.txPower) + " dBm"
                                  : "auto (" + std::to_string(app::rete().power()) + " dBm)";
             case NUMBER: return std::to_string(app::rete().number());
+#if TDECK
+            case CUFFIE: return app::cuffie().testo();
+            case VOLUME_CUFFIE: return std::to_string(s.volumeCuffie) + "/10";
+#endif
             default: return "";
         }
     }
@@ -196,6 +435,18 @@ public:
                 app::dati().setSettings(s);
                 scheda::display().backlight(s.brightness);
                 break;
+            case THEME: {
+                // Carta (chiaro, si legge al sole) o Scuro (la grafica di prima, per la notte).
+                // OK cambia; destra = Scuro, sinistra = Carta: un tasto tenuto (W A S D si ripetono) o il
+                // trackball (fino a 3 passi per lettura) non fanno lampeggiare il tema ne' riscrivono
+                // le impostazioni a ogni passo.
+                const bool scuro = dir ? dir > 0 : !s.temaScuro;
+                if (scuro == s.temaScuro) return;
+                s.temaScuro = scuro;
+                app::dati().setSettings(s);
+                applicaTema();  // ricostruisce anche questa schermata (stessa riga scelta)
+                return;
+            }
             case SCREEN: {
                 int i = 0;
                 while (i < 5 && SCREEN_OFF[i] != s.screenOffS) i++;
@@ -209,6 +460,9 @@ public:
                 app::dati().setSettings(s);
                 scheda::keyboardLight(s.keyLight ? 60 : 0);
                 break;
+            case DATETIME:
+                if (!dir) push(makeSetTime());
+                return;
             case PIN:
                 if (!dir) push(new PinEdit());
                 return;
@@ -248,6 +502,24 @@ public:
                         esp_restart();
                     });
                 return;
+#if TDECK
+            case CUFFIE: {
+                // Spente: prima la domanda; accese (o in attesa): tornano subito al computer. Mentre tornano
+                // (SPEGNIMENTO) la riga dice gia' "spente" e OK non fa niente. La riga cambia con Ev::CUFFIE
+                // (onEvent).
+                if (dir) return;
+                const app::Cuffie::Stato st = app::cuffie().stato();
+                if (st == app::Cuffie::Stato::SPEGNIMENTO) return;  // sta gia' tornando al computer
+                if (st == app::Cuffie::Stato::SPENTE) accendiCuffie();
+                else app::cuffie().spegni();
+                return;
+            }
+            case VOLUME_CUFFIE:
+                // Niente clic: andrebbe sulla cassa, non nelle cuffie.
+                if (!dir) return;
+                cambiaVolumeCuffie(dir);
+                break;
+#endif
         }
         refresh();
     }
@@ -288,6 +560,11 @@ public:
         return false;
     }
     std::vector<Hint> hints() override { return {{"OK", "cambia"}, {"</>", "regola"}, {"BACK", "indietro"}}; }
+#if TDECK
+    void onEvent(const app::Event& e) override {
+        if (e.type == app::Ev::CUFFIE) refresh();  // "in attesa", il nome delle cuffie, "spente"...
+    }
+#endif
 
 private:
     List list_;
@@ -297,6 +574,32 @@ private:
 };
 
 Screen* makeSettings() { return new Settings(); }
+
+#if TDECK
+// ================================================================ cuffie USB-C
+
+void accendiCuffie() {
+    ask("Cuffie USB-C",
+        "La porta USB-C passa alle cuffie. Finché sono attive il computer non vede il telefono: niente log, "
+        "pagina del flasher o mappe via cavo. Serve un adattatore OTG alimentato a 5 V. Tornano al computer da "
+        "sole dopo 2 minuti senza cuffie, al riavvio, o da qui.",
+        {"Attiva", "Annulla"}, [](int i) {
+            if (i != 0 || app::cuffie().accendi()) return;  // accese: il resto lo dicono gli Ev::CUFFIE
+            const app::Cuffie::Errore e = app::cuffie().errore();
+            if (e == app::Cuffie::Errore::COMPUTER)
+                toast("Scollega il computer", "Le cuffie usano la stessa porta USB-C", ROSSO());
+            else
+                toast("Cuffie USB-C non attive", app::Cuffie::testoErrore(e), ROSSO());
+        });
+}
+
+void cambiaVolumeCuffie(int dir) {
+    app::Settings s = app::dati().settings();
+    s.volumeCuffie = uint8_t(std::max(0, std::min(10, s.volumeCuffie + dir)));
+    app::dati().setSettings(s);
+    app::cuffie().setVolume(s.volumeCuffie);
+}
+#endif
 
 // ================================================================ segnale
 
@@ -328,11 +631,18 @@ public:
         lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
         lv_obj_t* bars = box(r);
         lv_obj_set_size(bars, PX(50, 30), PX(40, 28));
+        // Tacche del segnale. Carta: piene d'inchiostro quelle accese, solo il contorno le altre.
         for (int i = 0; i < 4; i++) {
             lv_obj_t* b = box(bars);
             lv_obj_set_size(b, PX(9, 6), PX(10 + i * 10, 7 + i * 7));
             lv_obj_set_pos(b, PX(i * 13, i * 8), PX(30 - i * 10, 21 - i * 7));
-            fill(b, i < s.bars ? VERDE() : GRIGIO1());
+            if (temaChiaro()) {
+                fill(b, i < s.bars ? INCHIOSTRO() : NERO());
+                lv_obj_set_style_border_width(b, 1, 0);
+                lv_obj_set_style_border_color(b, INCHIOSTRO(), 0);
+            } else {
+                fill(b, i < s.bars ? VERDE() : GRIGIO1());
+            }
         }
         lv_obj_t* t = column(r, 0);
         grow(t);
@@ -347,7 +657,7 @@ public:
             label(t, &font_20, GRIGIO3(), "i messaggi partono ma nessuno li inoltra");
         }
         const auto reps = app::rete().repeaters();
-        label(top_, &font_16, GRIGIO2(), (std::to_string(reps.size()) + " ripetitori sentiti").c_str());
+        label(top_, &font_16, colore(0x808080, 0x404040), (std::to_string(reps.size()) + " ripetitori sentiti").c_str());
         for (const auto& rp : reps) {
             lv_obj_t* rr = row(list_, PX(10, 6));
             lv_obj_set_size(rr, lv_pct(100), PX(40, 24));
@@ -358,7 +668,7 @@ public:
             snprintf(b, sizeof(b), "%d dBm  SNR %.1f", rp.rssi, double(rp.snr));
             lv_obj_t* l = label(rr, &font_20, GRIGIO3(), comma(b).c_str());
             grow(l);
-            label(rr, &font_18, GRIGIO2(), agoText(rp.agoS).c_str());
+            label(rr, &font_18, colore(0x808080, 0x404040), agoText(rp.agoS).c_str());
         }
         const app::Settings st = app::dati().settings();
         char f[96];
@@ -366,7 +676,7 @@ public:
                  app::rete().power(),
                  st.txPower ? "" : " (auto)", comma(std::to_string(app::rete().airtimeMs() / 1000)).c_str());
         label(foot_, &font_18, GRIGIO3(), f);
-        label(foot_, &font_16, app::rete().radioOk() ? GRIGIO2() : ROSSO(),
+        label(foot_, &font_16, app::rete().radioOk() ? colore(0x808080, 0x404040) : ROSSO(),
               app::rete().radioOk() ? (app::rete().timeValid() ? "Radio ok · ora sincronizzata" : "Radio ok · ora non ancora sincronizzata")
                                     : "Radio LoRa non risponde!");
     }
@@ -386,8 +696,12 @@ Screen* makeSignal() { return new Signal(); }
 
 class Ota : public Screen {
 public:
-    Ota() { app::otaStart(app::rete().number()); }
-    ~Ota() override { app::otaStop(); }
+    // La rete si spegne uscendo solo se questa schermata la teneva: se non e' partita, uscendo non
+    // si deve spegnere quella di un altro (il comando USB @OTA!).
+    Ota() : mia_(app::otaStart(app::rete().number())) {}
+    ~Ota() override {
+        if (mia_) app::otaStop();
+    }
     void build(lv_obj_t* root) override {
         const app::OtaStatus st = app::otaStatus();
         lv_obj_t* col = column(root, PX(8, 3));
@@ -404,27 +718,44 @@ public:
             grow(l);
             lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
         };
-        step("1", "Col computer collegati alla rete Wi-Fi:");
-        lv_obj_t* box1 = column(body, PX(2, 1));
-        lv_obj_set_size(box1, PX(440, 300), LV_SIZE_CONTENT);
-        fill(box1, GRIGIO1());
-        radius(box1, PX(10, 6));
-        pad(box1, PX(8, 4), PX(14, 8), PX(10, 4), PX(14, 8));
-        label(box1, &mono_20, BIANCO(), st.ssid.c_str());
-        label(box1, &font_16, GRIGIO3(), "password");
-        label(box1, &mono_28, AMBRA(), st.password.c_str());
-        step("2", "Apri nel browser http://" + st.address);
-        step("3", "Scegli il file pippaphone.bin e premi Carica");
+        if (st.active) {
+            step("1", "Col computer collegati alla rete Wi-Fi:");
+            lv_obj_t* box1 = column(body, PX(2, 1));
+            lv_obj_set_size(box1, PX(440, 300), LV_SIZE_CONTENT);
+            superficie(box1);  // Carta: bianco col bordo nero, che prende il posto di un po' di margine
+            radius(box1, PX(10, 6));
+            if (temaChiaro()) pad(box1, PX(6, 2), PX(12, 6), PX(8, 2), PX(12, 6));
+            else pad(box1, PX(8, 4), PX(14, 8), PX(10, 4), PX(14, 8));
+            label(box1, &mono_20, BIANCO(), st.ssid.c_str());
+            label(box1, &font_16, GRIGIO3(), "password");
+            label(box1, &mono_28, AMBRA(), st.password.c_str());
+            step("2", "Apri nel browser http://" + st.address);
+            step("3", "Scegli il file pippaphone.bin e premi Carica");
+        } else {
+            // Il Wi-Fi non e' partito: niente nome e password di una rete che non c'e'.
+            step("!", "La rete Wi-Fi del telefono non è partita. Esci e riprova; se succede ancora, il "
+                      "motivo è qui sotto e nel monitor seriale.");
+        }
         status_ = label(body, &font_22b, BIANCO(), "");
+        lv_obj_set_width(status_, PX(440, 300));
+        lv_label_set_long_mode(status_, LV_LABEL_LONG_WRAP);
+        // Barra: Carta bianca col bordo nero e il blu dentro il bordo.
+        const bool carta = temaChiaro();
+        const int h = carta ? PX(16, 10) : PX(12, 8);
         prog_ = lv_bar_create(body);
         lv_obj_remove_style_all(prog_);
-        lv_obj_set_size(prog_, PX(440, 300), PX(12, 8));
-        lv_obj_set_style_bg_color(prog_, GRIGIO1(), 0);
+        lv_obj_set_size(prog_, PX(440, 300), h);
+        lv_obj_set_style_bg_color(prog_, carta ? NERO() : GRIGIO1(), 0);
         lv_obj_set_style_bg_opa(prog_, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(prog_, PX(6, 4), 0);
-        lv_obj_set_style_bg_color(prog_, VERDE(), LV_PART_INDICATOR);
+        lv_obj_set_style_radius(prog_, h / 2, 0);
+        if (carta) {
+            lv_obj_set_style_border_width(prog_, 2, 0);
+            lv_obj_set_style_border_color(prog_, INCHIOSTRO(), 0);
+            lv_obj_set_style_pad_all(prog_, 2, 0);
+        }
+        lv_obj_set_style_bg_color(prog_, carta ? AMBRA() : VERDE(), LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(prog_, LV_OPA_COVER, LV_PART_INDICATOR);
-        lv_obj_set_style_radius(prog_, PX(6, 4), LV_PART_INDICATOR);
+        lv_obj_set_style_radius(prog_, carta ? h / 2 - 2 : PX(6, 4), LV_PART_INDICATOR);
         lv_bar_set_range(prog_, 0, 1000);
         update();
     }
@@ -456,11 +787,19 @@ public:
     bool capturesEnd() const override { return app::otaStatus().total > 0; }
 
 private:
+    const bool mia_;  // otaStart() ha detto si': tocca a noi chiamare otaStop()
     lv_obj_t *status_ = nullptr, *prog_ = nullptr;
     int doneTicks_ = 0;
 };
 
-Screen* makeOta() { return new Ota(); }
+Screen* makeOta() {
+#if TDECK
+    // Cuffie USB-C accese: prima la porta torna al computer (cuffie e Wi-Fi non stanno insieme nella RAM
+    // interna; otaStart le rifiuterebbe). L'avviso "Cuffie USB-C spente" arriva con Ev::CUFFIE.
+    if (app::cuffie().accese()) app::cuffie().spegniEAspetta();
+#endif
+    return new Ota();
+}
 
 // ================================================================ amministrazione
 
@@ -476,7 +815,7 @@ public:
         underline(top);
         label(top, &font_16, GRIGIO3(), "Il tuo codice (il telefono nuovo mostra lo stesso)");
         label(top, &mono_28, AMBRA(), app::rete().myCode().c_str());
-        label(top, &font_16, GRIGIO2(), "Telefoni nuovi qui vicino, che chiedono un numero:");
+        label(top, &font_16, colore(0x808080, 0x404040), "Telefoni nuovi qui vicino, che chiedono un numero:");
         list_.create(col, W_SCHERMO, H_AREA - H_TITOLO - PX(96, 64));
         items_ = app::rete().hellos();
         for (const auto& h : items_) {
@@ -486,7 +825,7 @@ public:
             List::text(r, &font_18, GRIGIO3(), std::to_string(h.rssi) + " dBm");
         }
         if (items_.empty()) {
-            lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
+            lv_obj_t* t = label(list_.obj(), &font_20, colore(0x808080, 0x404040),
                                 "Nessuno. Accendi il telefono nuovo vicino a questo: sul suo schermo compare il "
                                 "suo codice, che comparirà anche qui.");
             lv_obj_set_width(t, PX(440, 300));

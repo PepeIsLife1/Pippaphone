@@ -18,6 +18,7 @@
 #include <cstring>
 
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -87,12 +88,16 @@ bool Tastiera::begin() {
     io.pull_up_en = GPIO_PULLUP_ENABLE;
     io.intr_type = GPIO_INTR_ANYEDGE;
     gpio_config(&io);
+    // Dopo il risveglio col trackball il pin e' ancora dell'RTC: torna un GPIO normale.
+    rtc_gpio_deinit(PIN_TB_CLICK);
     gpio_config_t click = {};
     click.pin_bit_mask = 1ULL << PIN_TB_CLICK;
     click.mode = GPIO_MODE_INPUT;
     click.pull_up_en = GPIO_PULLUP_ENABLE;
     click.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&click);
+    // Il clic che ha riacceso il telefono e' ancora premuto: non conta come OK.
+    clickDown_ = clickIgnora_ = gpio_get_level(PIN_TB_CLICK) == 0;
     gpio_install_isr_service(ESP_INTR_FLAG_IRAM);  // se e' gia' installato l'errore e' innocuo
     for (int i = 0; i < 4; i++) gpio_isr_handler_add(TB_PINS[i], tbIsr, reinterpret_cast<void*>(intptr_t(i)));
 
@@ -321,7 +326,8 @@ void Tastiera::serviceTrackball() {
     if (down != clickDown_ && now - clickChangeMs_ >= CLICK_DEBOUNCE_MS) {
         clickDown_ = down;
         clickChangeMs_ = now;
-        push(Key::OK, down);
+        if (clickIgnora_) clickIgnora_ = down;  // si riprende dal clic dopo
+        else push(Key::OK, down);
     }
     for (int i = 0; i < 4; i++) {
         const int32_t edges = g_tb[i].load(std::memory_order_relaxed);

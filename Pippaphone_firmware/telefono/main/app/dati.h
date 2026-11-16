@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "pippanet/phone.h"
+#include "sdkconfig.h"  // Settings ha un campo solo del T-Deck: deve vederlo uguale ogni file
 
 namespace app {
 
@@ -55,6 +56,10 @@ struct Settings {
     std::string pin;           // vuoto = nessun blocco
     uint16_t screenOffS = 30;
     int8_t txPower = 0;        // dBm, 0 = automatica
+    bool temaScuro = false;    // false = Carta (chiaro), true = Scuro (la grafica di prima)
+#if CONFIG_SCHEDA_TDECK_PLUS
+    uint8_t volumeCuffie = 4;  // cuffie USB-C 0..10 (app::Cuffie::VOLUME_INIZIALE); la PCB non le ha
+#endif
 };
 
 class Dati {

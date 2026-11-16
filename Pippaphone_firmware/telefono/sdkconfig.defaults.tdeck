@@ -2,5 +2,31 @@
 # ESP32-S3FN16R8: 16 MB di flash e 8 MB di PSRAM octal, come la PCB: partizioni uguali.
 CONFIG_SCHEDA_TDECK_PLUS=y
 
+# Il task main fa tutto l'avvio (microSD, chiavi, radio, schermate): con 8 KB sul T-Deck vero
+# andava in stack overflow e si riavviava a ciclo con lo schermo nero.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
 # Mappe offline: tile PNG dalla microSD.
 CONFIG_LV_USE_LODEPNG=y
+
+# Sveglie a telefono spento: in sonno profondo l'ora la conta l'orologio lento del chip. L'oscillatore
+# da 17,5 MHz diviso per 256 sbaglia meno con la temperatura di quello RC da 136 kHz (circa 5 uA in piu').
+CONFIG_RTC_CLK_SRC_INT_8MD256=y
+
+# Aggiornamento via Wi-Fi: con i valori per la PSRAM (16 buffer fissi da 1,6 KB nella RAM interna)
+# a Wi-Fi acceso restavano 13 KB di RAM interna e durante il caricamento si scendeva a 4 KB. Con i
+# valori normali dell'ESP32-S3 senza PSRAM ne restano circa 10 KB in piu'; il caricamento e' un po'
+# piu' lento, ma sono 2 MB una volta ogni tanto.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=10
+CONFIG_ESP_WIFI_RX_BA_WIN=6
+
+# Cuffie USB-C (componenti/usb_audio, solo T-Deck): la USB host di ESP-IDF.
+# - FIFO spostata sull'uscita periodica: con "Balanced" i pacchetti isocroni in uscita arrivano a 128 byte
+#   (non i 192 dell'aiuto del Kconfig, che e' vecchio), troppo poco anche per 48 kHz 16 bit stereo (192).
+#   Cosi' sono 600 byte; in ingresso restano 128 byte, che bastano a EP0 e al feedback.
+# - Descrittori di configurazione fino a 1024 byte (cuffie e adattatori ne hanno 389-473; con 256, il
+#   valore normale, l'enumerazione fallisce). Costa circa 1 KB di RAM interna solo con le cuffie accese.
+# Sono simboli nuovi: valgono anche per un build-tdeck/sdkconfig che c'era gia', purche' ci siano qui
+# prima della prima compilazione col componente usb.
+CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT=y
+CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=1024

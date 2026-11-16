@@ -2,6 +2,9 @@
 
 #include "esp_timer.h"
 #include "pippanet/charset.h"
+#if TDECK
+#include "scheda/gnss.h"
+#endif
 
 namespace ui {
 
@@ -278,7 +281,8 @@ void TextInput::openSym() {
     while (lv_obj_get_parent(area) && lv_obj_get_parent(lv_obj_get_parent(area))) area = lv_obj_get_parent(area);
     sym_ = column(area, PX(8, 3));
     lv_obj_add_flag(sym_, LV_OBJ_FLAG_FLOATING);
-    lv_obj_set_size(sym_, PX(452, 304), LV_SIZE_CONTENT);
+    // Carta: largo come la casella del testo, cosi' il bordo nero cade sui bordi dei fumetti.
+    lv_obj_set_size(sym_, temaChiaro() ? PX(456, 308) : PX(452, 304), LV_SIZE_CONTENT);
     lv_obj_align(sym_, LV_ALIGN_BOTTOM_MID, 0, PX(-78, -40));
     lv_obj_add_event_cb(
         sym_,
@@ -288,9 +292,11 @@ void TextInput::openSym() {
             self->symCells_.clear();
         },
         LV_EVENT_DELETE, this);
-    fill(sym_, GRIGIO1());
+    superficie(sym_);
     radius(sym_, PX(12, 8));
-    pad(sym_, PX(10, 6), PX(12, 8), PX(12, 6), PX(12, 8));
+    // Carta: il bordo da 2 si mangia 2 pixel di margine per lato, cosi' il riquadro resta grande uguale.
+    const int b = temaChiaro() ? 2 : 0;
+    pad(sym_, PX(10, 6) - b, PX(12, 8) - b, PX(12, 6) - b, PX(12, 8) - b);
     lv_obj_t* head = row(sym_, 0);
     lv_obj_set_width(head, lv_pct(100));
     lv_obj_set_height(head, LV_SIZE_CONTENT);
@@ -337,11 +343,16 @@ lv_obj_t* header(lv_obj_t* parent, const char* icon, const std::string& title, c
     lv_obj_set_size(h, lv_pct(100), H_TITOLO);
     pad(h, 0, PX(14, 8), 0, PX(14, 8));
     underline(h);
+    if (temaChiaro()) {  // Carta: riga nera decisa sotto il titolo
+        lv_obj_set_style_border_color(h, INCHIOSTRO(), 0);
+        lv_obj_set_style_border_width(h, 2, 0);
+    }
     if (icon) label(h, &icone_22, iconColor, icon);
     lv_obj_t* t = label(h, &font_26b, BIANCO(), title.c_str());
     grow(t);
     unaRiga(t);
-    if (!right.empty()) label(h, &font_16, GRIGIO2(), right.c_str());
+    // Carta: grigio scuro, il #808080 su bianco si legge male al sole.
+    if (!right.empty()) label(h, &font_16, temaChiaro() ? GRIGIO3() : GRIGIO2(), right.c_str());
     return h;
 }
 
@@ -350,6 +361,15 @@ lv_obj_t* avatar(lv_obj_t* parent, uint16_t number, const std::string& name, int
     lv_obj_set_size(a, size, size);
     radius(a, LV_RADIUS_CIRCLE);
     fill(a, avatarColor(number));
+    if (temaChiaro()) {  // Carta, riga scelta (blu): anello bianco, se no un #004080 sparisce nel blu
+        lv_obj_set_style_border_width(a, 2, LV_STATE_CHECKED);
+        lv_obj_set_style_border_color(a, SU_COLORE(), LV_STATE_CHECKED);
+        for (lv_obj_t* p = parent; p; p = lv_obj_get_parent(p))
+            if (lv_obj_has_state(p, LV_STATE_CHECKED)) {  // riga gia' scelta (la prima)
+                lv_obj_add_state(a, LV_STATE_CHECKED);
+                break;
+            }
+    }
     std::string ini;
     if (!name.empty() && !(name[0] >= '0' && name[0] <= '9')) {
         // Prima lettera (anche accentata: fino al prossimo carattere UTF-8).
@@ -359,7 +379,7 @@ lv_obj_t* avatar(lv_obj_t* parent, uint16_t number, const std::string& name, int
     } else {
         ini = "#";
     }
-    lv_obj_t* l = label(a, size >= PX(70, 46) ? &font_32b : &font_22b, BIANCO(), ini.c_str());
+    lv_obj_t* l = label(a, size >= PX(70, 46) ? &font_32b : &font_22b, SU_COLORE(), ini.c_str());
     lv_obj_center(l);
     return a;
 }
@@ -369,5 +389,24 @@ void underline(lv_obj_t* o) {
     lv_obj_set_style_border_color(o, GRIGIO1(), 0);
     lv_obj_set_style_border_width(o, 1, 0);
 }
+
+#if TDECK
+// ---------------------------------------------------------------- il mio GPS (T-Deck)
+
+FaseGps faseGps() {
+    scheda::Gnss& g = scheda::gnss();
+    if (g.fix().valid) return FaseGps::FIX;  // anche "spento" se l'u-blox ignora il PMREQ: la posizione e' vera
+    if (!g.powered()) return FaseGps::SPENTO;
+    return g.silenzioMs() > 5000 ? FaseGps::MUTO : FaseGps::CERCA;
+}
+
+std::string sentoGps(bool max) {
+    const scheda::Fix f = scheda::gnss().fix();
+    if (!f.inVista) return "nessun satellite in vista";
+    std::string t = "ne sento " + std::to_string(f.conSegnale) + " su " + std::to_string(f.inVista) + " in vista";
+    if (max && f.snrMax) t += " · max " + std::to_string(f.snrMax) + " dB";
+    return t;
+}
+#endif
 
 }  // namespace ui

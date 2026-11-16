@@ -103,6 +103,13 @@ struct Recorder : pn::PhoneListener {
         offerAdmin = a;
     }
     void onProvisionHello(uint64_t, const pn::ProvHello& h, const pn::RxInfo&) override { hellos.push_back(h); }
+    // Sfide via radio.
+    std::vector<std::pair<pn::Addr, std::vector<uint8_t>>> games;
+    std::map<uint32_t, pn::Delivery> gameDelivery;
+    void onGame(pn::Addr from, uint32_t, const uint8_t* data, size_t len) override {
+        games.push_back({from, std::vector<uint8_t>(data, data + len)});
+    }
+    void onGameDelivery(pn::Addr, uint32_t id, pn::Delivery d) override { gameDelivery[id] = d; }
 };
 
 struct Transmission {

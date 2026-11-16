@@ -27,6 +27,9 @@ struct RadioConfig {
     int rxEn = -1, txEn = -1;            // moduli con switch RF comandato a parte (es. Ebyte E22)
     float currentLimitMa = 140.0f;
     int8_t maxPowerDbm = 22;
+    // Turno sul bus SPI condiviso, prima e dopo ogni transazione (vedi EspHal::setBusTurn).
+    void (*busTake)() = nullptr;
+    void (*busGive)() = nullptr;
 };
 
 class RadioLink {

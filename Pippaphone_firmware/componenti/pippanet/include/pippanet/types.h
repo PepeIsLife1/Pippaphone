@@ -38,6 +38,7 @@ enum class Type : uint8_t {
     POS_RESP = 0x08,      // posizione o rifiuto, cifrata
     SOS = 0x09,           // SOS con posizione, cifrato, un pacchetto per contatto
     GROUP_INVITE = 0x0A,  // invito a un gruppo (chiave e membri), cifrato
+    GAME = 0x0B,          // mossa di una sfida via radio (tris, battaglia navale), cifrata, con conferma
     BEACON = 0x10,        // "ci sono" ogni 5 minuti, non ripetuto
     PROV_HELLO = 0x11,    // telefono nuovo senza numero, non ripetuto
     PROV_CERT = 0x12,     // l'amministratore assegna un numero, non ripetuto
@@ -80,6 +81,7 @@ inline bool isPairwise(Type t) {
         case Type::POS_RESP:
         case Type::SOS:
         case Type::GROUP_INVITE:
+        case Type::GAME:
         case Type::VOICE_REQ:
         case Type::VOICE_ACCEPT:
         case Type::VOICE_DATA:

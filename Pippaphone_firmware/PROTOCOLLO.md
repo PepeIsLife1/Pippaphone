@@ -61,6 +61,7 @@ riusano valori già usati (servono anche come nonce).
 | 0x08 | `POS_RESP`: posizione o rifiuto | coppia | normale |
 | 0x09 | `SOS` | coppia | **massima** |
 | 0x0A | `GROUP_INVITE`: chiave e membri del gruppo | coppia | normale |
+| 0x0B | `GAME`: mossa di una sfida (tris, battaglia navale) | coppia | normale |
 | 0x10 | `BEACON`: "ci sono", ora, batteria | — | bassa, non ripetuto |
 | 0x11 | `PROV_HELLO`: telefono nuovo chiede un numero | — | bassa, non ripetuto |
 | 0x12 | `PROV_CERT`: l'amministratore assegna il numero | firmato | non ripetuto |
@@ -131,10 +132,10 @@ messaggi, infine beacon.
 
 ## Affidabilità
 
-- `DM_TEXT`, `POS_REQ`, `POS_RESP`, `SOS` e `GROUP_INVITE` chiedono conferma (`DM_ACK`). Senza conferma si ritrasmette fino a **4 volte**, dalla seconda in flood
+- `DM_TEXT`, `POS_REQ`, `POS_RESP`, `SOS`, `GROUP_INVITE` e `GAME` chiedono conferma (`DM_ACK`). Senza conferma si ritrasmette fino a **4 volte**, dalla seconda in flood
   forzato; il tempo di attesa dipende dal tempo in aria del pacchetto. Dopo 4 tentativi il
   messaggio diventa **"Non raggiungibile"**.
-- `DM_TEXT` e `GROUP_INVITE`, prima di arrendersi, fanno **un altro giro di 4 tentativi 3,5
+- `DM_TEXT`, `GROUP_INVITE` e `GAME`, prima di arrendersi, fanno **un altro giro di 4 tentativi 3,5
   minuti dopo** (stato "riprovo più tardi"): chi è in chiamata, o dietro un ripetitore in
   chiamata, non sente i messaggi per al massimo 3 minuti. Se nel frattempo si sente un pacchetto
   di quel telefono, il giro parte subito. Stesso id del messaggio: se il primo era arrivato e
@@ -241,8 +242,71 @@ riprova per una quarantina di secondi, poi "riprovo più tardi", e 3,5 minuti do
 chiamata è finita per forza) fa un altro giro. I messaggi scritti da chi è in chiamata partono
 dopo. Un SOS chiude la chiamata.
 
+## Sfide via radio (`GAME`)
+
+Dal 14 novembre 2026: tris e battaglia navale contro un contatto, una partita alla volta. Ogni
+mossa è un pacchetto `GAME` cifrato con la chiave della coppia, con conferma e gli stessi
+tentativi di un SMS (anche il giro 3,5 minuti dopo). I ripetitori lo ripetono come gli altri
+pacchetti senza leggerlo: non serve aggiornarli. Un telefono col firmware vecchio lo ignora.
+
+Contenuto (al massimo 64 byte; lo interpreta l'applicazione, `telefono/main/app/giochi.h`):
+gioco (1 tris, 2 battaglia navale), tipo, id della partita (2 byte), poi i dati del tipo:
+
+| Tipo | Dati |
+|---|---|
+| 1 `INVITO` | nessuno: chi invita comincia (nel tris è la X) |
+| 2 `ACCETTO` | nessuno (nella battaglia: le navi sono messe, si comincia) |
+| 3 `RIFIUTO` | motivo: 0 no, 1 occupato in un'altra partita (risposta automatica) |
+| 4 `MOSSA` | numero della mossa (1, 2, ... contando quelle di tutti e due), casella (tris 0–8, battaglia 0–99) |
+| 5 `ESITO` | (battaglia) numero del colpo, casella, risultato (1 acqua, 2 colpito, 3 affondato, 4 affondato e flotta finita), quante caselle ha la nave affondata e quali |
+| 6 `ABBANDONO` | nessuno (anche risposta automatica, vedi sotto) |
+
+Le mosse sono numerate: una copia o una mossa fuori turno si ignora. Battaglia navale: 10 × 10,
+flotta di 10 navi che non si toccano (1 da 4, 2 da 3, 3 da 2, 4 da 1), un colpo a testa; chi
+riceve un colpo risponde con l'esito. L'ultimo esito mandato si tiene anche a partita finita e
+dopo una sfida nuova, finché non se ne manda un altro: se il colpo arriva di nuovo si rimanda lo
+stesso esito, e se risulta non consegnato chi l'ha mandato lo rimanda da solo una volta. I colpi
+di chi invita sono i dispari: l'esito di un proprio colpo vale anche se arriva dopo il colpo
+successivo dell'altro. Nel tris la mossa che chiude la partita, se risulta non consegnata, si
+rimanda: a mano finché la partita è aperta, da sola (una volta) se è già stata chiusa o sostituita
+da un'altra. Niente controlli contro chi bara: è un gioco tra amici.
+
+Risposte automatiche. La conferma radio parte prima che l'applicazione legga il messaggio, quindi
+chi aspetta la risposta di una partita che l'altro non ha più aspetterebbe per sempre:
+
+- a un `ACCETTO` di una partita che non è in corso, a una `MOSSA` di una partita sconosciuta
+  (riavvio), finita per abbandono o rifiuto, o nuova dopo la fine, e a un `ESITO` di una partita
+  sconosciuta si risponde da soli con un `ABBANDONO`;
+- alle copie dei messaggi di una partita finita con un risultato (vinta, persa o pari) non si
+  risponde `ABBANDONO`, che darebbe la vittoria a chi ha perso: nel tris si rimanda la propria
+  mossa che l'ha chiusa, nella battaglia l'ultimo esito. Il telefono riconosce queste copie finché
+  la partita è aperta o è l'ultima chiusa, e anche dopo se la partita è quella della sua ultima
+  mossa finale del tris o del suo ultimo esito; l'`ESITO` dell'ultima partita chiusa si ignora;
+- si segue l'ultimo `ABBANDONO` o `RIFIUTO` mandato, anche automatico (uno alla volta): se risulta
+  non consegnato si rimanda una volta. All'`ABBANDONO` e al `RIFIUTO` non si risponde mai: niente
+  giri infiniti.
+
+Inviti. La copia di un invito (stesso id) si ignora; quello di un altro mentre si gioca riceve
+`RIFIUTO` 1 (occupato). Un invito che non serve più (abbandonato, sostituito da quello
+dell'altro, o già accettato) esce dai tentativi della radio di chi l'ha mandato, così non arriva
+più tardi. Dal proprio avversario con un id diverso:
+
+- se ci siamo sfidati quasi insieme (il mio invito aspetta ancora) tutti e due tengono quello con
+  l'id più basso: chi ce l'ha lo rimanda, l'altro prende quello;
+- altrimenti decide l'id radio del messaggio, che per chi lo manda cresce sempre, anche dopo un
+  riavvio (dopo un ripristino di fabbrica riparte da capo, ma il telefono ha chiavi nuove: col
+  certificato nuovo si ricomincia a contare): un invito più vecchio dei suoi ultimi messaggi della
+  partita in corso (invito, accetto, mosse) è rimasto nei tentativi della radio e si ignora; uno più
+  recente prende il posto della partita in corso, a cui si risponde `ABBANDONO` (si sfida solo senza
+  partite in corso: se per lui c'era ancora, finisce invece di aspettare).
+
 ## Beacon
 
 Ogni 5 minuti, solo ai vicini diretti: ruolo (telefono/ripetitore), batteria, ora e se
 l'ora viene dal GPS. Servono a tenere aggiornate le strade, a mostrare il segnale sul
 telefono e a sincronizzare l'ora di chi non ha il GPS.
+
+L'ora **messa a mano** nelle impostazioni (o ritrovata nell'orologio del chip dopo un riavvio)
+vale solo per quel telefono: nel suo beacon esce come "non sincronizzata", così un'ora sbagliata
+non passa a ripetitori e telefoni. La sostituisce l'ora del GPS, propria o di un telefono vicino
+che ce l'ha; se il GPS ha dato l'ora da meno di 6 ore, quella a mano non si può mettere.

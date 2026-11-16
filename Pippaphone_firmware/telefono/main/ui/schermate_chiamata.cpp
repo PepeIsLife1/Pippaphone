@@ -77,10 +77,13 @@ public:
         show();
     }
 
+    // Carta: mentre parli il cerchio e' pieno d'arancio con l'icona bianca (nel tema scuro anello
+    // rosso su fondo rosso scuro), e la riga in fondo diventa arancio quando la chiamata sta per chiudere.
     void show() {
         if (!title_) return;
         const app::Rete::CallInfo ci = app::rete().callInfo();
         lv_color_t ring = AMBRA(), inside = NERO();
+        bool full = false, closing = false;
         std::string t, s, i;
         const char* ic = IC_TELEFONO;
         if (ended_) {
@@ -117,7 +120,8 @@ public:
                         t = "Parli tu";
                         s = TXT("lascia PTT quando hai finito", "lascia " IC_MICROFONO " quando hai finito");
                         ring = ROSSO();
-                        inside = ROSSO_SCURO();
+                        inside = temaChiaro() ? ROSSO() : ROSSO_SCURO();
+                        full = temaChiaro();
                     } else if (ci.hearing) {
                         t = "Parla " + name_;
                         s = "aspetta che finisca: senti un bip";
@@ -134,16 +138,19 @@ public:
                                  : " · diretta";
                     if (ci.lostPct) i += " · voce persa " + std::to_string(ci.lostPct) + "%";
                     if (ci.leftMs < 30000) i += " · chiude tra " + std::to_string(ci.leftMs / 1000) + " s";
+                    closing = ci.leftMs < 30000;
                     break;
             }
         }
         lv_obj_set_style_border_color(circle_, ring, 0);
         fill(circle_, inside);
         lv_label_set_text(icon_, ic);
-        lv_obj_set_style_text_color(icon_, ring, 0);
+        lv_obj_set_style_text_color(icon_, full ? SU_COLORE() : ring, 0);
         lv_label_set_text(title_, t.c_str());
         lv_label_set_text(sub_, s.c_str());
         lv_label_set_text(info_, i.c_str());
+        // Carta: e' l'unica notizia sulla qualita' della chiamata, grigio scuro e non chiaro.
+        if (temaChiaro()) lv_obj_set_style_text_color(info_, closing ? ROSSO() : GRIGIO3(), 0);
     }
 
     // Squillo per chi riceve, tono di chiamata per chi chiama.

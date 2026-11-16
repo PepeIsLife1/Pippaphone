@@ -6,9 +6,15 @@
 #include <map>
 
 #include "app/aggiorna.h"
+#if CONFIG_SCHEDA_TDECK_PLUS
+#include "app/cuffie.h"
+#endif
 #include "app/dati.h"
 #include "app/eventi.h"
 #include "app/memoria.h"
+#ifdef SIM_NUOVE
+#include "app/musica.h"
+#endif
 #include "app/rete.h"
 #include "app/voce.h"
 #include "sim.h"
@@ -61,6 +67,9 @@ bool loadAdminIdentity(pn::Identity&) { return false; }
 void saveAdminIdentity(const pn::Identity&) {}
 uint32_t loadSeq() { return 1; }
 void saveSeq(uint32_t) {}
+static uint32_t g_lastTime = 0;
+uint32_t loadLastTime() { return g_lastTime; }
+void saveLastTime(uint32_t t) { g_lastTime = t; }
 std::string getStr(const char* key, const std::string& def) {
     auto it = g_strs.find(key);
     return it == g_strs.end() ? def : it->second;
@@ -99,7 +108,7 @@ void removeFile(const std::string& path) { remove(real(path).c_str()); }
 
 // ---------------------------------------------------------------- aggiornamento
 
-void otaStart(uint16_t) {}
+bool otaStart(uint16_t) { return true; }
 void otaStop() {}
 OtaStatus otaStatus() {
     OtaStatus s;
@@ -113,6 +122,105 @@ OtaStatus otaStatus() {
 }
 void otaConfirm() {}
 const char* firmwareVersion() { return "0.1.0"; }
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// ---------------------------------------------------------------- cuffie USB-C (finte)
+
+// Niente USB: accendi() passa subito a "in attesa" (o, con cuffieComputer, dice "Scollega il computer");
+// collegate, non supportate e guaste le mette il copione (sim::state() e post(Ev::CUFFIE)). I testi sono gli
+// stessi di app/cuffie.cpp.
+namespace {
+void cuffieCambia(Cuffie::Stato s, Cuffie::Errore e) {
+    sim::state().cuffieStato = uint8_t(s);
+    sim::state().cuffieErrore = uint8_t(e);
+    post({Ev::CUFFIE, {}, 0, uint32_t(e), int32_t(s)});
+}
+bool cuffieAccendi(bool controllaComputer) {
+    if (sim::state().cuffieStato != uint8_t(Cuffie::Stato::SPENTE)) return true;
+    if (controllaComputer && sim::state().cuffieComputer) {
+        sim::state().cuffieErrore = uint8_t(Cuffie::Errore::COMPUTER);
+        return false;
+    }
+    cuffieCambia(Cuffie::Stato::ACCENSIONE, Cuffie::Errore::NESSUNO);
+    cuffieCambia(Cuffie::Stato::IN_ATTESA, Cuffie::Errore::NESSUNO);
+    return true;
+}
+}  // namespace
+
+Cuffie& cuffie() {
+    static Cuffie c;
+    return c;
+}
+void Cuffie::avvia() {}
+bool Cuffie::accendi() { return cuffieAccendi(true); }
+bool Cuffie::prova(uint32_t) { return cuffieAccendi(false); }
+void Cuffie::spegni() {
+    if (!accese()) return;
+    cuffieCambia(Stato::SPEGNIMENTO, Errore::NESSUNO);
+    cuffieCambia(Stato::SPENTE, Errore::NESSUNO);
+}
+bool Cuffie::spegniEAspetta(uint32_t) {
+    spegni();
+    return true;
+}
+Cuffie::Stato Cuffie::stato() const { return Stato(sim::state().cuffieStato); }
+bool Cuffie::accese() const { return stato() != Stato::SPENTE; }
+bool Cuffie::pronta() const { return stato() == Stato::COLLEGATE; }
+Cuffie::Errore Cuffie::errore() const { return Errore(sim::state().cuffieErrore); }
+std::string Cuffie::nome() const {
+    const Stato s = stato();
+    return s == Stato::COLLEGATE || s == Stato::NON_SUPPORTATE || s == Stato::ERRORE ? sim::state().cuffieNome : "";
+}
+std::string Cuffie::testo() const {
+    switch (stato()) {
+        case Stato::ACCENSIONE:
+        case Stato::IN_ATTESA:
+        case Stato::COLLEGAMENTO: return "in attesa";
+        case Stato::COLLEGATE: return nome().empty() ? "collegate" : nome();
+        case Stato::NON_SUPPORTATE: return "non supportate";
+        case Stato::ERRORE: return "errore";
+        default: return "spente";
+    }
+}
+const char* Cuffie::testoStato(Stato s) {
+    switch (s) {
+        case Stato::SPENTE: return "spente";
+        case Stato::ACCENSIONE: return "accensione";
+        case Stato::IN_ATTESA: return "in attesa";
+        case Stato::COLLEGAMENTO: return "collegamento";
+        case Stato::COLLEGATE: return "collegate";
+        case Stato::NON_SUPPORTATE: return "non supportate";
+        case Stato::ERRORE: return "errore";
+        case Stato::SPEGNIMENTO: return "spegnimento";
+    }
+    return "?";
+}
+const char* Cuffie::testoErrore(Errore e) {
+    switch (e) {
+        case Errore::NESSUNO: return "nessuno";
+        case Errore::COMPUTER: return "c'e' un computer collegato";
+        case Errore::AGGIORNAMENTO: return "aggiornamento Wi-Fi acceso";
+        case Errore::MEMORIA: return "poca memoria";
+        case Errore::NON_AUDIO: return "non audio";
+        case Errore::SOLO_UAC3: return "solo USB Audio 3";
+        case Errore::PACCHETTI_GRANDI: return "pacchetti troppo grandi";
+        case Errore::DESCRITTORE_LUNGO: return "descrittore troppo lungo";
+        case Errore::FORMATO: return "formato non adatto";
+        case Errore::DISPOSITIVO: return "il dispositivo non risponde";
+        case Errore::DRIVER: return "USB host non partita";
+        case Errore::SENZA_CUFFIE: return "2 minuti senza cuffie";
+    }
+    return "?";
+}
+void Cuffie::setVolume(uint8_t v) { sim::state().cuffieVolume = v > 10 ? 10 : v; }
+uint8_t Cuffie::volume() const { return sim::state().cuffieVolume; }
+Cuffie::Statistiche Cuffie::statistiche() const {
+    Statistiche s;
+    s.stato = stato();
+    s.errore = errore();
+    return s;
+}
+#endif
 
 // ---------------------------------------------------------------- vocali
 
@@ -226,25 +334,108 @@ std::vector<Rete::RepeaterInfo> Rete::repeaters() {
     if (!sim::state().heard) return {};
     return {{uint16_t(pn::ADDR_REPEATER_FIRST + 3), -97, 6.5f, 12}, {uint16_t(pn::ADDR_REPEATER_FIRST + 7), -112, -3.0f, 95}};
 }
-uint32_t Rete::unixTime() { return sim::unixNow(); }
-bool Rete::timeValid() { return true; }
+uint32_t Rete::unixTime() {
+#ifdef SIM_NUOVE
+    if (TimeSource(sim::state().timeSource) == TimeSource::NONE) return 0;  // ora persa (copione)
+#endif
+    return uint32_t(int64_t(sim::unixNow()) + sim::state().timeOffsetS);
+}
+bool Rete::timeValid() {
+#ifdef SIM_NUOVE
+    return TimeSource(sim::state().timeSource) != TimeSource::NONE;
+#else
+    return true;
+#endif
+}
+#ifdef SIM_NUOVE
+Rete::TimeSource Rete::timeSource() { return TimeSource(sim::state().timeSource); }
+bool Rete::setManualTime(uint32_t unixSec) {
+    if (TimeSource(sim::state().timeSource) == TimeSource::GPS) return false;
+    sim::state().timeOffsetS = int64_t(unixSec) - int64_t(sim::unixNow());
+    sim::state().timeSource = uint8_t(TimeSource::LOCAL);
+    post({Ev::TIME, {}, 0, 0, 0});
+    return true;
+}
+// Sfide: il copione fa rispondere l'avversario chiamando app::giochi().ricevi().
+uint32_t Rete::sendGame(uint16_t, const std::vector<uint8_t>&) {
+    static uint32_t id = 900;
+    return ++id;
+}
+void Rete::cancelGame(uint16_t, uint32_t) {}
+void Rete::onGame(pn::Addr, uint32_t, const uint8_t*, size_t) {}
+void Rete::onGameDelivery(pn::Addr, uint32_t, pn::Delivery) {}
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+// Lettore musicale finto: quattro brani inventati, uno che "suona" da 1:23.
+Musica& musica() {
+    static Musica m;
+    return m;
+}
+std::vector<Brano> Musica::elenco(bool) {
+    if (!letti_) {
+        brani_ = {{"/sd/musica/Escursione all'alba.mp3", "Escursione all'alba", "", ""},
+                  {"/sd/musica/Rifugio/Canto del rifugio.mp3", "Rifugio/Canto del rifugio", "", ""},
+                  {"/sd/musica/Rifugio/Vento sul passo.wav", "Rifugio/Vento sul passo", "", ""},
+                  {"/sd/musica/prova radio.wav", "prova radio", "", ""}};
+        letti_ = true;
+    }
+    return brani_;
+}
+void Musica::suona(int indice) {
+    indice_ = indice;
+    attiva_ = true;
+    pausa_ = false;
+    titolo_ = indice == 0 ? "Escursione all'alba" : "";
+    artista_ = indice == 0 ? "Coro della valle" : "";
+    durataS_ = 214;
+    rate_ = 44100;
+    campioni_ = 83ull * 44100;
+}
+void Musica::pausa(bool p) { pausa_ = p; }
+void Musica::ferma() {
+    attiva_ = false;
+    indice_ = -1;
+}
+void Musica::successivo() {
+    if (indice_ + 1 < int(brani_.size())) suona(indice_ + 1);
+    else ferma();
+}
+void Musica::precedente() { suona(indice_ > 0 ? indice_ - 1 : 0); }
+void Musica::salta(int) {}
+Brano Musica::brano() const {
+    Brano b;
+    if (indice_ >= 0 && indice_ < int(brani_.size())) b = brani_[size_t(indice_)];
+    b.titolo = titolo_;
+    b.artista = artista_;
+    return b;
+}
+uint32_t Musica::posizioneS() const { return rate_ ? uint32_t(campioni_ / rate_) : 0; }
+void Musica::compito() {}
+#endif
+#endif
 uint64_t Rete::airtimeMs() { return 184300; }
 bool Rete::radioOk() { return true; }
 void Rete::setPower(int8_t) {}
 int8_t Rete::power() { return 14; }
 void Rete::wantGnss(uint32_t) {}
 bool Rete::gnssWanted() { return false; }
+#if CONFIG_SCHEDA_TDECK_PLUS
+// Le schermate che usano il GPS (ui.cpp): il copione le vede con SIM_GPS_LOG (sim_main.cpp).
+void Rete::gnssSchermata() { gnssSchermataMs_ = pn::Millis(sim::nowMs()); }
+bool Rete::gnssSchermataAperta() { return gnssSchermataMs_ && sim::nowMs() - int64_t(gnssSchermataMs_) < 6000; }
+#endif
 void Rete::service() {}
 void Rete::updateGnss(const scheda::Fix&, float, uint8_t) {}
+// La mia ultima posizione: quella di adesso (gpsFix) o, col T-Deck, una di 5 minuti fa (gpsUltima).
 pn::Position Rete::lastPosition() {
     pn::Position p;
-    if (!sim::state().gpsFix) return p;
+    if (!sim::state().gpsFix && !sim::state().gpsUltima) return p;
     p.valid = true;
-    p.latE7 = 454642000;
-    p.lonE7 = 91900000;
+    p.latE7 = sim::state().gpsLatE7;
+    p.lonE7 = sim::state().gpsLonE7;
     p.altM = 122;
     p.accM = 8;
-    p.ageS = 20;
+    p.ageS = sim::state().gpsFix ? 20 : 300;
     return p;
 }
 

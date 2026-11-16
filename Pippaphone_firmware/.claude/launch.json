@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["strumenti/pianificatore/server.js"],
       "port": 8787
+    },
+    {
+      "name": "flasher",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8741", "--bind", "127.0.0.1", "--directory", "build-flasher"],
+      "port": 8741
     }
   ]
 }

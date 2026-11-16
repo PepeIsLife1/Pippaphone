@@ -55,14 +55,45 @@ Screen* makeSosReceived(uint16_t from);
 // ogni ripetizione gia' vista).
 bool sosShouldAlert(uint16_t from);
 void sosCancelled(uint16_t from);
+// Un SOS ricevuto sta ancora suonando (schermata aperta, non ancora zittita, sirena in corso).
+bool sosAlerting();
 
 // impostazioni e rete (schermate_impostazioni.cpp)
 Screen* makeSettings();
+Screen* makeSetTime();  // data e ora a mano
 Screen* makeSignal();
 Screen* makeOta();
 Screen* makeAdmin();
 
+// orologio: sveglie, timer, cronometro (schermate_orologio.cpp)
+Screen* makeClock();
+// Da chiamare spesso (anche a schermo spento): fa suonare sveglie e timer quando e' ora.
+void clockService();
+// Prima di "Spegni": sul T-Deck il telefono si risveglia per la prossima sveglia.
+void clockBeforePowerOff();
+// Una sveglia o un timer sta suonando (la schermata che suona e' aperta, anche se non in cima).
+bool ringOpen();
+// La schermata che suona e' quella in cima (i tasti vanno a lei).
+bool ringOnTop();
+// Qualcuno usa il telefono (un tasto, un SOS, una chiamata, una richiesta): un T-Deck acceso dalla
+// sveglia non si rispegne piu' da solo.
+void clockNoteActivity();
+
+// giochi (giochi.cpp e gioco_*.cpp)
+Screen* makeGames();
+// Sfida via radio arrivata o mossa dell'altro (evento Ev::GAME): avvisi e schermate.
+void gameEvent(const app::Event& e);
+
+// musica (schermate_musica.cpp): sul T-Deck dalla microSD, sulla PCB per ora solo un avviso
+Screen* makeMusic();
+
 #if TDECK
+// cuffie USB-C (schermate_impostazioni.cpp, solo T-Deck). accendiCuffie(): la domanda (la porta USB-C passa
+// alle cuffie: serve l'adattatore alimentato, il computer non vede piu' il telefono), poi app::cuffie().accendi()
+// e l'avviso se non si puo'. cambiaVolumeCuffie(): +1/-1, salvato nelle impostazioni.
+void accendiCuffie();
+void cambiaVolumeCuffie(int dir);
+
 // mappa offline dalla microSD (schermate_mappa.cpp, solo T-Deck)
 Screen* makeMap();
 std::string initialOf(const std::string& name);

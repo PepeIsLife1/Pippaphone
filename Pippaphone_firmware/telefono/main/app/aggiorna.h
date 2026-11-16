@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace app {
 
@@ -19,9 +20,14 @@ struct OtaStatus {
     std::string version;
 };
 
-void otaStart(uint16_t number);
+// true se chi chiama ha la rete (accesa adesso, o gia' accesa da un altro): allora tocca a lui
+// chiamare otaStop() quando non gli serve piu'. false se non e' partita (il motivo in otaStatus()).
+bool otaStart(uint16_t number);
 void otaStop();
 OtaStatus otaStatus();
+// Diagnosi (comando USB @RETI?): cerca le reti Wi-Fi intorno, una riga per rete ("nome canale 6
+// -60 dBm"). Se va bene, nota dice paese e canali; se no, nota e' il motivo. Non con la rete accesa.
+bool otaScan(std::vector<std::string>& reti, std::string& nota);
 // Da chiamare all'avvio: conferma che il nuovo firmware funziona (altrimenti al riavvio
 // successivo si torna al precedente).
 void otaConfirm();

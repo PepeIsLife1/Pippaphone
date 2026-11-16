@@ -40,6 +40,7 @@ bool RadioLink::begin(const RadioConfig& cfg, pn::Node* node, SemaphoreHandle_t 
     }
 
     g_hal = new EspHal(cfg.host, cfg.sck, cfg.miso, cfg.mosi, cfg.initBus);
+    g_hal->setBusTurn(cfg.busTake, cfg.busGive);
     g_module = new Module(g_hal, uint32_t(cfg.nss), uint32_t(cfg.dio1),
                           cfg.reset >= 0 ? uint32_t(cfg.reset) : RADIOLIB_NC, uint32_t(cfg.busy));
     g_radio = new SX1262(g_module);

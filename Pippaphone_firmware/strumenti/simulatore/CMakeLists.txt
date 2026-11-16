@@ -35,14 +35,30 @@ add_library(pn_sim STATIC
     ${MC}/monocypher.c ${MC}/optional/monocypher-ed25519.c)
 target_include_directories(pn_sim PUBLIC ${PN}/include ${MC} ${MC}/optional)
 
+# Parti dell'app compilate cosi' come sono (le altre sono finte, in sim_app.cpp). Quelle nuove del
+# 13/11/2026 (orologio, giochi, musica) ci sono solo nei sorgenti di oggi: con -DUI_DIR verso una
+# versione vecchia si saltano, e SIM_NUOVE dice al copione di non aprire le schermate che mancano.
+set(APP_SRCS ${UI_DIR}/app/dati.cpp ${UI_DIR}/app/eventi.cpp)
+set(APP_NUOVE ${UI_DIR}/app/orologio.cpp ${UI_DIR}/app/giochi.cpp)
+set(SIM_NUOVE OFF)
+foreach(f ${APP_NUOVE})
+    if(EXISTS ${f})
+        list(APPEND APP_SRCS ${f})
+        set(SIM_NUOVE ON)
+    endif()
+endforeach()
+
 function(simulatore nome tdeck)
     file(GLOB UI_SRCS ${UI_DIR}/ui/*.cpp)
     file(GLOB FONT_SRCS ${UI_DIR}/ui/font/*.c)
     add_executable(${nome}
         ${SIM}/sim_main.cpp ${SIM}/sim_rtos.cpp ${SIM}/sim_scheda.cpp ${SIM}/sim_app.cpp ${SIM}/png.cpp
         ${UI_SRCS} ${FONT_SRCS}
-        ${UI_DIR}/app/dati.cpp ${UI_DIR}/app/eventi.cpp
+        ${APP_SRCS}
         ${SCHEDA_DIR}/src/tastiera.cpp)
+    if(SIM_NUOVE)
+        target_compile_definitions(${nome} PRIVATE SIM_NUOVE=1)
+    endif()
     target_include_directories(${nome} PRIVATE ${SIM}/stub ${SIM} ${UI_DIR} ${SCHEDA_DIR}/include
                                ${FW}/componenti/pippa_radio/include)
     target_compile_definitions(${nome} PRIVATE _POSIX_THREAD_SAFE_FUNCTIONS)
@@ -66,8 +82,11 @@ else()
         ${SIM}/web/sim_web.cpp ${SIM}/web/rete_web.cpp
         ${SIM}/sim_main.cpp ${SIM}/sim_rtos.cpp ${SIM}/sim_scheda.cpp ${SIM}/sim_app.cpp ${SIM}/png.cpp
         ${UI_SRCS} ${FONT_SRCS}
-        ${UI_DIR}/app/dati.cpp ${UI_DIR}/app/eventi.cpp
+        ${APP_SRCS}
         ${SCHEDA_DIR}/src/tastiera.cpp ${SCHEDA_DIR}/src/tdeck/tastiera_tdeck.cpp)
+    if(SIM_NUOVE)
+        target_compile_definitions(pippaphone_tdeck PRIVATE SIM_NUOVE=1)
+    endif()
     target_include_directories(pippaphone_tdeck PRIVATE ${SIM}/stub ${SIM} ${UI_DIR} ${SCHEDA_DIR}/include
                                ${FW}/componenti/pippa_radio/include)
     target_compile_definitions(pippaphone_tdeck PRIVATE CONFIG_SCHEDA_TDECK_PLUS=1 SIM_WEB=1)

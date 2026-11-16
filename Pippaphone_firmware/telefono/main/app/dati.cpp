@@ -132,6 +132,10 @@ void Dati::load() {
     settings_.pin = app::getStr("pin", "");
     settings_.screenOffS = uint16_t(getInt("spegni_s", 30));
     settings_.txPower = int8_t(getInt("potenza", 0));
+    settings_.temaScuro = getInt("tema", 0) != 0;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    settings_.volumeCuffie = uint8_t(std::max<int32_t>(0, std::min<int32_t>(10, getInt("volume_cuffie", 4))));
+#endif
 }
 
 // ---------------------------------------------------------------- rubrica
@@ -399,6 +403,10 @@ void Dati::setSettings(const Settings& s) {
     app::setStr("pin", s.pin);
     setInt("spegni_s", s.screenOffS);
     setInt("potenza", s.txPower);
+    setInt("tema", s.temaScuro);
+#if CONFIG_SCHEDA_TDECK_PLUS
+    setInt("volume_cuffie", s.volumeCuffie);
+#endif
 }
 
 uint32_t Dati::nextVoiceFile() {

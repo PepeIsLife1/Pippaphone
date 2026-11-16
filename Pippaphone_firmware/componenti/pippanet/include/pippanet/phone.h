@@ -87,6 +87,10 @@ public:
     virtual void onProvisionHello(uint64_t shortId, const ProvHello& h, const RxInfo& info) {}
     virtual void onBeacon(Addr from, const Beacon& b, const RxInfo& info) {}
     virtual void onTimeSync(uint32_t unixSec) {}
+    // Sfide via radio: i byte della mossa li interpreta l'applicazione (pippanet li porta e basta).
+    virtual void onGame(Addr from, uint32_t msgId, const uint8_t* data, size_t len) {}
+    // Consegnata (DELIVERED), da riprovare piu' tardi (RETRYING) o non raggiungibile (UNREACHABLE).
+    virtual void onGameDelivery(Addr to, uint32_t msgId, Delivery d) {}
 };
 
 class Phone : public Node {
@@ -131,6 +135,13 @@ public:
     bool sosActive() const { return sos_.active; }
     // Vocale gia' codificato (Codec2).
     uint32_t sendVoice(Addr to, Codec codec, const std::vector<uint8_t>& data, uint16_t durationMs, Millis now);
+    // Mossa di una sfida via radio (al massimo MAX_GAME_BYTES byte): arriva una volta sola, con
+    // conferma e gli stessi tentativi di un SMS.
+    static constexpr size_t MAX_GAME_BYTES = 64;
+    uint32_t sendGame(Addr to, const uint8_t* data, size_t len, Millis now);
+    // Toglie dai tentativi un GAME non ancora confermato (un invito abbandonato non deve arrivare
+    // piu' tardi). Della sua consegna non si sapra' piu' niente.
+    void cancelGame(Addr to, uint32_t msgId);
 
     // ---- chiamata in diretta (a turni) ----
     // Chiama un telefono; false se c'e' gia' una chiamata o un vocale in corso.
@@ -156,6 +167,26 @@ public:
     Millis callPacketMs() const { return Millis(callFramesPerPacket()) * 40; }
     // Millisecondi da quando ci si sente (0 se non ancora).
     Millis callElapsedMs(Millis now) const { return call_.connectedAt ? now - call_.connectedAt : 0; }
+
+    // ---- ora ----
+    // Ora da qualunque fonte tranne la mano (GPS, beacon): toglie anche il segno di ora "locale".
+    // Nasconde Node::setUnixTime apposta, cosi' nessuna strada dimentica di toglierlo.
+    // (Se Node la ignora, l'ora e' gia' del GPS e quindi non era locale.)
+    void setUnixTime(uint32_t unixSec, Millis now, bool fromGps) {
+        Node::setUnixTime(unixSec, now, fromGps);
+        timeLocal_ = false;
+        timeRestored_ = false;
+    }
+    // Ora messa a mano: vale per questo telefono ma nei beacon esce come "non sincronizzata", cosi'
+    // un'ora sbagliata non passa a ripetitori e telefoni. La sostituisce l'ora del GPS, anche quella
+    // di un altro telefono sentito direttamente. false (e non cambia niente) se il GPS ha dato l'ora
+    // da meno di 6 ore.
+    bool setLocalTime(uint32_t unixSec, Millis now);
+    // Ora ritrovata nell'orologio del chip dopo un riavvio: come quella a mano (non va nei beacon),
+    // ma la corregge anche l'ora della rete, perche' nel frattempo l'orologio del chip si sposta.
+    bool setRestoredTime(uint32_t unixSec, Millis now);
+    bool timeLocal() const { return timeLocal_; }
+    bool timeRestored() const { return timeRestored_; }
 
     // Dati aggiornati dall'applicazione.
     Position position;       // ultima posizione GPS
@@ -336,6 +367,8 @@ private:
     uint16_t lastVoiceSession_ = 0;    // mittente non ha sentito il resoconto)
     Millis nextBeacon_ = 0;
     Millis nextHello_ = 0;
+    bool timeLocal_ = false;  // l'ora valida e' stata messa a mano: non si manda nei beacon
+    bool timeRestored_ = false;  // ...oppure ritrovata dopo un riavvio: la corregge anche la rete
 };
 
 }  // namespace pn

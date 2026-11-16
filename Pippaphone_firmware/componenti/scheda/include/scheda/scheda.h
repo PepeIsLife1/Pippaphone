@@ -24,6 +24,12 @@ namespace scheda {
 constexpr bool HAS_VIBRATION = false;
 // Bus SPI comune gia' pronto (lo crea holdPower()).
 bool spiBusReady();
+// Turno sul bus SPI comune (display, LoRa, microSD): un dispositivo alla volta, dall'inizio della
+// sua transazione finche' l'hardware ha finito davvero. Il lock di ESP-IDF da solo non bastava: il
+// display libera il bus con le trasmissioni ancora in coda e ogni tanto (dopo un riavvio software)
+// la microSD partiva con l'hardware ancora occupato -> assert in spi_hal_setup_trans e riavvio.
+void busSpiPrendi();
+void busSpiLascia();
 #else
 constexpr bool HAS_VIBRATION = true;
 #endif
@@ -63,5 +69,15 @@ void keyboardLight(uint8_t level);
 // Spegne davvero: PWR_HOLD a 0 e il TPS63001 si ferma appena PWR e' rilasciato. Se il 3,3 V
 // resta (JP3 chiuso) va in deep sleep. Si riaccende tenendo premuto PWR.
 [[noreturn]] void powerOff();
+
+// Sveglia a telefono spento: prima di powerOff() chiede di riaccendersi tra 'seconds' secondi
+// (0 = mai). Vale solo sul T-Deck, dove "Spegni" e' un sonno profondo; sulla PCB lo spegnimento e'
+// vero (l'ESP32 resta senza corrente) e non fa niente.
+void wakeAfter(uint32_t seconds);
+// Acceso da quel risveglio programmato (T-Deck); sulla PCB sempre false.
+bool wokeForAlarm();
+// Uscito dal sonno profondo (sveglia, trackball del T-Deck, PWR sulla PCB col ponticello JP3): la
+// memoria RTC e l'orologio del chip sono quelli di prima di "Spegni".
+bool wokeFromSleep();
 
 }  // namespace scheda

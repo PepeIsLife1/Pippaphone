@@ -47,14 +47,24 @@ bool g_sd = false;
 std::map<std::string, std::string> g_conf;  // impostazioni.txt sulla microSD
 
 // Impostazioni che vanno nel file sulla microSD (il PIN resta nella memoria interna).
-const char* const CONF_KEYS[] = {"luce", "volume", "vibra", "suoneria", "luce_tasti", "spegni_s", "potenza", "voce_n"};
+const char* const CONF_KEYS[] = {"luce", "volume", "vibra", "suoneria", "luce_tasti", "spegni_s", "potenza", "voce_n", "tema",
+                                 "volume_cuffie"};
 bool inConf(const char* key) { return g_sd && std::strcmp(key, "pin") != 0; }
 std::string confPath() { return std::string(DATI) + "/impostazioni.txt"; }
+
+// Ogni comando alla microSD col turno sul bus SPI comune (display e LoRa aspettano).
+esp_err_t sdTransazione(int slot, sdmmc_command_t* cmd) {
+    scheda::busSpiPrendi();
+    const esp_err_t e = sdspi_host_do_transaction(slot, cmd);
+    scheda::busSpiLascia();
+    return e;
+}
 
 bool mountSd() {
     if (!scheda::spiBusReady()) return false;
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = scheda::SPI_HOST_SCHEDA;
+    host.do_transaction = sdTransazione;
     sdspi_device_config_t slot = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot.gpio_cs = scheda::PIN_SD_CS;
     slot.host_id = scheda::SPI_HOST_SCHEDA;
@@ -128,7 +138,8 @@ void saveConf() {
     std::string s =
         "# Impostazioni del Pippaphone: si possono cambiare anche qui, a telefono spento.\n"
         "# luce e volume: luce in %, volume 0-10; suoneria 0 = silenziosa, 1 = classica, 2 = breve;\n"
-        "# spegni_s = secondi prima di spegnere lo schermo; potenza in dBm (0 = automatica).\n";
+        "# spegni_s = secondi prima di spegnere lo schermo; potenza in dBm (0 = automatica);\n"
+        "# volume_cuffie 0-10 (cuffie USB-C).\n";
     for (const auto& kv : g_conf) s += kv.first + "=" + kv.second + "\n";
     writeFile(confPath(), std::vector<uint8_t>(s.begin(), s.end()));
 }
@@ -291,6 +302,17 @@ uint32_t loadSeq() {
 
 void saveSeq(uint32_t next) {
     nvs_set_u32(g_nvs, "seq", next);
+    nvs_commit(g_nvs);
+}
+
+uint32_t loadLastTime() {
+    uint32_t t = 0;
+    nvs_get_u32(g_nvs, "ultima_ora", &t);
+    return t;
+}
+
+void saveLastTime(uint32_t unixSec) {
+    nvs_set_u32(g_nvs, "ultima_ora", unixSec);
     nvs_commit(g_nvs);
 }
 

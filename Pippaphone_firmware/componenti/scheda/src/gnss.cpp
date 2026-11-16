@@ -1,5 +1,8 @@
 #include "scheda/gnss.h"
 
+#include <algorithm>
+#include <atomic>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -13,6 +16,8 @@
 #include "scheda/pins.h"
 #if !CONFIG_SCHEDA_TDECK_PLUS
 #include "scheda/expander.h"
+#else
+#include "tdeck/gnss_pilota.h"
 #endif
 
 namespace scheda {
@@ -21,68 +26,87 @@ namespace {
 constexpr uart_port_t PORT = UART_NUM_1;
 SemaphoreHandle_t g_lock = nullptr;
 Fix g_fix;
+const char* g_modulo = "?";            // ricevitore riconosciuto (diagnosi)
+std::atomic<int64_t> g_ecoFino{0};     // ms dall'avvio: fino a quando ripetere le frasi nel registro
 
 #if CONFIG_SCHEDA_TDECK_PLUS
-// T-Deck Plus: GPS u-blox M10Q (38400 baud) oppure Quectel L76K (9600), sempre alimentato. La
-// velocita' si riconosce dalle frasi NMEA valide; lo standby si fa solo sull'u-blox (comando
-// UBX-RXM-PMREQ, si risveglia con un byte sulla seriale). L'L76K resta acceso.
+// T-Deck Plus: GPS u-blox M10Q (38400 baud) oppure Quectel L76K (9600), sempre alimentato. Lo guida il
+// pilota di tdeck/gnss_pilota.cpp: riconosce la velocita', mette l'u-blox in standby (UBX-RXM-PMREQ) e
+// lo risveglia (un byte sulla seriale) controllando che lo faccia davvero, lo cerca di nuovo se tace,
+// tiene la storia e fa le prove al banco. Qui c'e' solo la seriale. L'L76K resta acceso.
 const char* TAG_GNSS = "gnss";
-bool g_ublox = false;
-bool g_standby = false;
+// Stack del compito del GPS: era 4096 byte. Con il pilota i suoi frame sono piccoli (-fstack-usage, ramo
+// piu' profondo giro 176 + passo 48 + sveglia 64 + evento 208 + ricerca 224 byte: meno di 1 kB), ma ogni
+// evento passa dal registro di ESP-IDF (vprintf, 1,5-2 kB): 6144 lasciano circa 3 kB di margine. Quanti
+// byte non sono mai stati usati lo dice @GPS? ("stack"), misurato sul telefono.
+constexpr uint32_t STACK_GNSS = 6144;
 
-// Aspetta una frase NMEA con il checksum giusto per al massimo ms millisecondi.
-bool nmeaWithin(int ms) {
-    NmeaParser p;
-    Fix f;
-    uint8_t b[64];
-    const int64_t end = esp_timer_get_time() / 1000 + ms;
-    while (esp_timer_get_time() / 1000 < end) {
-        const int n = uart_read_bytes(PORT, b, sizeof(b), pdMS_TO_TICKS(100));
-        for (int i = 0; i < n; i++)
-            if (p.feed(char(b[i]), f, 0)) return true;
+// La UART1 del GPS per il pilota. Le frasi lette finiscono anche nel registro finche' c'e' l'eco
+// (@NMEA!).
+class PortaUart : public gps::Porta {
+public:
+    uint64_t ms() override { return uint64_t(esp_timer_get_time() / 1000); }
+    int leggi(uint8_t* buf, size_t n, uint32_t attesaMs) override {
+        const int r = uart_read_bytes(PORT, buf, n, pdMS_TO_TICKS(attesaMs));
+        if (r <= 0) return 0;
+        eco(buf, r);
+        return r;
     }
-    return false;
-}
-
-void ubx(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len) {
-    uint8_t head[6] = {0xB5, 0x62, cls, id, uint8_t(len), uint8_t(len >> 8)};
-    uint8_t ca = 0, cb = 0;
-    for (int i = 2; i < 6; i++) {
-        ca += head[i];
-        cb += ca;
+    void scrivi(const uint8_t* p, size_t n) override {
+        uart_write_bytes(PORT, p, n);                 // il frame intero in una volta
+        uart_wait_tx_done(PORT, pdMS_TO_TICKS(100));  // 30 byte a 9600 baud: 31 ms
     }
-    for (uint16_t i = 0; i < len; i++) {
-        ca += payload[i];
-        cb += ca;
+    void velocita(uint32_t baud) override { uart_set_baudrate(PORT, baud); }
+    void blocca() override {
+        if (g_lock) xSemaphoreTake(g_lock, portMAX_DELAY);
     }
-    const uint8_t tail[2] = {ca, cb};
-    uart_write_bytes(PORT, head, sizeof(head));
-    if (len) uart_write_bytes(PORT, payload, len);
-    uart_write_bytes(PORT, tail, sizeof(tail));
-}
-
-// Prima 38400 (u-blox M10Q), poi 9600 (L76K); nel compito del GPS, per non rallentare l'avvio.
-// Un u-blox lasciato in standby da un giro precedente si sveglia col primo byte.
-void detectBaud() {
-    for (int round = 0; round < 3; round++) {
-        uart_set_baudrate(PORT, 38400);
-        const uint8_t wake = 0xFF;
-        uart_write_bytes(PORT, &wake, 1);
-        if (nmeaWithin(1500)) {
-            g_ublox = true;
-            ESP_LOGI(TAG_GNSS, "GPS u-blox (38400 baud)");
-            return;
-        }
-        uart_set_baudrate(PORT, 9600);
-        if (nmeaWithin(1500)) {
-            ESP_LOGI(TAG_GNSS, "GPS L76K (9600 baud)");
-            return;
+    void sblocca() override {
+        if (g_lock) xSemaphoreGive(g_lock);
+    }
+    void registro(bool avviso, const char* testo) override {
+        if (avviso) {
+            ESP_LOGW(TAG_GNSS, "%s", testo);
+        } else {
+            ESP_LOGI(TAG_GNSS, "%s", testo);
         }
     }
-    ESP_LOGW(TAG_GNSS, "GPS muto: nessuna frase NMEA a 38400 o 9600 baud (resta a 9600)");
-}
-#endif
 
+private:
+    // Diagnosi: le frasi cosi' come arrivano, nel registro (i byte non stampabili dei frame UBX come '.').
+    void eco(const uint8_t* b, int n) {
+        if (int64_t(ms()) >= g_ecoFino.load()) {
+            ecoLen_ = 0;
+            return;
+        }
+        for (int i = 0; i < n; i++) {
+            const char c = char(b[i]);
+            if (c == '\r' || c == '\n') {
+                if (ecoLen_) {
+                    eco_[ecoLen_] = 0;
+                    ESP_LOGI("nmea", "%s", eco_);
+                }
+                ecoLen_ = 0;
+            } else if (ecoLen_ < int(sizeof(eco_)) - 1) {
+                eco_[ecoLen_++] = (b[i] >= 32 && b[i] < 127) ? c : '.';
+            }
+        }
+    }
+    char eco_[100];
+    int ecoLen_ = 0;
+};
+
+PortaUart g_porta;
+gps::Pilota g_pilota(g_porta, g_fix);
+TaskHandle_t g_compito = nullptr;
+
+void gnssTask(void*) {
+    g_pilota.avvio();  // riconosce il ricevitore (nel compito, per non rallentare l'avvio)
+    for (;;) {
+        g_pilota.giro();
+        g_modulo = g_pilota.modulo();
+    }
+}
+#else
 int hexVal(char c) { return (c >= '0' && c <= '9') ? c - '0' : (c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1; }
 
 // Divide la frase in campi separati da virgole (modifica la stringa).
@@ -119,9 +143,8 @@ int64_t daysFromCivil(int y, unsigned m, unsigned d) {
 void gnssTask(void*) {
     uint8_t buf[128];
     NmeaParser parser;
-#if CONFIG_SCHEDA_TDECK_PLUS
-    detectBaud();
-#endif
+    char eco[100];
+    int ecoLen = 0;
     for (;;) {
         int n = uart_read_bytes(PORT, buf, sizeof(buf), pdMS_TO_TICKS(500));
         if (n <= 0) continue;
@@ -129,10 +152,29 @@ void gnssTask(void*) {
         xSemaphoreTake(g_lock, portMAX_DELAY);
         for (int i = 0; i < n; i++) parser.feed(char(buf[i]), g_fix, now);
         xSemaphoreGive(g_lock);
+        // Diagnosi: le frasi cosi' come arrivano, nel registro.
+        if (int64_t(now) < g_ecoFino.load()) {
+            for (int i = 0; i < n; i++) {
+                const char c = char(buf[i]);
+                if (c == '\r' || c == '\n') {
+                    if (ecoLen) {
+                        eco[ecoLen] = 0;
+                        ESP_LOGI("nmea", "%s", eco);
+                    }
+                    ecoLen = 0;
+                } else if (ecoLen < int(sizeof(eco)) - 1) {
+                    eco[ecoLen++] = c;
+                }
+            }
+        } else {
+            ecoLen = 0;
+        }
     }
 }
+#endif
 }  // namespace
 
+#if !CONFIG_SCHEDA_TDECK_PLUS
 bool NmeaParser::feed(char c, Fix& fix, uint64_t nowMs) {
     if (c == '$') {
         len_ = 0;
@@ -171,7 +213,9 @@ bool NmeaParser::parse(Fix& fix, uint64_t nowMs) {
             auto two = [](const char* s) { return (s[0] - '0') * 10 + (s[1] - '0'); };
             const int hh = two(f[1]), mi = two(f[1] + 2), ss = two(f[1] + 4);
             const int dd = two(f[9]), mo = two(f[9] + 2), yy = two(f[9] + 4);
-            if (yy >= 24) {  // il ricevitore appena acceso puo' dare date del 1980/2080
+            // Il ricevitore appena acceso puo' dare date del 1980 o 2080 ("..80"): un anno cosi' preso per
+            // buono passerebbe anche ai ripetitori, come ora del GPS. Si accettano solo 2024-2079.
+            if (yy >= 24 && yy < 80 && mo >= 1 && mo <= 12 && dd >= 1 && dd <= 31 && hh < 24 && mi < 60 && ss < 61) {
                 fix.unixTime = uint32_t(daysFromCivil(2000 + yy, unsigned(mo), unsigned(dd)) * 86400 + hh * 3600 +
                                         mi * 60 + ss);
                 fix.timeValid = true;
@@ -188,6 +232,16 @@ bool NmeaParser::parse(Fix& fix, uint64_t nowMs) {
         }
         return true;
     }
+    if (std::strcmp(type, "GSV") == 0 && n >= 4) {
+        // Satelliti in vista: ogni costellazione ha le sue frasi; si somma l'ultimo totale di ognuna.
+        static const char* const SISTEMI[] = {"GP", "GL", "GA", "GB", "BD", "GQ"};
+        for (int i = 0; i < 6; i++)
+            if (!std::strncmp(f[0], SISTEMI[i], 2)) inView_[i] = uint8_t(std::min(99, std::atoi(f[3])));
+        int tot = 0;
+        for (const uint8_t v : inView_) tot += v;
+        fix.inVista = uint8_t(std::min(255, tot));
+        return true;
+    }
     if (std::strcmp(type, "GGA") == 0 && n >= 10) {
         // hhmmss,lat,N,lon,E,qualita',satelliti,hdop,altitudine,M
         const int q = std::atoi(f[6]);
@@ -198,6 +252,7 @@ bool NmeaParser::parse(Fix& fix, uint64_t nowMs) {
     }
     return false;
 }
+#endif
 
 Gnss& gnss() {
     static Gnss g;
@@ -217,25 +272,15 @@ bool Gnss::begin() {
     if (uart_driver_install(PORT, 2048, 0, 0, nullptr, 0) != ESP_OK) return false;
     uart_param_config(PORT, &c);
     uart_set_pin(PORT, PIN_GNSS_TX, PIN_GNSS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    xTaskCreatePinnedToCore(gnssTask, "gnss", 4096, nullptr, 4, nullptr, 0);  // riconosce la velocita'
     on_ = true;
+    g_pilota.vuoi(true, "avvio");  // all'accensione il ricevitore e' sveglio
+    xTaskCreatePinnedToCore(gnssTask, "gnss", STACK_GNSS, nullptr, 4, &g_compito, 0);  // riconosce la velocita'
     return true;
 }
 
-void Gnss::power(bool on) {
-    on_ = on;
-    if (!g_ublox || on == !g_standby) return;
-    if (on) {
-        const uint8_t wake = 0xFF;  // un fronte sulla seriale lo sveglia
-        uart_write_bytes(PORT, &wake, 1);
-        g_standby = false;
-    } else {
-        // UBX-RXM-PMREQ: durata 0 = finche' non arriva un byte, flag backup, sveglia da UART RX.
-        const uint8_t pm[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0x08, 0, 0, 0};
-        ubx(0x02, 0x41, pm, sizeof(pm));
-        g_standby = true;
-    }
-}
+// Solo una richiesta: il PMREQ e la sveglia li manda il compito del GPS (l'unico che scrive sulla
+// seriale) entro un decimo di secondo circa; in powerOff() i 300 ms di attesa bastano per il PMREQ.
+void Gnss::power(bool on) { power(on, nullptr); }
 #else
 bool Gnss::begin() {
     g_lock = xSemaphoreCreateMutex();
@@ -249,6 +294,7 @@ bool Gnss::begin() {
     if (uart_driver_install(PORT, 2048, 0, 0, nullptr, 0) != ESP_OK) return false;
     uart_param_config(PORT, &c);
     uart_set_pin(PORT, UART_PIN_NO_CHANGE, PIN_GNSS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    g_modulo = "AT6558R";
     xTaskCreatePinnedToCore(gnssTask, "gnss", 4096, nullptr, 4, nullptr, 0);
     power(true);
     return true;
@@ -272,5 +318,48 @@ float Gnss::accuracyM() const {
     Fix f = fix();
     return f.valid ? f.hdop * 2.5f : 999.0f;
 }
+
+const char* Gnss::modulo() const { return g_modulo; }
+
+uint8_t Gnss::satInVista() const { return fix().inVista; }
+
+void Gnss::eco(uint32_t secondi) { g_ecoFino = esp_timer_get_time() / 1000 + int64_t(secondi) * 1000; }
+
+void Gnss::freddo() {
+#if CONFIG_SCHEDA_TDECK_PLUS
+    g_pilota.freddo();  // la fa il compito del GPS appena il ricevitore e' sveglio (CFG-RST o PCAS10,2)
+#endif
+}
+
+#if CONFIG_SCHEDA_TDECK_PLUS
+void Gnss::power(bool on, const char* perche) {
+    on_ = on;
+    g_pilota.vuoi(on, perche);
+}
+
+Gnss::Stato Gnss::stato() const { return g_pilota.stato(); }
+
+bool Gnss::risponde() const { return g_pilota.risponde(); }
+
+bool Gnss::inStandby() const { return g_pilota.inStandby(); }
+
+uint32_t Gnss::silenzioMs() const { return g_pilota.silenzioMs(); }
+
+Gnss::Diagnosi Gnss::diagnosi() const {
+    Diagnosi d = g_pilota.diagnosi();
+    if (g_compito) d.stackLibero = uint32_t(uxTaskGetStackHighWaterMark(g_compito));  // byte mai usati
+    return d;
+}
+
+int Gnss::storia(Evento* out, int max) const { return g_pilota.storia(out, max); }
+
+void Gnss::chiediVersione() { g_pilota.chiediVersione(); }
+
+Gnss::Versione Gnss::versione() const { return g_pilota.versione(); }
+
+void Gnss::prova(int cicli, bool forza) { g_pilota.prova(cicli, forza); }
+
+Gnss::Prova Gnss::provaStato() const { return g_pilota.provaStato(); }
+#endif
 
 }  // namespace scheda

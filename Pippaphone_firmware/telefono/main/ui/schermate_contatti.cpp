@@ -10,6 +10,29 @@
 
 namespace ui {
 
+namespace {
+// Testo poco importante (avvisi, elenco vuoto): nello scuro GRIGIO2 come prima, in Carta il grigio
+// scuro dei testi secondari (il #808080 sul bianco al sole si legge male).
+lv_color_t tenue() { return colore(0x808080, 0x404040); }
+
+// Stato CHECKED su un oggetto e su tutto quello che ha dentro (i colori della riga scelta).
+void scelta(lv_obj_t* o, bool on) {
+    if (on) lv_obj_add_state(o, LV_STATE_CHECKED);
+    else lv_obj_clear_state(o, LV_STATE_CHECKED);
+    const uint32_t n = lv_obj_get_child_count(o);
+    for (uint32_t i = 0; i < n; i++) scelta(lv_obj_get_child(o, int32_t(i)), on);
+}
+
+// PCB con Carta: etichetta larga quanto il contenitore, su una riga sola coi puntini (come sul T-Deck).
+// Nello scuro la PCB resta identica a prima, dove un nome lungo va a capo ed esce dal suo riquadro.
+void rigaSolaCarta(lv_obj_t* l) {
+    if (TDECK || !temaChiaro()) return;
+    lv_obj_set_width(l, lv_pct(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(l, lv_font_get_line_height(lv_obj_get_style_text_font(l, LV_PART_MAIN)));
+}
+}  // namespace
+
 // ================================================================ elenco contatti
 
 class Contacts : public Screen {
@@ -72,6 +95,10 @@ public:
         if (list_.focused() == 0) return {{"OK", "aggiungi"}, {"A-Z", "cerca"}};
         return {{"OK", "apri"}, {"CALL", "scrivi"}, {"PTT", "parla"}, {"MENU", "modifica"}};
     }
+#if TDECK
+    // Anche W A S D saltano all'iniziale: qui non sono frecce (c'e' il trackball).
+    bool lettersAreKeys() const override { return true; }
+#endif
 
 private:
     List list_;
@@ -102,11 +129,16 @@ public:
         lv_obj_t* nl = label(txt, PX(&font_32b, &font_26b), BIANCO(), name_.c_str());
         unaRiga(nl);
         lv_obj_set_width(nl, lv_pct(100));
+        rigaSolaCarta(nl);  // PCB: un nome lungo andava a capo e usciva dal riquadro in alto
         label(txt, &mono_20, GRIGIO3(), std::to_string(number_).c_str());
         const std::string code = app::rete().codeOf(number_);
-        label(txt, &font_16, code.empty() ? GRIGIO2() : VERDE(),
+        label(txt, &font_16, code.empty() ? tenue() : VERDE(),
               code.empty() ? "chiave non ancora ricevuta" : (std::string(IC_SCUDO " ") + code).c_str());
         underline(top);
+        if (temaChiaro()) {  // Carta: riga nera decisa, come sotto le intestazioni
+            lv_obj_set_style_border_color(top, INCHIOSTRO(), 0);
+            lv_obj_set_style_border_width(top, 2, 0);
+        }
         list_.create(col, W_SCHERMO, H_AREA - PX(110, 70));
         struct Item {
             const char* icon;
@@ -294,11 +326,15 @@ public:
             lv_obj_set_size(a, PX(44, 28), PX(44, 28));
             radius(a, PX(12, 8));
             fill(a, avatarColor(g.id));
-            lv_obj_center(label(a, &icone_22, BIANCO(), IC_GRUPPO));
+            if (temaChiaro()) {  // Carta, riga scelta (blu): anello bianco, se no un #004080 sparisce nel blu
+                lv_obj_set_style_border_width(a, 2, LV_STATE_CHECKED);
+                lv_obj_set_style_border_color(a, SU_COLORE(), LV_STATE_CHECKED);
+            }
+            lv_obj_center(label(a, &icone_22, SU_COLORE(), IC_GRUPPO));
             lv_obj_t* mid = column(r, 2);
             grow(mid);
             lv_obj_set_height(mid, LV_SIZE_CONTENT);
-            rigaPiena(List::text(mid, &font_22b, BIANCO(), g.name));
+            lv_obj_t* nome = rigaPiena(List::text(mid, &font_22b, BIANCO(), g.name));
             std::string names;
             for (auto m : g.members) {
                 if (m == app::rete().number()) continue;
@@ -307,9 +343,12 @@ public:
             lv_obj_t* l = List::text(mid, &font_18, GRIGIO3(), std::to_string(g.members.size()) + " membri · " + names);
             lv_obj_set_width(l, lv_pct(100));
             unaRiga(l);
+            // PCB: un nome lungo usciva dalla riga e i membri andavano a capo.
+            rigaSolaCarta(nome);
+            rigaSolaCarta(l);
         }
         if (items_.empty()) {
-            lv_obj_t* t = label(list_.obj(), &font_20, GRIGIO2(),
+            lv_obj_t* t = label(list_.obj(), &font_20, tenue(),
                                 "Nessun gruppo. Chiunque può creare un gruppo fino a 16 persone.");
             lv_obj_set_width(t, PX(440, 300));
             lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
@@ -375,6 +414,7 @@ public:
         pad(r, PX(8, 4), PX(14, 8), PX(8, 4), PX(14, 8));
         label(r, &font_20, GRIGIO3(), "Nome");
         name_.create(r, PX(360, 254), PX(54, 32), false, 20, "nome del gruppo");
+        if (temaChiaro()) grow(name_.obj());  // Carta: il campo arriva al margine, dritto con l'elenco sotto
         name_.setText(nameText_);
         list_.create(col, W_SCHERMO, H_AREA - H_TITOLO - PX(70, 40));
         checks_.clear();
@@ -387,7 +427,7 @@ public:
             List::text(row2, &font_22b, BIANCO(), c.name, true);
             List::text(row2, &mono_16, GRIGIO3(), std::to_string(c.number));
         }
-        if (contacts_.empty()) label(list_.obj(), &font_20, GRIGIO2(), "  Prima aggiungi dei contatti in rubrica");
+        if (contacts_.empty()) label(list_.obj(), &font_20, tenue(), "  Prima aggiungi dei contatti in rubrica");
         list_.focus(sel_);
         focusName(inName_);
         updateCount();
@@ -396,7 +436,13 @@ public:
     void focusName(bool on) {
         inName_ = on;
         name_.setFocused(on);
-        lv_obj_set_style_opa(list_.obj(), on ? LV_OPA_60 : LV_OPA_COVER, 0);
+        if (!temaChiaro()) {
+            lv_obj_set_style_opa(list_.obj(), on ? LV_OPA_60 : LV_OPA_COVER, 0);
+            return;
+        }
+        // Carta: niente elenco sbiadito (sul bianco diventa grigio chiaro, con colori che il pannello
+        // non ha); mentre si scrive il nome nessuna riga e' scelta.
+        if (!contacts_.empty()) scelta(lv_obj_get_child(list_.obj(), list_.focused()), !on);
     }
     void updateCount() {
         // Il testo a destra dell'intestazione e' l'ultimo figlio.

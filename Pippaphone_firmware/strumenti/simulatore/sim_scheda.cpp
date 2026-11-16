@@ -1,4 +1,5 @@
-// Simulatore: la scheda finta (display in memoria, audio muto, GPS e batteria fissi).
+// Simulatore: la scheda finta (display in memoria, audio muto, batteria fissa, GPS finto: sul T-Deck con le
+// fasi del ricevitore che il copione sceglie in sim::state()).
 // La tastiera e' quella vera di tastiera.cpp (nomi dei tasti, lettere, ALT); qui solo il resto.
 // Nel browser (SIM_WEB) schermo, luce della tastiera e suoni vanno alla pagina (web/sim_web.cpp)
 // e la tastiera del T-Deck e' quella vera di tastiera_tdeck.cpp, con un C3 finto.
@@ -30,6 +31,9 @@ const std::vector<Note> ERRORE = {{440, 180}, {0, 40}, {330, 260}};
 const std::vector<Note> PTT_INIZIO = {{1200, 60}, {1800, 60}};
 const std::vector<Note> PTT_FINE = {{1800, 60}, {1200, 60}};
 const std::vector<Note> SQUILLO_USCITA = {{425, 1000}, {0, 3000}};
+// Sveglia: arpeggio che sale; timer: quattro bip. Suonano a ciclo finche' non si fermano.
+const std::vector<Note> SVEGLIA = {{1047, 120}, {0, 40}, {1319, 120}, {0, 40}, {1568, 120}, {0, 40}, {2093, 260}, {0, 700}};
+const std::vector<Note> TIMER = {{2637, 90}, {0, 70}, {2637, 90}, {0, 70}, {2637, 90}, {0, 70}, {2637, 90}, {0, 800}};
 }  // namespace suoni
 
 // ---------------------------------------------------------------- display
@@ -71,6 +75,15 @@ void Audio::stop() {
 #endif
 }
 bool Audio::busy() const { return false; }
+bool Audio::streaming() const { return false; }
+#ifdef SIM_NUOVE  // (non c'e' nei sorgenti vecchi usati per il confronto)
+bool Audio::musicStart(uint32_t) { return true; }
+size_t Audio::musicPush(const int16_t*, size_t n, uint32_t) { return n; }
+void Audio::musicPause(bool) {}
+void Audio::musicStop() {}
+bool Audio::musicActive() const { return false; }
+uint32_t Audio::musicQueuedMs() const { return 0; }
+#endif
 void Audio::startRecording(uint32_t, std::function<void(const int16_t*, size_t)>, std::function<void()>) {}
 void Audio::stopRecording() {}
 bool Audio::recording() const { return sim::state().recording; }
@@ -79,10 +92,44 @@ bool Audio::recording() const { return sim::state().recording; }
 
 Gnss& gnss() {
     static Gnss g;
+#if CONFIG_SCHEDA_TDECK_PLUS
+    // T-Deck: acceso dall'avvio, come nella finestra dell'avvio del telefono vero (il copione lo spegne).
+    static bool primo = true;
+    if (primo) {
+        primo = false;
+        g.power(true);
+    }
+#endif
     return g;
 }
 bool Gnss::begin() { return true; }
 void Gnss::power(bool on) { on_ = on; }
+#if CONFIG_SCHEDA_TDECK_PLUS
+// T-Deck: le fasi del GPS finto (sim.h), come le da' il pilota vero (src/tdeck/gnss_pilota.cpp): spento
+// (standby) o muto niente posizione ne' satelliti; cerca i satelliti (in vista, con segnale, C/N0
+// migliore, 0 usati); posizione (gpsFix). Il pilota qui non c'e': niente storia, versione e prova al banco.
+Fix Gnss::fix() const {
+    const sim::State& s = sim::state();
+    const bool parla = on_ && !s.gpsMuto;
+    Fix f;
+    f.valid = parla && s.gpsFix;
+    f.timeValid = true;
+    f.lat = s.gpsLatE7 / 1e7;
+    f.lon = s.gpsLonE7 / 1e7;
+    f.altM = 122;
+    f.hdop = f.valid ? 0.9f : 99;
+    f.sats = f.valid ? s.gpsUsati : 0;
+    f.inVista = parla ? s.gpsInVista : 0;
+    f.conSegnale = parla ? s.gpsConSegnale : 0;
+    f.snrMax = f.conSegnale ? s.gpsSnrMax : 0;
+    f.unixTime = sim::unixNow();
+    const uint64_t now = uint64_t(sim::nowMs());
+    f.atMs = now;
+    f.timeAtMs = now;
+    f.frasiAtMs = f.rmcAtMs = f.ggaAtMs = f.gsvAtMs = parla ? now : 0;
+    return f;
+}
+#else
 Fix Gnss::fix() const {
     Fix f;
     f.valid = sim::state().gpsFix;
@@ -95,7 +142,43 @@ Fix Gnss::fix() const {
     f.unixTime = sim::unixNow();
     return f;
 }
+#endif
 float Gnss::accuracyM() const { return sim::state().gpsFix ? 8 : 999; }
+#if CONFIG_SCHEDA_TDECK_PLUS
+void Gnss::power(bool on, const char*) { on_ = on; }
+Gnss::Stato Gnss::stato() const {
+    return !on_ ? Stato::STANDBY : sim::state().gpsMuto ? Stato::SVEGLIA : Stato::ACCESO;
+}
+const char* Gnss::nomeStato(Stato s) {
+    switch (s) {
+        case Stato::RILEVA: return "rileva";
+        case Stato::MUTO: return "muto";
+        case Stato::ACCESO: return "acceso";
+        case Stato::SVEGLIA: return "sveglia";
+        case Stato::ADDORMENTA: return "addormenta";
+        case Stato::STANDBY: return "standby";
+        case Stato::PROVA: return "prova";
+    }
+    return "?";
+}
+bool Gnss::risponde() const { return on_ && !sim::state().gpsMuto; }
+bool Gnss::inStandby() const { return !on_; }
+uint32_t Gnss::silenzioMs() const { return on_ && sim::state().gpsMuto ? 12000 : 0; }
+Gnss::Diagnosi Gnss::diagnosi() const {
+    Diagnosi d;
+    d.stato = stato();
+    d.standby = !on_;
+    return d;
+}
+int Gnss::storia(Evento*, int) const { return 0; }
+void Gnss::testoEvento(const Evento&, char* out, size_t n) {
+    if (n) out[0] = 0;
+}
+void Gnss::chiediVersione() {}
+Gnss::Versione Gnss::versione() const { return Versione(); }
+void Gnss::prova(int, bool) {}
+Gnss::Prova Gnss::provaStato() const { return Prova(); }
+#endif
 
 // ---------------------------------------------------------------- batteria
 
@@ -219,5 +302,8 @@ void powerOff() {
     std::exit(0);
 #endif
 }
+void wakeAfter(uint32_t) {}
+bool wokeForAlarm() { return false; }
+bool wokeFromSleep() { return false; }
 
 }  // namespace scheda

@@ -83,6 +83,7 @@ private:
     Key chord_[5][7] = {};        // tasto logico mandato al posto di quello fisico (combinazioni)
     bool pttToggle_ = false;      // ripiego: PTT premuto col primo SHIFT+microfono
     bool clickDown_ = false;
+    bool clickIgnora_ = false;    // clic tenuto all'accensione (risveglio col trackball): non e' un OK
     int64_t clickChangeMs_ = 0;
 };
 #else

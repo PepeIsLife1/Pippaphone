@@ -6,6 +6,7 @@ if(CONFIG_SCHEDA_TDECK_PLUS)
              "src/tastiera.cpp"
              "src/audio.cpp"
              "src/gnss.cpp"
+             "src/tdeck/gnss_pilota.cpp"
              "src/tdeck/scheda_tdeck.cpp"
              "src/tdeck/display_tdeck.cpp"
              "src/tdeck/tastiera_tdeck.cpp"

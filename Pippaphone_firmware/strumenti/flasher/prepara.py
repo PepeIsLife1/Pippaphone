@@ -2,7 +2,8 @@
 """Prepara la pagina per caricare il firmware dal browser.
 
 Compila il telefono per il LilyGO T-Deck Plus e il ripetitore per Heltec V3 e LilyGO T3-S3, poi
-mette i firmware e esptool-js dentro il modello flasher.html e scrive una pagina sola:
+mette i firmware, esptool-js e MapLibre (la cartina per le mappe sulla microSD) dentro il modello
+flasher.html e scrive una pagina sola:
 
     build-flasher/pippaphone_flasher.html
 
@@ -25,6 +26,11 @@ from pathlib import Path
 QUI = Path(__file__).resolve().parent
 FW = QUI.parent.parent
 ESPTOOL_JS = QUI / "esptool-js" / "esptool-js-0.7.0.js"
+# MapLibre GL JS 4.7.1 (licenza BSD-3, maplibre/LICENSE.txt), da https://unpkg.com/maplibre-gl@4.7.1/
+# (dist/maplibre-gl.js e dist/maplibre-gl.css). SHA-256, uguali a quelli della copia npm su jsDelivr:
+#   maplibre-gl.js   be9633c4d870e26fb37f1cfe5c5a77181667114003ea16207ac7850d8da8add1
+#   maplibre-gl.css  576b085fdd9487a65a19215328c1e086c07ce5bf6da09b666b3806d3d008dae9
+MAPLIBRE = QUI / "maplibre"
 USCITA = FW / "build-flasher" / "pippaphone_flasher.html"
 
 # dispositivo -> (progetto, cartella di compilazione, file sdkconfig.defaults)
@@ -90,6 +96,19 @@ def esptool_js():
     return js
 
 
+def maplibre(nome, vietati):
+    """Un file di MapLibre da mettere cosi' com'e' dentro uno <script> o uno <style> della pagina."""
+    f = MAPLIBRE / nome
+    if not f.is_file():
+        sys.exit(f"manca {f.relative_to(FW)}: scaricalo da https://unpkg.com/maplibre-gl@4.7.1/dist/{nome}")
+    testo = f.read_text(encoding="utf-8")
+    for v in vietati:
+        if v in testo.lower():
+            sys.exit(f"{nome} contiene {v}: non si puo' mettere nella pagina cosi'")
+    # Il rimando alla mappa dei sorgenti dentro la pagina non serve (il browser la cercherebbe accanto).
+    return re.sub(r"\s*(//# sourceMappingURL=\S+|/\*# sourceMappingURL=[^*]*\*/)\s*$", "\n", testo)
+
+
 def git_descrizione():
     try:
         return subprocess.run(["git", "describe", "--always", "--dirty"], cwd=FW, capture_output=True,
@@ -116,11 +135,20 @@ def main():
             print(f"   {nome}: {fw.get('versione', '?')}, compilato il {fw['compilato']}, {kb} kB, flash {fw['flash']}")
 
     pagina = (QUI / "flasher.html").read_text(encoding="utf-8")
-    for segnaposto, testo in (("/*FIRMWARE*/", "window.FIRMWARE=" + json.dumps(dati, separators=(",", ":")) + ";"),
-                              ("/*ESPTOOL*/", esptool_js())):
+    sostituzioni = {
+        "/*FIRMWARE*/": "window.FIRMWARE=" + json.dumps(dati, separators=(",", ":")) + ";",
+        "/*ESPTOOL*/": esptool_js(),
+        "/*MAPLIBRE_CSS*/": maplibre("maplibre-gl.css", ("</style",)),
+        # "<!--" in uno script cambia il modo in cui il browser cerca la sua fine: meglio non averlo.
+        "/*MAPLIBRE_JS*/": maplibre("maplibre-gl.js", ("</script", "<!--")),
+    }
+    for segnaposto in sostituzioni:
         if pagina.count(segnaposto) != 1:
             sys.exit(f"flasher.html: il segnaposto {segnaposto} deve esserci una volta")
-        pagina = pagina.replace(segnaposto, testo)
+    # Una passata sola: quello che si mette dentro non viene riletto in cerca di altri segnaposto.
+    pagina = re.sub("|".join(map(re.escape, sostituzioni)), lambda m: sostituzioni[m.group(0)], pagina)
+    kb = sum(len(sostituzioni[s]) for s in ("/*MAPLIBRE_JS*/", "/*MAPLIBRE_CSS*/")) // 1024
+    print(f"   mappe: MapLibre GL JS, {kb} kB")
     USCITA.parent.mkdir(parents=True, exist_ok=True)
     USCITA.write_text(pagina, encoding="utf-8", newline="\n")
     print(f"Pagina pronta: {USCITA} ({USCITA.stat().st_size // 1024} kB). Aprila con Chrome o Edge.")

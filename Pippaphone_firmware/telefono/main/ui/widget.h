@@ -87,4 +87,14 @@ lv_obj_t* avatar(lv_obj_t* parent, uint16_t number, const std::string& name, int
 // Divisore sottile.
 void underline(lv_obj_t* o);
 
+#if TDECK
+// Il mio GPS (T-Deck), come lo dicono la barra di stato e le schermate: spento (non serve, o lo si sta
+// accendendo), cerca i satelliti, non risponde (voluto acceso ma muto da piu' di 5 s), posizione di adesso.
+enum class FaseGps : uint8_t { SPENTO, CERCA, MUTO, FIX };
+FaseGps faseGps();
+// "ne sento 5 su 14 in vista" (con segnale, cioe' C/N0 > 0, su quelli in vista), con max anche
+// " · max 31 dB"; "nessun satellite in vista" se non ne elenca nessuno.
+std::string sentoGps(bool max);
+#endif
+
 }  // namespace ui

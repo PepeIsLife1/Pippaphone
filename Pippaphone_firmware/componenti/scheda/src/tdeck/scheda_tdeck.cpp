@@ -4,20 +4,27 @@
 // Differenze dalla PCB Pippaphone:
 //  - niente autoritenuta: il telefono si accende e si spegne con l'interruttore laterale.
 //    "Spegni" (e la batteria scarica) spegne le periferiche (POWERON a 0) e mette l'ESP32-S3 in
-//    sonno profondo senza sorgenti di risveglio: si riaccende con l'interruttore (o RST);
+//    sonno profondo: si riaccende premendo il trackball o per una sveglia (l'ora resta giusta),
+//    oppure con l'interruttore o RST (l'ora si perde);
 //  - niente vibrazione: vibrate() non fa nulla;
 //  - niente LED RGB: ledBlink() fa lampeggiare la luce della tastiera, ma solo quando e' spenta
 //    (a schermo spento), cosi' non disturba mentre si scrive.
 #include <algorithm>
 
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
+#include "esp_private/esp_sleep_internal.h"  // modo RTC_USE_RC_FAST (vedi powerOff)
 #include "esp_sleep.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
+#include "sdkconfig.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include "hal/usb_serial_jtag_ll.h"
+#include "bus_spi.h"
 #include "scheda/scheda.h"
 
 namespace scheda {
@@ -25,11 +32,14 @@ namespace scheda {
 namespace {
 const char* TAG = "scheda";
 bool g_spi = false;
+// Turno sul bus SPI comune (binario e non mutex: il display lo restituisce dall'interruzione).
+SemaphoreHandle_t g_bus = nullptr;
 bool g_full = false;
 TaskHandle_t g_inputTask = nullptr;
 constexpr TickType_t INPUT_PERIOD = pdMS_TO_TICKS(12);
 
 uint8_t g_kbLevel = 0;  // luce della tastiera voluta dall'interfaccia
+uint32_t g_wakeAfterS = 0;  // "Spegni": risveglio per la sveglia (0 = nessuno)
 struct Blink {
     uint8_t level;
     uint16_t on, off;
@@ -80,9 +90,19 @@ void outputHigh(gpio_num_t pin) {
     gpio_config(&io);
     gpio_set_level(pin, 1);
 }
+
+// La PHY USB interna alla USB-Serial-JTAG (la console del computer), come fa il suo driver quando si installa.
+// Con le cuffie USB-C accese la PHY e' del controller USB-OTG (app/cuffie.cpp) e un riavvio software, un crash o
+// il sonno profondo non la rimettono a posto (il registro di RTC_CNTL resta): senza queste due righe il
+// computer non vedrebbe piu' il telefono fino a RST.
+void phyAlComputer() {
+    usb_serial_jtag_ll_phy_enable_external(false);
+    usb_serial_jtag_ll_phy_enable_pad(true);
+}
 }  // namespace
 
 Avvio holdPower() {
+    phyAlComputer();  // per prima cosa: anche il log dell'avvio torna sulla console
     // Periferiche accese (display, tastiera, LoRa, GPS, audio).
     gpio_hold_dis(PIN_POWERON);
     gpio_deep_sleep_hold_dis();
@@ -92,6 +112,8 @@ Avvio holdPower() {
     outputHigh(PIN_LORA_NSS);
     outputHigh(PIN_SD_CS);
     gpio_set_pull_mode(PIN_SPI_MISO, GPIO_PULLUP_ONLY);
+    g_bus = xSemaphoreCreateBinary();
+    if (g_bus) xSemaphoreGive(g_bus);
     spi_bus_config_t b = {};
     b.mosi_io_num = PIN_SPI_MOSI;
     b.miso_io_num = PIN_SPI_MISO;
@@ -110,6 +132,22 @@ Avvio holdPower() {
 }
 
 bool spiBusReady() { return g_spi; }
+
+void busSpiPrendi() {
+    if (g_bus) xSemaphoreTake(g_bus, portMAX_DELAY);
+}
+
+void busSpiLascia() {
+    if (g_bus) xSemaphoreGive(g_bus);
+}
+
+bool busSpiPrendiEntro(uint32_t ms) { return !g_bus || xSemaphoreTake(g_bus, pdMS_TO_TICKS(ms)) == pdTRUE; }
+
+bool IRAM_ATTR busSpiLasciaDaIsr() {
+    BaseType_t woken = pdFALSE;
+    if (g_bus) xSemaphoreGiveFromISR(g_bus, &woken);
+    return woken == pdTRUE;
+}
 
 InitResult init(bool full) {
     InitResult r;
@@ -159,7 +197,7 @@ void keyboardLight(uint8_t level) {
 void spiLowDrive() {}  // sulla PCB rallenta i fronti; sul T-Deck il bus porta anche il display
 
 void powerOff() {
-    ESP_LOGI(TAG, "spegnimento: periferiche spente e sonno profondo (si riaccende con l'interruttore)");
+    ESP_LOGI(TAG, "spegnimento: periferiche spente e sonno profondo (si riaccende col trackball)");
     if (g_full) {
         display().sleep();
         g_kbLevel = 0;
@@ -174,7 +212,38 @@ void powerOff() {
     gpio_hold_en(PIN_POWERON);
     gpio_deep_sleep_hold_en();
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    // Si riaccende premendo il trackball (GPIO 0): il chip resta in sonno profondo e il suo orologio
+    // conta, cosi' l'ora resta giusta (l'interruttore laterale invece stacca la batteria e l'ora si
+    // perde). Prima si aspetta che sia lasciato il clic con cui si e' scelto "Spegni", se no ci si
+    // risveglierebbe subito.
+    for (int i = 0; i < 300 && gpio_get_level(PIN_TB_CLICK) == 0; i++) vTaskDelay(pdMS_TO_TICKS(10));
+    esp_sleep_enable_ext0_wakeup(PIN_TB_CLICK, 0);
+    rtc_gpio_pullup_en(PIN_TB_CLICK);
+    rtc_gpio_pulldown_dis(PIN_TB_CLICK);
+    // Sveglia a telefono spento: ci si riaccende da soli (l'orologio del chip conta anche adesso).
+    if (g_wakeAfterS) {
+        ESP_LOGI(TAG, "risveglio per la sveglia tra %lu s", (unsigned long)g_wakeAfterS);
+        esp_sleep_enable_timer_wakeup(uint64_t(g_wakeAfterS) * 1000000ULL);
+    }
+#if CONFIG_RTC_CLK_SRC_INT_8MD256
+    // L'orologio lento del chip e' l'oscillatore da 17,5 MHz diviso 256 (sdkconfig.defaults.tdeck):
+    // nel sonno profondo deve restare acceso. ESP-IDF 5.5 lo spegne sempre (sleep_modes.c, i flag
+    // forzati del sonno profondo; esp_sleep_pd_config non basta) tranne se e' attivo il modo
+    // RTC_USE_RC_FAST, che pero' attiva solo quando all'avvio ci passa da un'altra sorgente, cioe'
+    // dopo un'accensione vera (il contatore resta dopo un risveglio, ma non dopo un riavvio). Dopo
+    // un riavvio (aggiornamento, crash, caricamento via USB) l'oscillatore si spegneva: l'orologio
+    // del chip si fermava e non ci si risvegliava piu' (ne' col trackball ne' per la sveglia), e
+    // l'ora era persa. Visto sul T-Deck vero il 14/11/2026.
+    esp_sleep_sub_mode_config(ESP_SLEEP_RTC_USE_RC_FAST_MODE, true);
+#endif
+    phyAlComputer();  // cuffie USB-C accese: al risveglio la porta e' di nuovo del computer
     esp_deep_sleep_start();
 }
+
+void wakeAfter(uint32_t seconds) { g_wakeAfterS = seconds; }
+
+bool wokeForAlarm() { return esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER; }
+
+bool wokeFromSleep() { return esp_reset_reason() == ESP_RST_DEEPSLEEP; }
 
 }  // namespace scheda

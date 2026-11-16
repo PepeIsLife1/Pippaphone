@@ -24,7 +24,10 @@ Pippaphone_firmware/
 │   ├── lvgl/            LVGL 9.2.2 (MIT)
 │   ├── RadioLib/        RadioLib 7.7.1 (MIT)
 │   ├── monocypher/      Monocypher 4.0.2 (BSD-2 / CC0)
-│   └── codec2/          Codec 2, modo 700C (LGPL 2.1)
+│   ├── codec2/          Codec 2, modo 700C (LGPL 2.1)
+│   ├── minimp3/         decodificatore MP3 per la musica del T-Deck (CC0)
+│   └── usb_audio/       cuffie USB-C del T-Deck: driver USB Audio 1.0/2.0 (nostro, sulla USB host
+│                        di ESP-IDF), ricampionatore e coda, coi loro test sul PC
 ├── test/                test del protocollo sul PC (rete simulata)
 ├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome),
 │   ├── flasher/         pagina per caricare il firmware dal browser (T-Deck e ripetitori)
@@ -106,6 +109,18 @@ prima cosa, porta a 1 l'uscita PWR_HOLD dell'expander (P1_7). Quindi:
 Il firmware occupa circa 2,2 MB. Se un aggiornamento non parte, al riavvio si torna da soli
 alla versione precedente.
 
+**Aggiornamento via Wi-Fi** (Impostazioni > Aggiorna il firmware): il telefono crea la rete
+`Pippaphone-<numero>` con la password che mostra, a **2,4 GHz** (canale 6: l'ESP32-S3 non fa i
+5 GHz). Ci si collega col computer o col telefonino, si apre `http://192.168.4.1` e si carica il
+file `.bin` della cartella build. Se la rete non compare nell'elenco, il computer potrebbe non
+sentire i 2,4 GHz: è il caso di una scheda Wi-Fi che mostra solo reti a 5 GHz (canali da 36 in
+su). Se invece il Wi-Fi del telefono non parte, la schermata scrive il motivo. Sul T-Deck,
+dalla console della pagina del flasher: `@RETI?` elenca le reti che il telefono sente, `@WIFI?`
+accende la rete per 20 secondi e `@OTA!` prova tutto l'aggiornamento senza un altro apparecchio
+(il telefono manda a sé stesso il firmware che ha e riparte dall'altra partizione). Per l'ora:
+`@ORA?` dice l'ora del telefono, da dove viene e l'ultima salvata, `@ORA=<secondi Unix>` la mette
+a mano, `@SPEGNI!` fa "Spegni" e si risveglia da solo dopo 10 secondi, `@RIAVVIA!` riavvia.
+
 ## LilyGO T-Deck Plus
 
 Lo stesso firmware del telefono gira anche sul **LilyGO T-Deck Plus** (ESP32-S3, display 2,8"
@@ -144,6 +159,12 @@ T-Deck non ha:
 | SOS (VOL+ e VOL− per 3 s) | i due SHIFT insieme per 3 s |
 | PWR (schermo acceso/spento; tenuto: spegni) | SYM+spazio |
 | SYM + altro tasto | il simbolo stampato sul tasto (come col firmware di fabbrica) |
+| frecce, anche così | **W A S D** (su, sinistra, giù, destra) e **Invio** = OK, quando non si sta scrivendo; tenuti premuti si ripetono |
+
+W A S D fanno da frecce in tutte le schermate senza un campo di testo (e nelle finestre di scelta e
+nella griglia dei simboli); dove si scrive restano lettere, e dove si scrivono cifre (data e ora,
+sveglia, timer) restano le cifre stampate sui tasti. Sulla schermata principale e nella rubrica
+quelle quattro lettere non aprono e non cercano più i contatti (le altre sì).
 
 La barra in basso mostra sempre i tasti giusti. Il modo "raw" (tasti premuti e rilasciati) c'è nel
 firmware della tastiera (ESP32-C3) dal giugno 2025. Il telefono capisce il modo al primo tasto
@@ -151,7 +172,8 @@ premuto e fino ad allora suppone il raw. Con un firmware più vecchio se ne acco
 in basso si corregge in un paio di secondi) e passa a un **ripiego**: i caratteri arrivano già
 composti dal C3 (i numeri con SYM tenuto), il PTT è SHIFT+🎤 premuto una volta per parlare e una per
 inviare, MENU è SHIFT+$, CALL è ALT+C, END è SYM+SHIFT+H, l'SOS si annulla tenendo premuto il
-trackball, e non ci sono il riquadro degli accenti, il volume dai tasti e la scorciatoia dell'SOS.
+trackball, e non ci sono il riquadro degli accenti, il volume dai tasti, la scorciatoia dell'SOS e PWR
+(SYM+spazio): niente "Spegni", si spegne solo con l'interruttore e l'ora si perde.
 Per avere tutto basta aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un
 adattatore USB-seriale sui pin accanto al tasto RST). Il monitor seriale e `info.txt` scrivono quale
 modo è in uso.
@@ -159,15 +181,23 @@ modo è in uso.
 ### Differenze dalla PCB
 
 - **Accensione**: con l'interruttore laterale. "Spegni" (e la batteria scarica) spegne le
-  periferiche e mette l'ESP32-S3 in sonno profondo; si riaccende con l'interruttore (o RST).
+  periferiche e mette l'ESP32-S3 in sonno profondo; si riaccende **premendo il trackball** (o per
+  una sveglia), e l'ora resta giusta perché l'orologio del chip continua a contare. L'interruttore
+  laterale invece stacca la batteria: l'ora si perde e arriva poi dalla rete o dal GPS (o va messa
+  a mano in Impostazioni > Data e ora). Il GPS allora riparte da freddo: quando resta acceso e quanto
+  ci mette a trovarti è in "GPS" più sotto.
 - **Vibrazione**: non c'è il motore; la voce "Vibrazione" sparisce dalle impostazioni.
 - **LED di notifica**: lampeggia la luce della tastiera, solo a schermo spento.
 - **Batteria**: c'è solo la tensione della cella. La percentuale è stimata dalla curva di una
   LiPo; "in carica" si capisce dal salto di tensione quando si collega il caricabatterie, dalla
   percentuale che sale o dalla USB collegata a un computer.
 - **GPS**: u-blox M10Q (38400 baud) oppure Quectel L76K (9600), riconosciuto da solo. Quando non
-  serve, l'u-blox va in standby; l'L76K resta acceso (non ha un comando per spegnersi).
-- **Display, LoRa e microSD** sono sullo stesso bus SPI.
+  serve, l'u-blox va in standby; l'L76K resta acceso (non ha un comando per spegnersi). Vedi "GPS"
+  più sotto.
+- **Display, LoRa e microSD** sono sullo stesso bus SPI, con un turno unico
+  (`scheda::busSpiPrendi()`): col solo lucchetto di ESP-IDF ogni tanto la microSD partiva mentre
+  il display stava ancora trasmettendo e il telefono si riavviava (assert in `spi_hal_setup_trans`,
+  visto dopo i riavvii software).
 
 ### microSD
 
@@ -193,6 +223,159 @@ consentono o tile generati da sé. Sulla mappa: trackball = sposta, OK o I = pi�
 lontano, C = di nuovo tutti i segnaposto. Senza tile i segnaposto si vedono lo stesso, con la
 scala delle distanze.
 
+**La mappa e il GPS.** La mappa tiene acceso il GPS finché è aperta e ogni 2 secondi sposta il mio
+punto (e quelli dei contatti, se arriva una posizione nuova) senza spostare la mappa né cambiare lo
+zoom. La prima volta che compaio la mappa mi inquadra insieme agli altri, se non l'hai spostata a
+mano; se no per qualche secondo dice "Ti ho trovato · C per vedere tutti". Lo stesso quando arriva
+la posizione di adesso e sulla mappa c'era solo una mia posizione vecchia. Finché non c'è la
+posizione, in alto a sinistra c'è "Cerco i satelliti · ne sento N" (o "Il GPS non risponde"). Una
+mappa senza nessun segnaposto si apre sulla zona dei tile della microSD (l'Italia centrale solo se
+non ce ne sono). Lo stesso punto che si muove c'è sulla mappa della posizione di un contatto.
+
+**Le mappe dal flasher.** La pagina per caricare il firmware (sezione "5. Mappe sulla microSD")
+disegna i tile della zona scelta su una cartina, coi dati OpenStreetMap di OpenFreeMap (serve
+internet sul computer), e li manda al telefono lungo lo stesso cavo USB, anche subito dopo
+l'aggiornamento: il telefono li scrive in `/mappe` della sua microSD. Il protocollo è in
+`telefono/main/app/usb_mappe.h` (righe di testo `@...`, file a pezzi da 4 kB con conferma e
+CRC32, solo percorsi `zoom/x/y.png`). Sul telefono compare "Mappe dal computer" e alla fine
+"Mappe arrivate"; la mappa vede subito i tile nuovi.
+
+**Zone pronte e cartelle.** In "Zone pronte" c'è già la Liguria da Finale Ligure a Sestri Levante,
+Genova compresa; con "Salva questa zona" se ne aggiungono altre, che restano nel browser di quel
+computer. Oltre a "Copia sulla microSD" (col cavo, circa 8 tile al secondo, al massimo 400 000 per
+volta) ci sono due modi con le cartelle del computer, solo con Chrome o Edge:
+
+- **Salva in una cartella…** disegna i tile e li scrive in una cartella, senza telefono. Il modo più
+  veloce è scegliere la microSD stessa nel lettore di schede del computer (per esempio `E:`): i tile
+  vanno subito in `mappe/` della sua cartella principale, l'unico posto dove il telefono li cerca.
+  In un'altra cartella del computer vanno nella sua sottocartella `mappe`, che poi si copia nella
+  cartella principale della microSD. Accanto agli zoom c'è `cartina.txt`, con la cartina usata (il
+  telefono non lo guarda). Al massimo un milione di tile per volta.
+- **Manda da una cartella…** manda al telefono, col cavo, i tile di una cartella salvata prima,
+  senza disegnarli di nuovo (col cavo vale lo stesso limite di 400 000).
+
+In tutti e tre i modi "Ferma" si può premere quando si vuole: "Continua" o "Riprova" saltano i tile
+che ci sono già. La microSD dev'essere FAT32: quelle fino a 32 GB lo sono già, quelle più grandi di
+solito sono exFAT e il telefono non le legge.
+
+### GPS
+
+**Cosa vuol dire.** La schermata Posizione, la mappa, la richiesta di posizione e l'SOS dicono:
+
+- **in vista**: i satelliti che il ricevitore elenca nel cielo (frasi GSV), sentiti o no;
+- **ne sento**: quelli in vista di cui riceve davvero il segnale. "max 31 dB" è il segnale migliore
+  (C/N0, in dB-Hz): all'aperto col cielo libero di solito supera i 30, al chiuso spesso resta sotto 20;
+- **usati**: quelli con cui ha calcolato la posizione (frase GGA). Sono 0 per forza finché la
+  posizione non c'è: per questo prima la schermata diceva "0 satelliti" anche sentendone parecchi.
+
+L'icona del GPS nella barra di stato è grigia col GPS spento, ambra mentre cerca i satelliti (o
+quando non risponde), verde con una posizione di adesso (degli ultimi 5 secondi). "Il GPS non
+risponde" vuol dire che il ricevitore, acceso, tace da più di 5 secondi: il telefono intanto lo
+risveglia o lo cerca; se dura più di un minuto, spegni e riaccendi il telefono.
+
+**La prima posizione.** Dopo "Spegni" o l'interruttore (il GPS resta senza corrente) e senza l'ora
+il ricevitore riparte da freddo: all'aperto, col cielo libero e il telefono fermo, la prima
+posizione può richiedere qualche minuto; al chiuso spesso non arriva.
+
+**Quando è acceso** (solo T-Deck: sulla PCB la regola è quella di prima). Lo decide
+`telefono/main/app/gps_politica.h`, una volta al secondo:
+
+- all'accensione, con o senza l'ora, fino alla prima posizione più 3 minuti, al massimo 20 minuti
+  (prima si spegneva appena arrivava un'ora, dalla rete o dal GPS, spesso prima della posizione);
+- finché è aperta una schermata che lo usa (Posizione, Mappa, la posizione di un contatto, una
+  richiesta di posizione che aspetta il GPS, al massimo 3 minuti, gli SOS), anche sotto altre
+  schermate o sotto il PIN; e come prima per le richieste di posizione e l'SOS attivo;
+- finite le richieste, se nelle ultime 4 ore non c'è stata una posizione, ancora 5 minuti o fino
+  alla prima posizione;
+- ricerche periodiche, finito l'avvio: ogni 15 minuti senza ora; ogni 30 con l'ora messa a mano o
+  ritrovata nell'orologio del chip, oppure senza una posizione nelle ultime 24 ore. Ognuna dura al
+  massimo 3 minuti (o fino a 1 minuto dopo la posizione); se in 60 secondi nessun satellite arriva a
+  20 dB-Hz (al chiuso) si ferma e l'intervallo raddoppia, fino a 2 ore. Una posizione, un'ora buona
+  nuova (dal GPS o dalla rete) o una schermata del GPS lo riportano all'inizio.
+
+Il registro scrive ogni accensione e spegnimento col motivo, per esempio `GPS acceso: schermata` o
+`GPS spento: ricerca finita: al chiuso (nessun satellite a 20 dB-Hz) (prossima ricerca tra 30 min)`.
+Il ricevitore lo guida `componenti/scheda/src/tdeck/gnss_pilota.cpp`: standby col PMREQ e controllo
+che le frasi si fermino davvero (se l'u-blox lo ignora resta sempre acceso), sveglia con fino a 5
+tentativi, e se tace da 5 secondi lo risveglia o lo cerca di nuovo. Il PMREQ ha i flag backup e
+force (0x06). La prova al banco del 15/11/2026, su un MIA-M10Q con ROM SPG 5.10 e senza quarzo
+dell'orologio (`xtalAbsent 1`), ha dato questi risultati:
+- col solo backup (0x02) si fermava, ma per svegliarlo servivano da 1 a 5 byte, fino a 8 secondi;
+- con force si sveglia sempre al primo byte, in 0,3 secondi.
+
+**Dal computer** (console della pagina del flasher, come gli altri comandi `@`):
+
+- `@GPS?`: ricevitore (u-blox, L76K o muto), acceso, satelliti in vista e usati, posizione, ora; e
+  una riga `gps2` con standby, stato del pilota, millisecondi dall'ultima frase valida e
+  dall'ultima RMC, GGA e GSV, satelliti con segnale e segnale migliore, frasi buone e scartate,
+  ultima sveglia, PMREQ rispettato o ignorato e stack libero del compito del GPS;
+- `@GPS!STORIA`: gli ultimi 64 eventi (acceso e spento col motivo, sveglie, standby, ricerca della
+  velocità, prima ora e prima posizione, e ogni minuto senza posizione quanti satelliti sente);
+- `@GPS!VER`: versione dell'u-blox (UBX-MON-VER) e UBX-MON-HW3, che tra l'altro dice se manca il
+  quarzo dell'orologio (`xtalAbsent`);
+- `@GPS!PROVA [cicli] [forza]`: prova al banco dello standby (5 cicli se non si dice, al massimo
+  10; `forza` resta per compatibilità: il PMREQ normale ha già il flag "force"): per ogni ciclo se
+  le frasi si fermano, se dorme davvero e quanto ci mette a svegliarsi, poi un riassunto;
+- `@GPS!FREDDO`: lo accende per mezz'ora e lo fa ripartire da freddo, come dopo l'interruttore;
+- `@NMEA!`: le frasi NMEA nel registro per 60 secondi.
+
+### Cuffie USB-C
+
+La musica può andare a **cuffie USB-C digitali** (classe USB Audio 1.0 o 2.0, full speed) invece
+che alla cassa. Di solito però la porta USB-C del T-Deck è del computer (log, pagina del flasher,
+mappe via cavo, comandi `@`): con le cuffie accese fa da "host" per le cuffie e il computer non vede
+più il telefono. Per questo si accendono a mano e valgono per una sessione: a ogni avvio la porta è
+del computer.
+
+**Cosa serve**
+
+- Cuffie USB-C **digitali**, cioè col convertitore dentro (collegate al computer, Windows le vede
+  come un'uscita audio), oppure un adattatore USB-C → jack 3,5 mm con cuffie normali (quello di
+  Apple è il più sicuro). Non vanno: cuffie USB-C senza convertitore (analogiche), Bluetooth,
+  dispositivi solo USB Audio 3.0 o con pacchetti oltre 600 byte, hub e dock alimentati dalla porta.
+- Uno **sdoppiatore OTG alimentato** ("sdoppiatore OTG USB-C 2 in 1 con porta di ricarica, senza
+  hub"): la USB-C del T-Deck non dà corrente, quindi le cuffie la prendono dallo sdoppiatore,
+  attaccato a un caricabatterie o a un power bank da almeno 1 A (intanto il T-Deck si carica).
+
+**Come si usa**
+
+- Impostazioni → **Cuffie USB-C** → OK → "Attiva", oppure dal lettore musicale MENU → "Ascolta
+  con le cuffie USB-C". Non si accendono col computer collegato ("Scollega il computer"), con
+  l'aggiornamento Wi-Fi acceso o con poca RAM interna.
+- La riga dice "in attesa", poi il nome delle cuffie quando suonano ("non supportate" o "errore"
+  con un dispositivo che non va, e un avviso che dice il perché). Nella barra di stato c'è l'icona
+  delle cuffie: grigia in attesa, ambra quando suonano.
+- Alle cuffie va **solo la musica** (stessa uscita a sinistra e a destra); vocali, chiamate,
+  suonerie, sveglie e avvisi restano sulla cassa.
+- Il volume è a parte: **Volume cuffie** (0–10, all'inizio 4) in Impostazioni, oppure su/giù nel
+  lettore e i tasti del volume mentre le cuffie suonano ("volume 4 · cuffie"). Lo fa il telefono,
+  con una rampa: il volume delle cuffie stesse resta a 0 dB.
+- Staccando le cuffie la musica **va in pausa** (dalla cassa non esce niente); OK la fa ripartire
+  dalla cassa.
+
+**Cosa non funziona con le cuffie accese**: log sulla USB, pagina del flasher (collegamento,
+caricamento e console), mappe via cavo, tutti i comandi `@` (anche `@PIPPA?`), il reset automatico
+di esptool, il JTAG, e il segno "collegato a un computer" della carica (la carica si capisce dalla
+tensione). L'aggiornamento via Wi-Fi non sta in memoria insieme alle cuffie: aprendo "Aggiorna il
+firmware" le cuffie si spengono prima. Il log non si perde: finché le cuffie sono accese va in una
+"scatola nera" (32 kB in PSRAM) che si stampa sulla console appena torna.
+
+**Come si torna al computer**
+
+- dalla stessa riga (OK) o dal MENU del lettore ("Spegni le cuffie USB-C");
+- da solo, dopo **2 minuti** senza cuffie che suonano;
+- a ogni riavvio, con "Spegni" e aprendo "Aggiorna il firmware";
+- sempre: col tasto RST; per caricare il firmware anche così, trackball tenuto premuto + RST.
+
+Al banco, dal computer: `@CUFFIE! <secondi>` (5–600) accende le cuffie anche col computer
+collegato e la porta torna da sola dopo quei secondi; `@CUFFIE?` dice com'è andata l'ultima
+sessione (stato, dispositivo, formato, secondi suonati, buchi nella musica, pacchetti saltati,
+errori, RAM interna prima, durante e dopo).
+
+Il driver è nostro (`componenti/usb_audio`, sopra la USB host di ESP-IDF: niente componenti
+scaricati); il modo cuffie è `telefono/main/app/cuffie.cpp`. Sulla PCB non c'è niente di tutto
+questo e il suo firmware è rimasto identico.
+
 ### Da provare sul T-Deck vero
 
 Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non ancora su un T-Deck:
@@ -204,12 +387,27 @@ Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non anc
 3. **trackball**: sensibilità (`TB_EDGES_PER_STEP` in `tastiera_tdeck.cpp`);
 4. **audio**: canale e guadagni del microfono (ES7210, 24 dB + `MIC_DIGITAL_GAIN` in
    `audio.cpp`), volume dell'altoparlante;
-5. **GPS**: riconoscimento della velocità e standby dell'u-blox;
+5. **GPS**:
+   - provati il 15/11/2026:
+     - riconoscimento della velocità: u-blox a 38400 in 350 ms;
+     - standby col flag force: 5 sveglie su 5 al primo byte (`@GPS!PROVA`);
+     - quarzo dell'orologio assente (`@GPS!VER`);
+   - da provare:
+     - la prima posizione all'aperto dopo "Spegni" e dopo l'interruttore;
+     - la politica nuova (`@GPS!STORIA` e le righe `GPS acceso` e `GPS spento` del registro);
 6. **batteria**: curva tensione → percentuale e riconoscimento della carica
    (`batteria_tdeck.cpp`);
 7. **microSD**: montaggio, copia dei dati dalla memoria interna, mappe;
 8. **radio** sul bus SPI condiviso col display;
-9. **sonno profondo**: consumo da "spento" e riaccensione con l'interruttore.
+9. **sonno profondo**: il consumo da "spento". Il risveglio è provato sul T-Deck vero (14/11/2026):
+   col trackball e da solo dopo un tempo (come per una sveglia), anche più volte di fila, e l'ora
+   resta giusta al secondo. Serviva tenere acceso nel sonno l'oscillatore che fa da orologio del
+   chip: dopo un riavvio (aggiornamento, crash, caricamento via USB) ESP-IDF 5.5 lo spegneva, e il
+   T-Deck non si svegliava più;
+10. **cuffie USB-C**: tutto (finora solo test sul PC e simulatore). Prima con le cuffie e lo
+    sdoppiatore veri: quali cuffie vanno (il log dei descrittori), se la porta torna sempre al
+    computer (anche dopo un riavvio, un crash e il sonno profondo presi a cuffie accese), buchi e
+    clic nella musica con radio, schermo e microSD al lavoro, RAM interna dopo tante accensioni.
 
 ## Mettere in piedi la rete
 
@@ -264,6 +462,70 @@ ti scrive in quel momento vede "Non raggiungibile: riprovo" e il telefono rimand
 solo 3,5 minuti dopo (o appena sente il tuo telefono).
 Un SOS chiude la chiamata. In chat resta una riga: chiamata fatta, ricevuta, persa o non riuscita.
 
+**Grafica.** Due temi, in Impostazioni > Tema. **Carta** (quello normale): fondo bianco e testo
+nero come un foglio stampato, che si legge anche al sole; bordi neri decisi al posto delle superfici
+grigie, il selezionato pieno di blu, l'arancio per le cose urgenti, la barra di stato nera. **Scuro**:
+la grafica di prima, per la notte (lo schermo bianco abbaglia e consuma di più). Tutti e due usano
+solo i colori che il pannello della PCB mostra senza sfumature (rosso e blu a 5 livelli). Il tema
+cambia subito, senza riavviare. Nel file `impostazioni.txt` della microSD è la chiave `tema`
+(0 Carta, 1 Scuro).
+
+**Menu a pagine.** Le icone stanno in pagine, come sui telefoni: la prima è quella di sempre, nella
+seconda ci sono **Orologio**, **Giochi** e **Musica**. Andando oltre il bordo destro (o sinistro)
+di una pagina si passa all'altra con uno scorrimento; i pallini in basso dicono dove si è. Con Carta
+le icone sono nere su tessere bianche col bordo nero, e la scelta è piena di blu.
+
+**Orologio** (tre schede, sinistra/destra per cambiare):
+- **Sveglie**: fino a 10, ognuna una volta sola, tutti i giorni, lun–ven, sab e dom o un giorno
+  della settimana. L'ora si scrive con le cifre dei tasti o con su/giù. Suonano da qualsiasi
+  schermata e a schermo spento (anche col volume a zero si sentono, almeno a 6/10): OK ferma, un
+  altro tasto posticipa di 5 minuti, dopo 2 minuti si posticipa da sola. Durante una chiamata, un
+  SOS o una registrazione aspettano. Nella barra di stato c'è il campanello se una sveglia è
+  accesa. **Sul T-Deck suonano anche col telefono spento** ("Spegni" è un sonno profondo: si
+  riaccende un minuto prima e chiede se restare acceso); sulla PCB no, lo spegnimento è vero.
+- **Timer**: la durata si scrive con le cifre (entrano da destra, come sui telefoni) o su/giù di
+  un minuto; OK avvia e mette in pausa, giù azzera. Suona anche uscendo dall'orologio.
+- **Cronometro**: OK avvia e ferma, giù segna un giro (o azzera, da fermo).
+
+**Data e ora** (Impostazioni): giorno, mese, anno, ore e minuti. Valgono **solo per questo
+telefono**: nei beacon l'ora messa a mano esce come non sincronizzata, così non passa ai
+ripetitori, e appena il GPS ha l'ora la corregge (se l'ha data da meno di 6 ore, a mano non si
+può cambiare). L'ora non si perde più dopo un aggiornamento o un riavvio chiesto, e quando il
+T-Deck si risveglia per una sveglia: la tiene l'orologio del chip ("Data e ora" dice "dal
+telefono") e la corregge la prima ora della rete o del GPS, perché l'orologio del chip si sposta un
+po'. Dopo un crash, un watchdog, "Spegni" senza sveglia (sulla PCB col ponticello JP3) o quando manca
+la corrente, l'ora arriva dalla rete o dal GPS come prima; e "Data e ora" riparte dall'ultima ora
+nota (il telefono la salva ogni 10 minuti), così di solito basta correggere ore e minuti.
+
+**Giochi**:
+- **Serpente** (si gira con le frecce, OK pausa) e **Campo minato** (facile, medio, difficile:
+  OK scopre, F o spazio mettono la bandierina, OK su un numero scopre i vicini), coi record;
+- **Tris** e **Battaglia navale via radio** contro un contatto, una partita alla volta, mossa
+  per mossa col pacchetto `GAME` (vedi `PROTOCOLLO.md`). Chi sfida comincia. Se arriva una sfida
+  si risponde subito o "Dopo" (resta in Giochi); se una mossa non arriva, OK la rimanda; MENU
+  abbandona, BACK esce senza abbandonare (la partita si riapre da Giochi). Nella battaglia le navi
+  si mettono a caso (su/giù per rimescolarle).
+
+**Musica** (solo T-Deck): i file **MP3 e WAV** della cartella `/musica` della microSD (anche in
+sottocartelle, un livello; nomi fino a 64 caratteri). La microSD si toglie e si rimette **a telefono
+spento**: si prepara solo all'accensione, e una scheda rimessa a telefono acceso non risponde (la
+schermata lo dice: basta spegnere e riaccendere). OK pausa, sinistra/destra brano, su/giù
+volume, MENU avanti o indietro di 10 secondi o ferma. Continua uscendo dal lettore e a schermo
+spento (nella barra c'è la nota); avvisi, vocali, chiamate e sveglie la interrompono e poi
+riparte da sola; mentre si registra col microfono resta zitta. MP3 a tutte le frequenze, WAV PCM
+a 8 o 16 bit da 8 a 48 kHz. La musica è alzata di 6 dB (la cassa è piccola) e un limitatore
+abbassa solo le punte, così non satura; suonerie, vocali e chiamate restano come sono. L'amplificatore del T-Deck (MAX98357A) accetta solo 8, 16, 32, 44,1 e
+48 kHz: i brani a 11, 12, 22 e 24 kHz si suonano a 44,1 o 48 kHz, interpolati. Sulla PCB per ora
+c'è solo un avviso: lo slot microSD (J6) c'è, ma il firmware non lo usa ancora.
+
+**Cuffie.** L'ESP32-S3 (PCB e T-Deck) ha solo il Bluetooth Low Energy: niente A2DP né LE Audio,
+quindi niente cuffie Bluetooth. Nessuna delle due schede ha una presa per cuffie. Sul T-Deck la
+musica può andare a cuffie USB-C **digitali** (USB Audio 1.0 o 2.0, full speed) attaccate con uno
+sdoppiatore OTG alimentato: vedi "Cuffie USB-C" più sopra. Sulla PCB no. Gli adattatori passivi
+USB-C→jack non possono funzionare (quelli col convertitore dentro, come quello di Apple, sì). Per
+una presa da 3,5 mm vera: sul T-Deck un piccolo DAC I2S con jack sulle linee dell'altoparlante; per
+una PCB nuova un codec (per esempio TLV320DAC3100) al posto del MAX98357A, sugli stessi pin.
+
 ## Parametri radio
 
 | | Messaggi (canale principale) | Vocali (canale voce) |
@@ -299,16 +561,44 @@ persi, collisioni, nodi nascosti):
 ```sh
 cd Pippaphone_firmware
 cmake -S test -B build-test && cmake --build build-test
-./build-test/pippanet_test                  # 30 test
+./build-test/pippanet_test                  # 35 test
 PN_SEED=7 ./build-test/pippanet_test        # altro seme casuale
 PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
+```
+
+Le parti delle cuffie USB-C senza ESP-IDF (descrittori USB Audio, scelta del formato, ricampionatore,
+coda, volume) hanno i loro test: `usb_audio_test` (descrittori di cinque dispositivi veri, qualità del
+ricampionatore misurata coi toni, coda tra due thread), più `componenti/usb_audio/test_host` (tutti i
+casi dei descrittori e un fuzzer) e `componenti/usb_audio/test_host_dsp` (il ricampionatore
+ottimizzato e i suoi tempi). Su Windows con MSYS2:
+
+```sh
+cmake -S test -B build-test -G Ninja && cmake --build build-test --target usb_audio_test
+./build-test/usb_audio_test uac_            # descrittori; dsp_ per il ricampionatore
+```
+
+Il GPS del T-Deck ha due gruppi di test. `gps_politica_test` (10 test) prova quando il telefono lo
+accende (`telefono/main/app/gps_politica.h`: avvio, ricerche periodiche e loro raddoppi al chiuso,
+schermate, richieste, grazia), un giro al secondo per ore simulate. `componenti/scheda/test_host`
+(`gnss_test`, 37 test) prova l'analizzatore NMEA (flussi realistici di u-blox M10, L76K e AT6558R,
+serie GSV, dati che scadono) e il pilota del ricevitore contro un u-blox finto con un orologio finto
+(standby col PMREQ, sveglia, ricevitore che ignora il PMREQ, che tace o che appena sveglio non sente
+i comandi, prova al banco). Su Windows con MSYS2 (`C:\msys64\ucrt64\bin` nel PATH):
+
+```sh
+cmake -S test -B build-test -G Ninja && cmake --build build-test --target gps_politica_test
+./build-test/gps_politica_test
+cmake -S componenti/scheda/test_host -B build-gnss-test -G Ninja && cmake --build build-gnss-test
+./build-gnss-test/gnss_test                 # nmea_ per l'analizzatore, gps_ per il pilota
 ```
 
 ### Simulatore dell'interfaccia
 
 `strumenti/simulatore` compila sul PC le schermate vere, i dati veri e LVGL, con una scheda, una
-rete e un GPS finti, e salva uno screenshot di ogni schermata (41 per la PCB, 46 per il T-Deck,
-mappe e chiamata comprese). Controlla anche che nessuna scritta esca dal suo riquadro. Su Windows serve
+rete e un GPS finti, e salva uno screenshot di ogni schermata (65 per la PCB, 94 per il T-Deck,
+mappe, chiamata, orologio, giochi, musica e cuffie USB-C comprese; sul T-Deck anche il GPS che cerca
+i satelliti, che non risponde e che trova la posizione, nella schermata Posizione, sulla mappa, nelle
+richieste e negli SOS). Controlla anche che nessuna scritta esca dal suo riquadro. Su Windows serve
 MSYS2 (gcc e ninja), su Linux basta gcc:
 
 ```sh
@@ -317,11 +607,13 @@ build-sim/sim_tdeck screenshot-tdeck            # 320x240
 build-sim/sim_pcb screenshot-pcb                # 480x480
 SIM_NOMI_LUNGHI=1 build-sim/sim_tdeck prova     # tutti i nomi lunghissimi
 SIM_NOMI_MAX=1 build-sim/sim_pcb prova          # nomi lunghi quanto il massimo che si può scrivere
+SIM_TEMA=scuro build-sim/sim_pcb scuro-pcb      # col tema Scuro (senza: Carta)
 ```
 
 Per controllare che una modifica non cambi l'interfaccia della PCB si compila il simulatore anche
 coi sorgenti di prima (`-DUI_DIR=... -DSCHEDA_DIR=...`) e si confrontano gli screenshot: devono
-essere identici pixel per pixel.
+essere identici pixel per pixel. Col tema Scuro (`SIM_TEMA=scuro`) si controlla che la grafica di
+prima non sia cambiata.
 
 ### Simulatore nel browser (T-Deck Plus)
 
@@ -424,7 +716,12 @@ licenze (i file di licenza sono nelle rispettive cartelle):
 | Monocypher | BSD-2 / CC0 |
 | Atkinson Hyperlegible, IBM Plex Mono, Font Awesome Free | SIL Open Font License 1.1 |
 | **Codec 2** | **GNU LGPL 2.1** |
+| minimp3 (lettore musicale del T-Deck) | CC0 (pubblico dominio) |
 | esptool-js (solo nella pagina per caricare il firmware, non nel firmware) | Apache 2.0 |
+| MapLibre GL JS (solo nella pagina per caricare il firmware, per disegnare le mappe) | BSD-3 |
+
+Le mappe che la pagina disegna usano i dati di **OpenStreetMap** (© OpenStreetMap contributors,
+licenza ODbL) con gli stili di OpenFreeMap: chi distribuisce le tile deve citare OpenStreetMap.
 
 **Attenzione a Codec 2.** Se distribuisci il firmware compilato ad altri, la LGPL chiede di
 permettere a chi lo riceve di sostituire Codec 2 con una sua versione modificata: si fa
