@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Prepara la pagina per caricare il firmware dal browser.
 
-Compila il telefono per il LilyGO T-Deck Plus e il ripetitore per Heltec V3 e LilyGO T3-S3, poi
-mette i firmware, esptool-js e MapLibre (la cartina per le mappe sulla microSD) dentro il modello
-flasher.html e scrive una pagina sola:
+Compila il telefono per il LilyGO T-Deck Plus e il ripetitore per Heltec V3 e LilyGO T3-S3 (con ESP-IDF),
+e la tastiera del T-Deck (ESP32-C3, con PlatformIO, se c'e'), poi mette i firmware, esptool-js e MapLibre
+(la cartina per le mappe sulla microSD) dentro il modello flasher.html e scrive una pagina sola:
 
     build-flasher/pippaphone_flasher.html
 
@@ -12,6 +12,9 @@ che si apre con Chrome o Edge anche con un doppio clic, senza server e senza int
 Uso, dalla cartella Pippaphone_firmware:
     python strumenti/flasher/prepara.py               compila (serve ESP-IDF attivo) e prepara la pagina
     python strumenti/flasher/prepara.py --solo-pagina  prepara la pagina con le compilazioni che ci sono
+
+Senza PlatformIO (comando pio) la pagina si fa lo stesso, ma senza la tastiera: vedi
+strumenti/tastiera_c3/LEGGIMI.md.
 """
 import argparse
 import base64
@@ -19,6 +22,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -39,6 +43,12 @@ DISPOSITIVI = {
     "heltec": ("ripetitore", "build-heltec", "sdkconfig.defaults;sdkconfig.defaults.heltec"),
     "t3s3": ("ripetitore", "build-t3s3", "sdkconfig.defaults;sdkconfig.defaults.t3s3"),
 }
+# La tastiera del T-Deck (ESP32-C3) e' un progetto di PlatformIO (Arduino): accanto al firmware compilato
+# strumenti/tastiera_c3/scrivi_flasher_args.py scrive un flasher_args.json come quello di ESP-IDF.
+TASTIERA = FW / "strumenti" / "tastiera_c3"
+TASTIERA_BUILD = TASTIERA / ".pio" / "build" / "tastiera"
+TASTIERA_INO = TASTIERA / "Keyboard_ESP32C3_Pippaphone" / "Keyboard_ESP32C3_Pippaphone.ino"
+ESP32_C3 = 5   # il numero del chip nell'intestazione delle immagini (esp_chip_id_t)
 
 
 def compila(progetto, cartella, defaults):
@@ -51,6 +61,33 @@ def compila(progetto, cartella, defaults):
     subprocess.run(cmd, cwd=FW / progetto, check=True)
 
 
+def pio():
+    """Il comando di PlatformIO: nel PATH, o dove lo mette il suo installatore (anche l'estensione di VS Code)."""
+    for nome in ("pio", "platformio"):
+        if shutil.which(nome):
+            return shutil.which(nome)
+    casa = Path(os.environ.get("PLATFORMIO_CORE_DIR") or Path.home() / ".platformio")
+    for p in (casa / "penv" / "Scripts" / "pio.exe", casa / "penv" / "bin" / "pio"):
+        if p.is_file():
+            return str(p)
+    return None
+
+
+def compila_tastiera():
+    """La tastiera si compila con PlatformIO; senza, o se non riesce, la pagina si fa senza la tastiera."""
+    comando = pio()
+    if not comando:
+        print("== tastiera: PlatformIO non c'e' (strumenti/tastiera_c3/LEGGIMI.md): resta fuori dalla pagina")
+        return
+    # Senza firmware.bin PlatformIO lo rifa' dal programma gia' compilato e scrivi_flasher_args.py riscrive
+    # flasher_args.json: cosi' c'e' anche dopo una compilazione fatta prima di quello script.
+    for vecchio in ("firmware.bin", "flasher_args.json"):
+        (TASTIERA_BUILD / vecchio).unlink(missing_ok=True)
+    print("== tastiera: pio run -e tastiera", flush=True)
+    if subprocess.run([comando, "run", "-d", str(TASTIERA), "-e", "tastiera"]).returncode:
+        print("   la compilazione della tastiera non e' riuscita: resta fuori dalla pagina")
+
+
 def descrizione(app):
     """esp_app_desc_t: subito dopo l'intestazione dell'immagine (24 byte) e del primo segmento (8)."""
     if len(app) < 176 or int.from_bytes(app[32:36], "little") != 0xABCD5432:
@@ -60,8 +97,7 @@ def descrizione(app):
             "data": testo(128, 144), "idf": testo(144, 176)}
 
 
-def firmware(progetto, cartella):
-    d = FW / progetto / cartella
+def firmware(d):
     args_file = d / "flasher_args.json"
     if not args_file.exists():
         print(f"   manca {args_file.relative_to(FW)}: questo dispositivo resta fuori dalla pagina")
@@ -76,8 +112,45 @@ def firmware(progetto, cartella):
     info = descrizione(app.read_bytes())
     # La data nella descrizione dell'app e' quella dell'ultima compilazione completa: meglio l'ora del file.
     compilato = datetime.datetime.fromtimestamp(app.stat().st_mtime).strftime("%d/%m/%Y alle %H:%M")
-    info.update({"compilato": compilato, "flash": args["flash_settings"]["flash_size"], "file": file})
+    info.update({"compilato": compilato, "flash": args["flash_settings"]["flash_size"], "file": file,
+                 "app": Path(args["app"]["file"]).name})
     return info
+
+
+def tabella_app(tabella):
+    """Gli indirizzi delle partizioni app (tipo 0) di una tabella delle partizioni: voci da 32 byte, AA 50."""
+    app = set()
+    for i in range(0, len(tabella) - 31, 32):
+        voce = tabella[i:i + 32]
+        if voce[:2] != b"\xaa\x50":
+            break
+        if voce[2] == 0:
+            app.add(int.from_bytes(voce[4:8], "little"))
+    return app
+
+
+def tastiera():
+    """Il firmware della tastiera, se c'e' ed e' completo: bootloader a 0, tabella delle partizioni a 0x8000 e
+    il programma nella prima partizione app, tutti per l'ESP32-C3. La versione e' quella dello sketch."""
+    fw = firmware(TASTIERA_BUILD)
+    if not fw:
+        return None
+    file = {f["indirizzo"]: base64.b64decode(f["dati"]) for f in fw["file"]}
+    app = next((f["indirizzo"] for f in fw["file"] if f["nome"] == fw["app"]), None)
+    immagine = lambda dati: dati[:1] == b"\xe9" and int.from_bytes(dati[12:14], "little") == ESP32_C3
+    controlli = [
+        (immagine(file.get(0, b"")), "il bootloader a 0x0 manca o non e' per l'ESP32-C3"),
+        (file.get(0x8000, b"")[:2] == b"\xaa\x50", "manca la tabella delle partizioni a 0x8000"),
+        (app is not None and immagine(file[app]), "il programma non e' un'immagine per l'ESP32-C3"),
+        (app in tabella_app(file.get(0x8000, b"")), "il programma non e' all'inizio di una partizione app"),
+    ]
+    problema = next((testo for va, testo in controlli if not va), "")
+    if problema:
+        print(f"   ATTENZIONE, {TASTIERA_BUILD.relative_to(FW)}: {problema}. La tastiera resta fuori dalla pagina.")
+        return None
+    m = re.search(r"PIPPA_VERSIONE\s*=\s*(\d+)", TASTIERA_INO.read_text(encoding="utf-8"))
+    fw["versione"] = f"versione {m.group(1)}" if m else "?"
+    return fw
 
 
 def esptool_js():
@@ -125,10 +198,12 @@ def main():
     if not a.solo_pagina:
         for progetto, cartella, defaults in DISPOSITIVI.values():
             compila(progetto, cartella, defaults)
+        compila_tastiera()
 
     dati = {"creato": datetime.datetime.now().strftime("%d/%m/%Y alle %H:%M"), "git": git_descrizione()}
-    for nome, (progetto, cartella, _) in DISPOSITIVI.items():
-        fw = firmware(progetto, cartella)
+    pronti = {nome: firmware(FW / progetto / cartella) for nome, (progetto, cartella, _) in DISPOSITIVI.items()}
+    pronti["tastiera"] = tastiera()
+    for nome, fw in pronti.items():
         if fw:
             dati[nome] = fw
             kb = sum(f["dimensione"] for f in fw["file"]) // 1024

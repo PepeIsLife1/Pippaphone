@@ -30,7 +30,7 @@ Pippaphone_firmware/
 │                        di ESP-IDF), ricampionatore e coda, coi loro test sul PC
 ├── test/                test del protocollo sul PC (rete simulata)
 ├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome),
-│   ├── flasher/         pagina per caricare il firmware dal browser (T-Deck e ripetitori)
+│   ├── flasher/         pagina per caricare il firmware dal browser (T-Deck, tastiera, ripetitori)
 │   ├── simulatore/      l'interfaccia del telefono sul PC (screenshot di tutte le schermate)
 │   │                    e nel browser col T-Deck disegnato (web/)
 │   └── tastiera_c3/     firmware a basso consumo per la tastiera (ESP32-C3) del T-Deck
@@ -58,19 +58,25 @@ La porta USB-C della PCB è collegata alla USB interna dell'ESP32-S3: non servon
 Se il chip non entra in programmazione, tieni GPIO0 a massa (punto di test **TP6**) mentre
 accendi la scheda (vedi sotto: col cavo USB da solo la PCB rev. 1.1 resta spenta).
 
-### Caricare dal browser (T-Deck Plus e ripetitori)
+### Caricare dal browser (T-Deck Plus, la sua tastiera e i ripetitori)
 
 `strumenti/flasher` prepara una pagina sola per caricare il firmware senza ESP-IDF: il telefono
-sul LilyGO T-Deck Plus e il ripetitore su Heltec WiFi LoRa 32 V3 e LilyGO T3-S3 (la PCB per ora
-no). Si apre con Chrome o Edge sul computer, anche con un doppio clic e senza internet: i firmware
-sono dentro la pagina e li scrive esptool-js di Espressif. Prima di scrivere controlla che la
-scheda collegata sia quella scelta (chip ESP32-S3 e memoria da 16, 8 o 4 MB). **Aggiorna** cambia
+sul LilyGO T-Deck Plus, la sua tastiera e il ripetitore su Heltec WiFi LoRa 32 V3 e LilyGO T3-S3
+(la PCB per ora no). Si apre con Chrome o Edge sul computer, anche con un doppio clic e senza
+internet: i firmware sono dentro la pagina e li scrive esptool-js di Espressif. Prima di scrivere
+controlla che la scheda collegata sia quella scelta (il chip e la memoria). **Aggiorna** cambia
 solo il programma e lascia numero, chiavi e impostazioni; **Installa da zero** cancella tutta la
 memoria (serve la prima volta, sopra il firmware di fabbrica o Meshtastic). Alla fine si apre la
 console: sui ripetitori ci sono le caselle per dare il numero e la potenza.
 
+La **tastiera** del T-Deck ha un suo ESP32-C3 (`strumenti/tastiera_c3/LEGGIMI.md`) che non è
+collegato alla USB-C: si carica con un adattatore USB-seriale a 3,3 V sul suo connettore, e la
+pagina spiega come collegarlo. Il suo firmware lo compila PlatformIO (il comando `pio`): senza
+PlatformIO la pagina si fa lo stesso, ma senza il firmware della tastiera. Dalla pagina si può
+anche tornare al firmware di LilyGO, scegliendo il suo file `.bin`.
+
 ```sh
-python strumenti/flasher/prepara.py                 # con ESP-IDF attivo: compila i tre firmware
+python strumenti/flasher/prepara.py                 # con ESP-IDF attivo: compila i firmware (la tastiera con PlatformIO)
 python strumenti/flasher/prepara.py --solo-pagina   # usa le compilazioni che ci sono già
 # -> build-flasher/pippaphone_flasher.html (circa 4 MB)
 ```
@@ -177,8 +183,8 @@ trackball, e non ci sono il riquadro degli accenti, il volume dai tasti, la scor
 (SYM+spazio): niente "Spegni", si spegne solo con l'interruttore e l'ora si perde.
 Per avere tutto basta aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un
 adattatore USB-seriale sui pin accanto al tasto RST), oppure caricare quello del Pippaphone
-(`strumenti/tastiera_c3`: stesso protocollo, consuma molto meno, vedi "Risparmio di energia"). Il
-monitor seriale e `info.txt` scrivono quale modo è in uso.
+(`strumenti/tastiera_c3`: stesso protocollo, consuma molto meno, vedi "Risparmio di energia"),
+anche dalla pagina del flasher. Il monitor seriale e `info.txt` scrivono quale modo è in uso.
 
 ### Differenze dalla PCB
 
@@ -405,8 +411,9 @@ Cosa fa il firmware (tre fasi, un commit ciascuna; prima il bug della radio):
   schermo acceso, il GPS che parla, l'I2S acceso, le cuffie, il Wi-Fi e un computer sulla USB. I pin
   della scheda restano com'erano (se no ESP-IDF li isolerebbe, POWERON compreso). DIO1 della LoRa
   sveglia il chip; tastiera e trackball si leggono ogni 40 ms;
-- **fase 3**: il firmware del C3 (`strumenti/tastiera_c3`, da caricare a parte). Con quello l'S3 a
-  schermo spento non legge più la tastiera: aspetta la linea `C3_INT`.
+- **fase 3**: il firmware del C3 (`strumenti/tastiera_c3`, da caricare a parte con un adattatore
+  USB-seriale, anche dalla pagina del flasher). Con quello l'S3 a schermo spento non legge più la
+  tastiera: aspetta la linea `C3_INT`.
 
 **Compilare.** Le opzioni nuove sono in `sdkconfig.defaults.tdeck`: prima di compilare cancella
 `build-tdeck/sdkconfig` (ESP-IDF non riapplica i valori predefiniti a un sdkconfig che esiste già).
