@@ -745,3 +745,99 @@ TEST(ora_ripresa_si_corregge_dalla_rete) {
     const int64_t diff = int64_t(w.a().unixTime(w.net.now())) - int64_t(w.b().unixTime(w.net.now()));
     CHECK(diff >= -2 && diff <= 2);
 }
+
+// ---------------------------------------------------------------- sonno del compito della radio
+//
+// Sul telefono il compito della radio (pippa_radio/radio_link.cpp) dorme per msUntilNextEvent(), almeno
+// 5 ms. Se il nodo dice "subito" (0) quando non ha niente da trasmettere sul canale su cui si trova, il
+// compito gira ogni 5 ms a vuoto finche' la cosa non cambia: CPU sveglia per niente (fino a 2 s col passo
+// tra due messaggi, minuti con un beacon scaduto durante una chiamata).
+
+namespace {
+
+// Nodo minimo: una coda, un canale e un passo (come Phone::mayTransmit) che si decidono dal test.
+struct NodoProva : Node {
+    Channel canale = Channel::MAIN;
+    Millis passoFino = 0;
+    NodoProva() : Node(1234) {}
+    void accoda(Channel ch, Millis nonPrima) {
+        uint8_t b[HEADER_SIZE + 4] = {};
+        b[0] = uint8_t(Type::DM_TEXT);
+        enqueue(b, sizeof(b), Priority::Normal, nonPrima, ch);
+    }
+    void sveglia(Millis t) { nextWake_ = t; }
+    Channel activeChannel(Millis) const override { return canale; }
+
+protected:
+    void handle(const Header&, const uint8_t*, size_t, const RxInfo&, Millis) override {}
+    bool mayTransmit(const Frame&, Millis now) const override { return now >= passoFino; }
+    Millis heldForMs(const Frame&, Millis now) const override { return passoFino > now ? passoFino - now : 0; }
+};
+
+// Passi in cui il telefono non ha niente da trasmettere sul suo canale ma dice "subito".
+int giriAVuoto(sim::Network& net, int who, Millis ms) {
+    int n = 0;
+    net.runUntil([&] {
+        Phone& p = net.phone(who);
+        const Millis now = net.now();
+        if (!p.hasTx(now, p.activeChannel(now)) && p.msUntilNextEvent(now) == 0) n++;
+        return false;
+    }, ms);
+    return n;
+}
+
+}  // namespace
+
+TEST(radio_dorme_fino_al_prossimo_evento) {
+    NodoProva n;
+    const Millis t = 100000;
+    n.sveglia(t + 60000);
+    CHECK_EQ(n.msUntilNextEvent(t), Millis(60000));
+    // Pronto e trasmissibile: subito, come prima.
+    n.accoda(Channel::MAIN, t);
+    CHECK(n.hasTx(t, Channel::MAIN));
+    CHECK_EQ(n.msUntilNextEvent(t), Millis(0));
+    // Trattenuto dal passo per 700 ms: si dorme 700 ms, non 0.
+    n.passoFino = t + 700;
+    CHECK(!n.hasTx(t, Channel::MAIN));
+    CHECK_EQ(n.msUntilNextEvent(t), Millis(700));
+    CHECK_EQ(n.msUntilNextEvent(t + 650), Millis(50));
+    CHECK_EQ(n.msUntilNextEvent(t + 700), Millis(0));
+    // Pronto per l'altro canale (si e' sul canale voce): si riguarda ogni tanto, non ogni 5 ms.
+    NodoProva v;
+    v.sveglia(t + 60000);
+    v.canale = Channel::VOICE;
+    v.accoda(Channel::MAIN, t);
+    CHECK(!v.hasTx(t, Channel::VOICE));
+    CHECK(v.msUntilNextEvent(t) > 0);
+    CHECK(v.msUntilNextEvent(t) <= 50);
+    // Non ancora pronto: fino a quando lo sara'.
+    NodoProva d;
+    d.sveglia(t + 60000);
+    d.accoda(Channel::MAIN, t + 300);
+    CHECK_EQ(d.msUntilNextEvent(t), Millis(300));
+}
+
+TEST(radio_dorme_col_passo_tra_due_messaggi) {
+    // A scrive tre messaggi di fila a C attraverso i ripetitori: il secondo e il terzo aspettano che il
+    // primo si sia allontanato (passo). Intanto la radio non deve girare a vuoto.
+    World w;
+    auto& rc = w.net.rec(w.C);
+    for (int i = 0; i < 3; i++) w.a().sendText(1203, "messaggio " + std::to_string(i), w.net.now());
+    CHECK_EQ(giriAVuoto(w.net, w.A, 120000), 0);
+    CHECK(w.net.runUntil([&] { return rc.texts.size() == 3; }, 180000));
+}
+
+TEST(radio_dorme_col_beacon_scaduto_in_chiamata) {
+    // Il beacon scade mentre A e' in chiamata (canale voce): parte dopo la chiamata, e intanto la radio
+    // non gira a vuoto.
+    World w;
+    w.a().beaconIntervalMs = 31000;  // dal prossimo beacon, uno ogni 1-61 s
+    w.net.run(6 * 60 * 1000);       // il primo beacon col passo di prima e' partito
+    CHECK(connect(w.net, w.A, w.B, 1001));
+    CHECK(talk(w.net, w.A, 5, 1));
+    CHECK_EQ(giriAVuoto(w.net, w.A, 90000), 0);
+    w.a().endCall(w.net.now());
+    CHECK(w.net.runUntil([&] { return w.a().callState() == CallState::IDLE; }, 10000));
+    CHECK_EQ(giriAVuoto(w.net, w.A, 90000), 0);
+}

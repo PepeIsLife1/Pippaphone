@@ -86,6 +86,11 @@ protected:
     virtual void onDuplicate(const Header& h, const RxInfo& info, Millis now) { (void)h; (void)info; (void)now; }
     // Il nodo puo' trattenere un pacchetto pronto (per distanziare i propri invii).
     virtual bool mayTransmit(const Frame& f, Millis now) const { (void)f; (void)now; return true; }
+    // Fra quanti ms un pacchetto che mayTransmit() trattiene potra' partire: msUntilNextEvent() dorme fino
+    // ad allora invece di dire "subito". Chi ridefinisce mayTransmit() ridefinisce anche questa.
+    virtual Millis heldForMs(const Frame& f, Millis now) const { (void)f; (void)now; return HELD_POLL_MS; }
+    // Un pacchetto trattenuto (senza heldForMs) o pronto per l'altro canale si riguarda ogni tanto.
+    static constexpr Millis HELD_POLL_MS = 20;
 
     // Accoda un pacchetto; tag serve per poterlo togliere dalla coda (0 = nessuno). Se expires non
     // e' 0, il pacchetto ancora in coda a quell'ora si butta (voce in diretta).

@@ -1220,6 +1220,11 @@ bool Phone::mayTransmit(const Frame& f, Millis now) const {
            t == Type::VOICE_END || t == Type::BEACON || t == Type::CALL_VOICE || t == Type::CALL_END;
 }
 
+Millis Phone::heldForMs(const Frame& f, Millis now) const {
+    (void)f;
+    return paceUntil_ > now ? paceUntil_ - now : 0;
+}
+
 void Phone::onTransmitted(const uint8_t* data, size_t len, Millis now) {
     Header h;
     if (!decodeHeader(data, len, h)) return;
@@ -1401,7 +1406,11 @@ void Phone::tick(Millis now) {
     Millis wake = now + 60000;
     for (const auto& e : echo_) wake = std::min(wake, e.until);
     if (provisioning_ && !hasNumber()) wake = std::min(wake, nextHello_);
-    if (hasNumber()) wake = std::min(wake, nextBeacon_);
+    // Il beacon parte solo dal canale messaggi: scaduto durante un vocale o una chiamata aspetta la fine del
+    // canale voce (qui sotto), invece di chiedere "subito" a ogni giro.
+    if (hasNumber() && activeChannel(now) == Channel::MAIN) wake = std::min(wake, nextBeacon_);
+    if (vOut_.channelUntil > now) wake = std::min(wake, vOut_.channelUntil);
+    if (vIn_.channelUntil > now) wake = std::min(wake, vIn_.channelUntil);
     if (sos_.active) wake = std::min(wake, sos_.next);
     for (const auto& o : out_) wake = std::min(wake, o.nextTry);
     if (!waitingCert_.empty()) wake = std::min(wake, now + 1000);

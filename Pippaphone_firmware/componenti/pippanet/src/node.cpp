@@ -148,9 +148,15 @@ bool Node::popTx(Millis now, Channel ch, Frame& out) {
 Millis Node::msUntilNextEvent(Millis now) const {
     Millis next = nextWake_ > now ? nextWake_ - now : 0;
     if (nextWake_ == 0) next = 60000;
+    const Channel ch = activeChannel(now);
     for (const auto& t : queue_) {
         if (expired(t, now)) continue;
         Millis d = t.notBefore > now ? t.notBefore - now : 0;
+        // Pronto ma da non trasmettere adesso: niente "subito", se no il compito della radio gira ogni 5 ms
+        // a vuoto finche' resta cosi' (il passo tra due miei messaggi; un pacchetto per l'altro canale
+        // durante un vocale o una chiamata).
+        if (d == 0 && t.ch != ch) d = HELD_POLL_MS;
+        else if (d == 0 && !mayTransmit(t.frame, now)) d = std::max<Millis>(1, heldForMs(t.frame, now));
         next = std::min(next, d);
     }
     return next;

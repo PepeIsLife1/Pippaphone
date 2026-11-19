@@ -208,6 +208,7 @@ protected:
     void handle(const Header& h, const uint8_t* raw, size_t len, const RxInfo& info, Millis now) override;
     void onDuplicate(const Header& h, const RxInfo& info, Millis now) override;
     bool mayTransmit(const Frame& f, Millis now) const override;
+    Millis heldForMs(const Frame& f, Millis now) const override;
 
 private:
     // Messaggio a tutti appena trasmesso: se nessun ripetitore lo ripete, lo si rimanda una volta.

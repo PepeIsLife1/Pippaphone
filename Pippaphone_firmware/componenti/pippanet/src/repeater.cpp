@@ -397,7 +397,9 @@ void Repeater::tick(Millis now) {
     if (lastHeard_.size() > 600)
         for (auto it = lastHeard_.begin(); it != lastHeard_.end();)
             it = (now - it->second > routeTtlMs) ? lastHeard_.erase(it) : std::next(it);
-    nextWake_ = nextBeacon_;
+    // Il beacon parte solo dal canale messaggi: scaduto mentre si e' sul canale voce si riguarda ogni mezzo
+    // secondo, invece di chiedere "subito" (il compito della radio girerebbe ogni 5 ms a vuoto).
+    nextWake_ = activeChannel(now) == Channel::MAIN ? nextBeacon_ : std::max(nextBeacon_, now + 500);
     for (const auto& w : watch_) nextWake_ = std::min(nextWake_, w.until);
     if (!calls_.empty()) nextWake_ = std::min(nextWake_, now + 500);
 }
