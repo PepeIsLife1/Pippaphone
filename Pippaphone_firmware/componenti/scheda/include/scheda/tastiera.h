@@ -64,6 +64,16 @@ public:
     // A riposo (schermo spento) il compito "input" legge ogni 40 ms invece che ogni 12: basta una lettura per
     // accettare un tasto (a quel passo il filtro delle due letture uguali perderebbe i tasti brevi).
     void setRiposo(bool riposo) { riposo_ = riposo; }
+    // Firmware del C3 del Pippaphone (strumenti/tastiera_c3): risponde al saluto e, nel modo a basso consumo,
+    // alza C3_INT quando un tasto cambia e dorme quando non serve. Allora a riposo il compito "input" non
+    // legge a vuoto: aspetta C3_INT, il clic o il trackball (aspetta()).
+    bool c3Pippaphone() const { return c3Pippa_; }
+    uint8_t c3Versione() const { return c3Versione_; }
+    // Un tasto o il clic sono giu' adesso.
+    bool inUso() const;
+    // Aspetta al massimo ms che C3_INT salga, che il clic si prema o che il trackball si muova (dal compito
+    // "input", a riposo, col C3 del Pippaphone). Torna subito se C3_INT o il clic sono gia' attivi.
+    void aspetta(uint32_t ms);
 
 private:
     enum Mode : uint8_t { UNKNOWN, RAW, CHARS };
@@ -89,6 +99,8 @@ private:
     bool clickIgnora_ = false;    // clic tenuto all'accensione (risveglio col trackball): non e' un OK
     int64_t clickChangeMs_ = 0;
     bool riposo_ = false;
+    bool c3Pippa_ = false;
+    uint8_t c3Versione_ = 0;
 };
 #else
 class Tastiera {

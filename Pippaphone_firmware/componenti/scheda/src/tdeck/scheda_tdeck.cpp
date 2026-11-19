@@ -19,6 +19,7 @@
 #include "esp_private/esp_sleep_internal.h"  // modo RTC_USE_RC_FAST (vedi powerOff)
 #include "esp_sleep.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "sdkconfig.h"
 #include "freertos/task.h"
@@ -81,14 +82,31 @@ void blinkCb(TimerHandle_t) {
     applyKeyboardLight();
 }
 
+// Col C3 del Pippaphone a riposo: si legge ogni 12 ms finche' un tasto o il clic sono giu' e ancora per
+// questo tempo dopo, poi si aspetta C3_INT, il clic o il trackball (al massimo ATTESA_MAX_MS, per sicurezza).
+constexpr int64_t DOPO_TASTO_MS = 500;
+constexpr uint32_t ATTESA_MAX_MS = 10000;
+
 void inputTask(void*) {
     TickType_t last = xTaskGetTickCount();
+    int64_t leggiFino = 0;
     for (;;) {
         // A riposo solo col modo della tastiera gia' capito: si capisce da due letture di fila al primo tasto,
         // e a 40 ms un tasto breve sembrerebbe il firmware vecchio del C3.
         const bool riposo = g_inputRiposo && tastiera().modeKnown();
         tastiera().setRiposo(riposo);
         tastiera().service();
+        if (riposo && tastiera().c3Pippaphone()) {
+            const int64_t now = esp_timer_get_time() / 1000;
+            if (tastiera().inUso()) leggiFino = now + DOPO_TASTO_MS;
+            if (now >= leggiFino) {
+                tastiera().aspetta(ATTESA_MAX_MS);  // il chip intanto puo' dormire
+                last = xTaskGetTickCount();
+                continue;
+            }
+            vTaskDelayUntil(&last, INPUT_PERIOD);
+            continue;
+        }
         vTaskDelayUntil(&last, riposo ? INPUT_PERIOD_RIPOSO : INPUT_PERIOD);
     }
 }
@@ -232,7 +250,12 @@ Avvio holdPower() {
 
 bool spiBusReady() { return g_spi; }
 
-void inputRiposo(bool riposo) { g_inputRiposo = riposo; }
+void inputRiposo(bool riposo) {
+    const bool prima = g_inputRiposo;
+    g_inputRiposo = riposo;
+    // Schermo riacceso da un avviso: il compito potrebbe essere fermo in Tastiera::aspetta() (fino a 10 s).
+    if (prima && !riposo && g_inputTask) xTaskNotifyGive(g_inputTask);
+}
 
 void tieni(Tieni motivo, bool on) {
 #if CONFIG_PM_ENABLE

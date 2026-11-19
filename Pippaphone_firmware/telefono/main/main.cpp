@@ -126,8 +126,10 @@ void deviceInfo() {
              app::rete().isAdmin() ? " (amministratore)" : "", app::rete().myCode().c_str(),
              n ? app::rete().adminCode().c_str() : "-", app::rete().radioOk() ? "ok" : "non risponde",
              double(m.freqMHz), double(m.bwKHz), m.sf, double(v.freqMHz), double(v.bwKHz), v.sf,
-             !scheda::tastiera().modeKnown() ? "da capire al primo tasto" : scheda::tastiera().rawMode()
-                 ? "tasti premuti e rilasciati (modo raw)" : "solo caratteri (firmware vecchio del C3: ripiego)",
+             scheda::tastiera().c3Pippaphone() ? "firmware del C3 del Pippaphone (modo raw, C3_INT, sonno)"
+             : !scheda::tastiera().modeKnown()  ? "da capire al primo tasto"
+             : scheda::tastiera().rawMode()     ? "tasti premuti e rilasciati (modo raw)"
+                                                : "solo caratteri (firmware vecchio del C3: ripiego)",
              pc <= 100 ? (std::to_string(pc) + "%").c_str() : "?", double(scheda::batteria().volts()));
     app::writeDeviceInfo(b);
 }

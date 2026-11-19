@@ -15,7 +15,9 @@ typedef enum {
 typedef enum { GPIO_MODE_DISABLE = 0, GPIO_MODE_INPUT = 1, GPIO_MODE_OUTPUT = 2 } gpio_mode_t;
 typedef enum { GPIO_PULLUP_DISABLE = 0, GPIO_PULLUP_ENABLE = 1 } gpio_pullup_t;
 typedef enum { GPIO_PULLDOWN_DISABLE = 0, GPIO_PULLDOWN_ENABLE = 1 } gpio_pulldown_t;
-typedef enum { GPIO_INTR_DISABLE = 0, GPIO_INTR_POSEDGE, GPIO_INTR_NEGEDGE, GPIO_INTR_ANYEDGE } gpio_int_type_t;
+typedef enum {
+    GPIO_INTR_DISABLE = 0, GPIO_INTR_POSEDGE, GPIO_INTR_NEGEDGE, GPIO_INTR_ANYEDGE, GPIO_INTR_LOW_LEVEL, GPIO_INTR_HIGH_LEVEL
+} gpio_int_type_t;
 typedef struct {
     uint64_t pin_bit_mask;
     gpio_mode_t mode;
@@ -29,3 +31,7 @@ int gpio_config(const gpio_config_t* cfg);
 int gpio_install_isr_service(int flags);
 int gpio_isr_handler_add(gpio_num_t pin, gpio_isr_t fn, void* arg);
 int gpio_get_level(gpio_num_t pin);
+// Risveglio dal light sleep e interruzioni a livello (C3_INT, clic): nel simulatore non servono.
+static inline int gpio_wakeup_enable(gpio_num_t, gpio_int_type_t) { return 0; }
+static inline int gpio_intr_enable(gpio_num_t) { return 0; }
+static inline int gpio_intr_disable(gpio_num_t) { return 0; }

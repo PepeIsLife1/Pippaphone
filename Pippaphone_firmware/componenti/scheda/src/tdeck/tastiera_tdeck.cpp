@@ -14,6 +14,12 @@
 //
 // Trackball: ogni scatto cambia il livello di uno dei quattro pin (interruzione su entrambi i
 // fronti); il clic e' il GPIO 0, letto con un filtro dei rimbalzi.
+//
+// Col firmware del C3 del Pippaphone (strumenti/tastiera_c3) in piu': il saluto (0x10) lo riconosce, il modo
+// a basso consumo (0x11 1) fa alzare al C3 la linea C3_INT (GPIO 46) quando un tasto cambia e lo lascia
+// dormire quando non serve. A schermo spento il compito "input" allora aspetta C3_INT, il clic o il
+// trackball (aspetta()) invece di leggere ogni 40 ms. Un C3 che dorme non risponde alla prima transazione
+// I2C (lo sveglia): la si ripete.
 #include <atomic>
 #include <cstring>
 
@@ -22,6 +28,7 @@
 #include "esp_attr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "hal/gpio_ll.h"
 #include "scheda/pins.h"
 #include "scheda/tastiera.h"
 
@@ -30,6 +37,9 @@ namespace scheda {
 namespace {
 const char* TAG = "tastiera";
 constexpr uint8_t CMD_LIGHT = 0x01, CMD_RAW = 0x03;
+// Firmware del C3 del Pippaphone: saluto (la lettura dopo dice A5 5A versione funzioni 0) e basso consumo.
+constexpr uint8_t CMD_SALUTO = 0x10, CMD_RISPARMIO = 0x11;
+constexpr uint8_t FUNZIONE_INT = 0x01;
 constexpr int TB_EDGES_PER_STEP = 2;      // fronti per uno scatto del trackball (da provare)
 constexpr int TB_MAX_STEPS = 3;           // al massimo tre passi per lettura
 constexpr int64_t CLICK_DEBOUNCE_MS = 25;
@@ -49,7 +59,28 @@ std::atomic<int32_t> g_tb[4] = {};
 const gpio_num_t TB_PINS[4] = {PIN_TB_UP, PIN_TB_DOWN, PIN_TB_LEFT, PIN_TB_RIGHT};
 const Key TB_KEYS[4] = {Key::UP, Key::DOWN, Key::LEFT, Key::RIGHT};
 
-void IRAM_ATTR tbIsr(void* arg) { g_tb[reinterpret_cast<intptr_t>(arg)].fetch_add(1, std::memory_order_relaxed); }
+// Compito che aspetta in Tastiera::aspetta() (nullptr: nessuno).
+TaskHandle_t volatile g_attesa = nullptr;
+
+void IRAM_ATTR svegliaAttesa() {
+    TaskHandle_t t = g_attesa;
+    if (!t) return;
+    BaseType_t w = pdFALSE;
+    vTaskNotifyGiveFromISR(t, &w);
+    portYIELD_FROM_ISR(w);
+}
+
+void IRAM_ATTR tbIsr(void* arg) {
+    g_tb[reinterpret_cast<intptr_t>(arg)].fetch_add(1, std::memory_order_relaxed);
+    svegliaAttesa();
+}
+
+// C3_INT alta o clic premuto (interruzioni a livello, che svegliano anche dal light sleep): si spengono da
+// sole (con la funzione inline dell'HAL: l'ISR puo' girare a cache della flash spenta), le riaccende aspetta().
+void IRAM_ATTR attesaIsr(void* arg) {
+    gpio_ll_intr_disable(GPIO_LL_GET_HW(0), uint32_t(reinterpret_cast<intptr_t>(arg)));
+    svegliaAttesa();
+}
 
 int64_t nowMs() { return esp_timer_get_time() / 1000; }
 
@@ -110,17 +141,67 @@ bool Tastiera::begin() {
         ESP_LOGE(TAG, "tastiera (ESP32-C3) non risponde: resta solo il trackball");
         return false;
     }
+    // Firmware del C3 del Pippaphone? Quello di LilyGO ignora il saluto e risponde coi tasti (7 bit) o con un
+    // carattere: mai A5 5A.
+    const uint8_t saluto = CMD_SALUTO;
+    uint8_t r[5] = {};
+    c3Pippa_ = dev_.write(&saluto, 1) && dev_.read(r, sizeof(r)) && r[0] == 0xA5 && r[1] == 0x5A &&
+               (r[3] & FUNZIONE_INT);
+    c3Versione_ = c3Pippa_ ? r[2] : 0;
     const uint8_t raw = CMD_RAW;
     dev_.write(&raw, 1);
-    mode_ = UNKNOWN;
-    ESP_LOGI(TAG, "tastiera pronta, chiesto il modo raw");
+    if (!c3Pippa_) {
+        mode_ = UNKNOWN;
+        ESP_LOGI(TAG, "tastiera pronta, chiesto il modo raw");
+        return true;
+    }
+    // Il firmware del Pippaphone ha il modo raw: niente da capire al primo tasto.
+    mode_ = RAW;
+    g_lastRaw = nowMs();
+    // C3_INT: ingresso col pull-down (il C3 la pilota solo nel modo a basso consumo); il clic del trackball a
+    // livello basso. Tutte e due svegliano dal light sleep; le interruzioni le accende solo aspetta().
+    gpio_config_t in = {};
+    in.pin_bit_mask = 1ULL << PIN_KB_INT;
+    in.mode = GPIO_MODE_INPUT;
+    in.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    in.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&in);
+    gpio_isr_handler_add(PIN_KB_INT, attesaIsr, reinterpret_cast<void*>(intptr_t(PIN_KB_INT)));
+    gpio_wakeup_enable(PIN_KB_INT, GPIO_INTR_HIGH_LEVEL);
+    gpio_intr_disable(PIN_KB_INT);
+    gpio_isr_handler_add(PIN_TB_CLICK, attesaIsr, reinterpret_cast<void*>(intptr_t(PIN_TB_CLICK)));
+    gpio_wakeup_enable(PIN_TB_CLICK, GPIO_INTR_LOW_LEVEL);
+    gpio_intr_disable(PIN_TB_CLICK);
+    const uint8_t risparmio[2] = {CMD_RISPARMIO, 1};
+    dev_.write(risparmio, sizeof(risparmio));
+    ESP_LOGI(TAG, "tastiera pronta: firmware del C3 del Pippaphone (versione %u), modo raw e C3_INT", c3Versione_);
     return true;
+}
+
+bool Tastiera::inUso() const { return anyBit(stable_) || clickDown_; }
+
+void Tastiera::aspetta(uint32_t ms) {
+    if (!c3Pippa_) return;
+    // Gia' attivi: si legge subito.
+    if (gpio_get_level(PIN_KB_INT) || gpio_get_level(PIN_TB_CLICK) == 0) return;
+    ulTaskNotifyTake(pdTRUE, 0);  // notifiche vecchie (trackball mosso mentre si leggeva) via
+    g_attesa = xTaskGetCurrentTaskHandle();
+    gpio_intr_enable(PIN_KB_INT);    // a livello: se salgono proprio adesso, scattano subito
+    gpio_intr_enable(PIN_TB_CLICK);
+    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(ms));
+    gpio_intr_disable(PIN_KB_INT);
+    gpio_intr_disable(PIN_TB_CLICK);
+    g_attesa = nullptr;
 }
 
 void Tastiera::light(uint8_t level) {
     if (!ok()) return;
     const uint8_t b[2] = {CMD_LIGHT, level};
-    dev_.write(b, 2);
+    // Il C3 del Pippaphone puo' dormire: la prima transazione lo sveglia (senza risposta), la seconda passa.
+    if (!dev_.write(b, 2) && c3Pippa_) {
+        vTaskDelay(pdMS_TO_TICKS(3));
+        dev_.write(b, 2);
+    }
 }
 
 void Tastiera::push(Key k, bool pressed) {
@@ -156,10 +237,15 @@ void Tastiera::service() {
             return;
         case RAW:
             if (now - g_lastRaw > RAW_REFRESH_MS || highBit(buf, 5)) {
-                // Ogni tanto (o se il C3 si e' riavviato ed e' tornato ai caratteri) si ripete.
+                // Ogni tanto (o se il C3 si e' riavviato ed e' tornato ai caratteri) si ripete; col firmware
+                // del Pippaphone anche il modo a basso consumo.
                 g_lastRaw = now;
                 const uint8_t raw = CMD_RAW;
                 dev_.write(&raw, 1);
+                if (c3Pippa_) {
+                    const uint8_t risparmio[2] = {CMD_RISPARMIO, 1};
+                    dev_.write(risparmio, sizeof(risparmio));
+                }
                 if (highBit(buf, 5)) return;
             }
             serviceRaw(buf);
