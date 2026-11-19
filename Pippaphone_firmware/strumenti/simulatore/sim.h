@@ -82,6 +82,8 @@ int width();
 int height();
 const uint16_t* pixels();
 void draw(int x1, int y1, int x2, int y2, const void* px);
+// Pixel mandati allo schermo dall'avvio (controllo del risparmio: a schermo spento non si disegna).
+uint64_t drawnPixels();
 bool savePng(const std::string& path);
 bool savePngRgb(const std::string& path, int w, int h, const std::vector<uint8_t>& rgb);
 

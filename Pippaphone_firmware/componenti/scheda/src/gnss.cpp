@@ -268,7 +268,10 @@ bool Gnss::begin() {
     c.parity = UART_PARITY_DISABLE;
     c.stop_bits = UART_STOP_BITS_1;
     c.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-    c.source_clk = UART_SCLK_DEFAULT;
+    // Il quarzo e non l'APB (quello normale dell'S3): col risparmio di energia l'APB cambia frequenza quando
+    // la CPU scende a 40 MHz, e le frasi NMEA arriverebbero rovinate (la UART in ricezione non tiene il
+    // blocco del risparmio).
+    c.source_clk = UART_SCLK_XTAL;
     if (uart_driver_install(PORT, 2048, 0, 0, nullptr, 0) != ESP_OK) return false;
     uart_param_config(PORT, &c);
     uart_set_pin(PORT, PIN_GNSS_TX, PIN_GNSS_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);

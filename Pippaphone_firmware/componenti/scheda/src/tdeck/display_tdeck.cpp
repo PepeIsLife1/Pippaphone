@@ -8,6 +8,7 @@
 #include "esp_lcd_panel_st7789.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "bus_spi.h"
@@ -103,7 +104,7 @@ bool Display::begin() {
 }
 
 void Display::draw(int x1, int y1, int x2, int y2, const void* pixels) {
-    if (!panel_) return;
+    if (!panel_ || asleep_) return;  // a schermo spento LVGL non disegna (ui.cpp): per sicurezza
     // Il turno sul bus: libero quando il rettangolo precedente e' arrivato (il suo buffer torna a
     // LVGL) e LoRa e microSD non stanno trasmettendo. Lo restituisce onColorDone a invio finito.
     if (!busSpiPrendiEntro(1000)) {
@@ -160,12 +161,25 @@ void Display::backlight(uint8_t percent) {
 
 void Display::sleep() {
     setLevel(0);
-    if (panel_) {
-        busSpiPrendi();
-        esp_lcd_panel_disp_on_off(panel_, false);
-        esp_lcd_panel_disp_sleep(panel_, true);
-        busSpiLascia();
-    }
+    if (!panel_ || asleep_) return;
+    // SLPIN almeno 120 ms dopo l'ultimo SLPOUT (datasheet ST7789): schermo spento e riacceso di fila.
+    const int64_t da = (esp_timer_get_time() - wokeUs_) / 1000;
+    if (wokeUs_ && da < 120) vTaskDelay(pdMS_TO_TICKS(120 - da));
+    busSpiPrendi();
+    esp_lcd_panel_disp_on_off(panel_, false);
+    esp_lcd_panel_disp_sleep(panel_, true);  // esp_lcd aspetta 100 ms
+    busSpiLascia();
+    asleep_ = true;
+}
+
+void Display::wake() {
+    if (!panel_ || !asleep_) return;
+    busSpiPrendi();
+    esp_lcd_panel_disp_sleep(panel_, false);  // SLPOUT, poi esp_lcd aspetta 100 ms
+    esp_lcd_panel_disp_on_off(panel_, true);
+    busSpiLascia();
+    wokeUs_ = esp_timer_get_time();
+    asleep_ = false;
 }
 
 }  // namespace scheda

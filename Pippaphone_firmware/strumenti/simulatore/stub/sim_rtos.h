@@ -33,6 +33,9 @@ typedef void (*TimerCallbackFunction_t)(TimerHandle_t);
 QueueHandle_t xQueueCreate(UBaseType_t len, UBaseType_t itemSize);
 BaseType_t xQueueSend(QueueHandle_t q, const void* item, TickType_t wait);
 BaseType_t xQueueReceive(QueueHandle_t q, void* item, TickType_t wait);
+// Come FreeRTOS: guarda il primo elemento senza toglierlo; se la coda e' vuota il tempo passa come con
+// vTaskDelay (l'interfaccia del T-Deck aspetta cosi' i tasti).
+BaseType_t xQueuePeek(QueueHandle_t q, void* item, TickType_t wait);
 #define xQueueSendToBack xQueueSend
 
 // Semafori: un solo filo, non servono.

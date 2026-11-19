@@ -74,7 +74,7 @@ std::function<void(const int16_t*, size_t)> g_onFrame;
 std::function<void()> g_onEnd;
 
 #if CONFIG_SCHEDA_TDECK_PLUS
-void amp(bool) {}
+// amp() e' piu' sotto: sul T-Deck accende e spegne l'I2S dell'altoparlante.
 constexpr int MIC_DIGITAL_GAIN = 2;  // in piu' dei 24 dB analogici dell'ES7210: da regolare
 #else
 void amp(bool on) { expander().set(Exp::AMP_SD, on); }
@@ -103,6 +103,35 @@ void writeMono16k(const int16_t* s, size_t n, int volume) {
 }
 
 #if CONFIG_SCHEDA_TDECK_PLUS
+// L'I2S dell'altoparlante lavora solo mentre suona qualcosa (suoni, vocali, chiamata, musica dalla cassa).
+// Acceso manda silenzio di continuo, il MAX98357A (sul T-Deck senza pin di spegnimento) lavora sempre ed
+// ESP-IDF tiene un blocco del risparmio di energia (CPU mai sotto 80 MHz, niente light sleep). Prima restava
+// acceso dall'avvio. Lo tocca solo playTask.
+bool g_txAcceso = false;
+
+void txAccendi() {
+    if (g_txAcceso) return;
+    if (i2s_channel_enable(g_tx) == ESP_OK) g_txAcceso = true;
+}
+
+// svuota: prima si spinge silenzio per tutto il DMA (6 x 240 frame). disable non lo svuota ed enable riparte
+// dal primo descrittore: senza, la coda dell'ultimo suono si risentirebbe alla prossima accensione.
+void txSpegni(bool svuota) {
+    if (!g_txAcceso) return;
+    if (svuota) {
+        static const int16_t zero[256] = {};
+        for (int i = 0; i < 6; i++) writeMono16k(zero, 256, 0);
+    }
+    i2s_channel_disable(g_tx);
+    g_txAcceso = false;
+}
+
+// amp(false) arriva alla fine di playTask, subito dopo il silenzio che ha gia' svuotato il DMA.
+void amp(bool on) {
+    if (on) txAccendi();
+    else txSpegni(false);
+}
+
 // Musica (T-Deck): coda mono alla frequenza del brano, protetta da g_lock. La suona playTask, che e'
 // l'unico a scrivere sull'I2S: cambia lui la frequenza della cassa, tra un suono e l'altro.
 constexpr size_t MUSIC_CAP = 48000;  // 1 secondo a 48 kHz
@@ -122,13 +151,18 @@ int g_txRate = I2S_RATE;  // frequenza attuale della cassa (solo playTask)
 
 void setTxRate(int rate) {
     if (rate == g_txRate) return;
+    i2s_std_clk_config_t c = I2S_STD_CLK_DEFAULT_CONFIG(uint32_t(rate));
+    if (!g_txAcceso) {  // spento: basta il clock nuovo, vale alla prossima accensione
+        i2s_channel_reconfig_std_clock(g_tx, &c);
+        g_txRate = rate;
+        return;
+    }
     // Nel DMA (6 x 240 frame) c'e' ancora la musica appena scritta: disable non lo svuota ed enable
     // riparte dal primo, quindi si risentirebbe, alla frequenza nuova e fuori ordine. Prima la si fa
     // finire alla frequenza giusta spingendo dentro silenzio (1536 frame, piu' di tutto il DMA).
     static const int16_t zero[256] = {};
     for (int i = 0; i < 6; i++) writeMono16k(zero, 256, 0);
     i2s_channel_disable(g_tx);
-    i2s_std_clk_config_t c = I2S_STD_CLK_DEFAULT_CONFIG(uint32_t(rate));
     i2s_channel_reconfig_std_clock(g_tx, &c);
     i2s_channel_enable(g_tx);
     g_txRate = rate;
@@ -190,11 +224,15 @@ void musicLoop() {
                 u->svuota();
                 zittita = true;
             }
+            txSpegni(true);  // in pausa anche a lungo: l'I2S della cassa si ferma
             vTaskDelay(pdMS_TO_TICKS(20));
             continue;
         }
         zittita = false;
-        if (!fuori) setTxRate(int(g_musicRate));
+        if (!fuori) {
+            setTxRate(int(g_musicRate));
+            txAccendi();
+        }
         size_t k = 0;
         xSemaphoreTake(g_lock, portMAX_DELAY);
         const uint32_t gen = g_musicGen;
@@ -211,6 +249,7 @@ void musicLoop() {
         if (fuori) {
             // Fino a quando l'uscita prende tutto il blocco; se smette di essere pronta o se intanto la musica
             // e' cambiata (pausa, salto, stop) il resto del blocco si butta.
+            txSpegni(true);  // la cassa non serve (se suonava prima delle cuffie)
             g_musicaFuori = true;
             for (size_t fatti = 0; fatti < k && u->pronta() && g_musicGen == gen;)
                 fatti += u->spingi(s + fatti, k - fatti, 1, g_musicRate, true);
@@ -233,14 +272,21 @@ void playTask(void*) {
 #if CONFIG_SCHEDA_TDECK_PLUS
         musicLoop();
         if (!otherPending()) {
-            setTxRate(I2S_RATE);  // musica finita: la cassa torna a 16 kHz
+            txSpegni(true);       // musica finita o ferma: l'I2S della cassa si spegne
+            setTxRate(I2S_RATE);  // e torna a 16 kHz (da spento cambia solo il clock)
             continue;
         }
         setTxRate(I2S_RATE);
 #endif
         g_playing = true;
         amp(true);
+#if CONFIG_SCHEDA_TDECK_PLUS
+        // T-Deck: l'I2S e' appena partito (prima era sempre acceso): un attimo in piu' perche' il MAX98357A
+        // si avvii, se no i suoni brevi (il clic del volume) si tagliano. Da regolare sul T-Deck vero.
+        vTaskDelay(pdMS_TO_TICKS(10));
+#else
         vTaskDelay(pdMS_TO_TICKS(5));
+#endif
         for (;;) {
             if (g_streaming) {
                 // Chiamata: 20 ms alla volta dalla coda, silenzio se e' vuota. La scrittura sul DMA
@@ -458,8 +504,7 @@ bool Audio::begin() {
     tx.gpio_cfg.ws = PIN_I2S_WS;
     tx.gpio_cfg.dout = PIN_I2S_DOUT;
     tx.gpio_cfg.din = I2S_GPIO_UNUSED;
-    i2s_channel_init_std_mode(g_tx, &tx);
-    i2s_channel_enable(g_tx);
+    i2s_channel_init_std_mode(g_tx, &tx);  // spento: lo accende playTask quando c'e' da suonare
 
     // Microfono: I2S1, 16 kHz, stereo a 16 bit, MCLK = 256 x 16 kHz verso l'ES7210.
     i2s_chan_config_t rxc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);

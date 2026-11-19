@@ -30,6 +30,11 @@ bool spiBusReady();
 // la microSD partiva con l'hardware ancora occupato -> assert in spi_hal_setup_trans e riavvio.
 void busSpiPrendi();
 void busSpiLascia();
+// Risparmio di energia (scheda_tdeck.cpp): la CPU scende a 40 MHz quando i compiti sono fermi. Chi ha bisogno
+// di altro lo tiene finche' serve (on = true, poi false; chiamate in piu' con lo stesso valore non contano):
+//   CUFFIE  frequenza piena: la USB host (cuffie USB-C) vuole il PLL, che a 40 MHz si spegne.
+enum class Tieni : uint8_t { CUFFIE };
+void tieni(Tieni motivo, bool on);
 #else
 constexpr bool HAS_VIBRATION = true;
 #endif
@@ -61,9 +66,13 @@ void spiLowDrive();
 // Vibrazione (non blocca).
 void vibrate(uint16_t ms);
 void vibratePattern(uint8_t times, uint16_t onMs, uint16_t offMs);
-// LED di notifica: lampeggio (non blocca). count = 0 -> fino a ledOff().
-void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count);
+// LED di notifica: lampeggio (non blocca). count = 0 -> fino a ledOff(). Restituisce un numero che
+// identifica questo lampeggio (per ledOffSe).
+uint32_t ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count);
 void ledOff();
+// Come ledOff(), ma solo se il lampeggio e' ancora quello che ha restituito id: uno partito dopo (SOS,
+// chiamata, sveglia) non si tocca.
+void ledOffSe(uint32_t id);
 void keyboardLight(uint8_t level);
 
 // Spegne davvero: PWR_HOLD a 0 e il TPS63001 si ferma appena PWR e' rilasciato. Se il 3,3 V

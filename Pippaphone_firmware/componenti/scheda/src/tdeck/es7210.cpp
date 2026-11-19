@@ -82,15 +82,19 @@ void start() {
     if (!ok || clk == 0x7F || clk == 0xFF) clk = 0x14;  // MIC1 e MIC2 accesi, MIC3 e MIC4 spenti
     w(CLOCK_OFF, clk);
     w(POWER_DOWN, 0x00);
+    w(ANALOG, 0xC3);  // parte analogica di nuovo accesa (VMID 5 kohm, come in begin)
     for (int i = 0; i < 4; i++) w(uint8_t(MIC1_POWER + i), 0x00);
     selectMic12();
 }
 
+// Come es7210_stop() di Espressif: oltre a canali e clock si spegne anche la parte analogica (VMID), che se
+// no resta accesa tra una registrazione e l'altra.
 void stop() {
     if (!g_dev.present()) return;
     for (int i = 0; i < 4; i++) w(uint8_t(MIC1_POWER + i), 0xFF);
     w(MIC12_POWER, 0xFF);
     w(MIC34_POWER, 0xFF);
+    w(ANALOG, 0xC0);
     w(CLOCK_OFF, 0x7F);
     w(POWER_DOWN, 0x07);
 }

@@ -51,7 +51,8 @@ void Display::backlight(uint8_t percent) {
 #endif
 }
 #if CONFIG_SCHEDA_TDECK_PLUS
-void Display::sleep() {}
+void Display::sleep() { asleep_ = true; }
+void Display::wake() { asleep_ = false; }
 #endif
 
 // ---------------------------------------------------------------- audio
@@ -265,7 +266,7 @@ void blinkStep(uint32_t gen) {
 }
 }  // namespace
 
-void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
+uint32_t ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
     uint16_t level = std::max(r, std::max(g, b));
     level = std::min<uint16_t>(255, level * 2 + 20);  // la luce della tastiera e' piu' debole del LED
     g_blink = {uint8_t(level), onMs, offMs, count, count == 0, true};
@@ -273,19 +274,33 @@ void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, ui
     const uint32_t gen = ++g_blinkGen;
     applyKeyboardLight();
     web::after(onMs, [gen] { blinkStep(gen); });
+    return gen;
 }
 void ledOff() {
     g_blinking = false;
     ++g_blinkGen;
     applyKeyboardLight();
 }
+void ledOffSe(uint32_t id) {
+    if (g_blinking && id == g_blinkGen) ledOff();
+}
 void keyboardLight(uint8_t level) {
     g_kbLevel = level;
     applyKeyboardLight();
 }
 #else
-void ledBlink(uint8_t, uint8_t, uint8_t, uint16_t, uint16_t, uint8_t) {}
-void ledOff() {}
+// Sul PC il LED non si vede: si conta solo il lampeggio in corso, come la scheda vera (per ledOffSe).
+namespace {
+uint32_t g_blinkId = 0, g_blinkUltimo = 0;
+}  // namespace
+uint32_t ledBlink(uint8_t, uint8_t, uint8_t, uint16_t, uint16_t, uint8_t) {
+    g_blinkId = ++g_blinkUltimo;
+    return g_blinkId;
+}
+void ledOff() { g_blinkId = 0; }
+void ledOffSe(uint32_t id) {
+    if (id && id == g_blinkId) ledOff();
+}
 void keyboardLight(uint8_t) {}
 #endif
 void spiLowDrive() {}

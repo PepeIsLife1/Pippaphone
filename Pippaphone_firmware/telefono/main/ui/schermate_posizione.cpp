@@ -301,6 +301,7 @@ Screen* makePosition() { return new MyPosition(); }
 class PositionRequest : public Screen {
 public:
     PositionRequest(uint16_t from, uint32_t id) : from_(from), id_(id) {}
+    bool attendeRisposta() const override { return true; }
     void build(lv_obj_t* root) override {
         const std::string name = app::dati().nameOf(from_);
         lv_obj_t* col = column(root, PX(12, 4));

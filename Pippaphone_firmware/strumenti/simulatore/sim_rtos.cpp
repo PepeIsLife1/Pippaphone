@@ -41,6 +41,13 @@ BaseType_t xQueueReceive(QueueHandle_t q, void* item, TickType_t) {
     return pdTRUE;
 }
 
+BaseType_t xQueuePeek(QueueHandle_t q, void* item, TickType_t wait) {
+    if ((!q || q->items.empty()) && wait) vTaskDelay(wait == portMAX_DELAY ? 1000 : wait);
+    if (!q || q->items.empty()) return pdFALSE;
+    std::memcpy(item, q->items.front().data(), q->itemSize);
+    return pdTRUE;
+}
+
 // Elementi in coda senza toglierli (il simulatore nel browser mostra i tasti che arrivano).
 size_t simQueueSize(QueueHandle_t q) { return q ? q->items.size() : 0; }
 
@@ -111,9 +118,16 @@ int width() { return g_w; }
 int height() { return g_h; }
 const uint16_t* pixels() { return g_fb.data(); }
 
+namespace {
+uint64_t g_drawnPixels = 0;
+}  // namespace
+
+uint64_t drawnPixels() { return g_drawnPixels; }
+
 void draw(int x1, int y1, int x2, int y2, const void* px) {
     const uint16_t* p = static_cast<const uint16_t*>(px);
     const int w = x2 - x1;
+    g_drawnPixels += uint64_t(w) * uint64_t(y2 - y1);
     for (int y = y1; y < y2; y++)
         for (int x = x1; x < x2; x++)
             if (x >= 0 && y >= 0 && x < g_w && y < g_h) g_fb[size_t(y) * g_w + x] = p[size_t(y - y1) * w + (x - x1)];

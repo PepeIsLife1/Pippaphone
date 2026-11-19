@@ -48,6 +48,7 @@ struct Blink {
 };
 Blink g_blink{};
 TimerHandle_t g_blinkTimer = nullptr;
+uint32_t g_blinkId = 0;  // lampeggio in corso (ledBlink), 0 = nessuno
 TimerHandle_t g_vibTimer = nullptr;
 uint8_t g_vibLeft = 0;
 uint16_t g_vibOn = 0, g_vibOff = 0;
@@ -151,17 +152,24 @@ void vibratePattern(uint8_t times, uint16_t onMs, uint16_t offMs) {
     xTimerChangePeriod(g_vibTimer, pdMS_TO_TICKS(onMs), 0);
 }
 
-void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
-    if (!g_blinkTimer) return;
+uint32_t ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
+    if (!g_blinkTimer) return 0;
     xTimerStop(g_blinkTimer, 0);
     g_blink = {r, g, b, onMs, offMs, count, count == 0, true};
     expander().rgb(r, g, b);
     xTimerChangePeriod(g_blinkTimer, pdMS_TO_TICKS(onMs), 0);
+    if (++g_blinkId == 0) g_blinkId = 1;
+    return g_blinkId;
 }
 
 void ledOff() {
     if (g_blinkTimer) xTimerStop(g_blinkTimer, 0);
     expander().rgb(0, 0, 0);
+    g_blinkId = 0;
+}
+
+void ledOffSe(uint32_t id) {
+    if (id && id == g_blinkId) ledOff();
 }
 
 void keyboardLight(uint8_t level) { expander().led(Exp::KB_BL, level); }

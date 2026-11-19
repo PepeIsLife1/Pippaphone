@@ -28,8 +28,12 @@ public:
     // Retroilluminazione 0..100 % (il driver ha 16 livelli).
     void backlight(uint8_t percent);
     uint8_t brightness() const { return bl_; }
-    // Pannello in sonno (prima dello spegnimento).
+    // Pannello in sonno: retroilluminazione spenta, DISPOFF e SLPIN (il controller consuma pochi uA invece di
+    // qualche mA). A schermo spento e prima dello spegnimento. L'immagine in memoria resta.
     void sleep();
+    // Di nuovo sveglio dopo sleep() (SLPOUT e DISPON, circa 100 ms); la luce la riaccende backlight().
+    void wake();
+    bool asleep() const { return asleep_; }
 
 private:
     void setLevel(uint8_t level);
@@ -37,6 +41,8 @@ private:
     esp_lcd_panel_io_handle_t io_ = nullptr;
     uint8_t bl_ = 0;
     uint8_t level_ = 0;  // livello attuale del driver della retroilluminazione (0..16)
+    bool asleep_ = false;
+    int64_t wokeUs_ = 0;  // ultimo SLPOUT (l'ST7789 vuole 120 ms prima di un altro SLPIN)
 };
 #else
 class Display {

@@ -645,6 +645,63 @@ void gpsTdeck() {
 #endif
 #endif
 
+#if CONFIG_SCHEDA_TDECK_PLUS
+// Risparmio del T-Deck (ui.cpp): senza tasti la luce scende al minimo dopo 10 s e lo schermo si spegne dopo
+// screenOffS; a schermo spento non si disegna niente (prima la barra di stato ripartiva ogni 2 s); al primo
+// tasto si ridisegna tutto lo schermo prima di riaccendere la luce. Scrive "RISPARMIO" e un riassunto.
+void risparmioTdeck() {
+    struct Esito {
+        int controlli = 0, errori = 0;
+        uint64_t pixel = 0;
+    };
+    static Esito e;
+    auto check = [](bool ok, const char* cosa) {
+        e.controlli++;
+        if (!ok) {
+            e.errori++;
+            std::fprintf(stderr, "RISPARMIO ERRORE: %s\n", cosa);
+        }
+    };
+    const uint8_t luce = app::dati().settings().brightness;
+    const uint16_t spegni = app::dati().settings().screenOffS;
+    // (sim::step: l'attesa e' quella dopo il passo, prima del successivo.)
+    sim::step(11000, [] {
+        // Telefono tranquillo: niente sveglie o timer delle schermate di prima (suonando tengono acceso lo
+        // schermo, giustamente).
+        std::vector<app::Sveglia> sv = app::orologio().sveglie();
+        for (auto& x : sv) x.attiva = false;
+        app::orologio().setSveglie(sv);
+        app::orologio().annullaPosticipo();
+        app::orologio().timerAzzera();
+        ui::goHome();
+        sim::tap(Key::DOWN);  // un tasto: da qui si contano i secondi senza tasti
+    });
+    sim::step(int(spegni) * 1000 - 11000 + 1000, [=] {  // 11 s dopo il tasto
+        check(ui::screenOn(), "dopo 11 s lo schermo e' ancora acceso");
+        check(luce <= 10 || scheda::display().brightness() == 10, "dopo 10 s senza tasti la luce e' al minimo");
+    });
+    sim::step(10000, [=] {  // 1 s dopo screenOffS
+        check(!ui::screenOn(), "dopo screenOffS lo schermo e' spento");
+        check(scheda::display().brightness() == 0, "a schermo spento la luce e' spenta");
+        check(scheda::display().asleep(), "a schermo spento il pannello dorme");
+        e.pixel = sim::drawnPixels();
+    });
+    sim::step(300, [=] {  // 10 s a schermo spento
+        check(sim::drawnPixels() == e.pixel, "a schermo spento non si disegna (10 s, barra di stato compresa)");
+        e.pixel = sim::drawnPixels();
+        sim::tap(Key::A);  // il primo tasto accende solo lo schermo
+    });
+    sim::step(10, [=] {  // 300 ms dopo il tasto
+        check(ui::screenOn(), "un tasto riaccende lo schermo");
+        check(!scheda::display().asleep(), "il pannello si e' svegliato");
+        check(sim::drawnPixels() - e.pixel >= uint64_t(sim::width()) * uint64_t(sim::height()),
+              "riacceso: tutto lo schermo ridisegnato");
+        check(scheda::display().brightness() == luce, "riacceso: la luce torna quella delle impostazioni");
+        std::fprintf(stderr, "risparmio: %d controlli, %d errori\n", e.controlli, e.errori);
+    });
+}
+#endif
+
 void script() {
     using sim::shot;
     shot("01_principale", [] { ui::goHome(); });
@@ -826,6 +883,7 @@ void script() {
     novita();
 #if CONFIG_SCHEDA_TDECK_PLUS
     gpsTdeck();
+    risparmioTdeck();
 #endif
 #endif
 }

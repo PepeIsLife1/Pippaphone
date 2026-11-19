@@ -46,6 +46,7 @@
 #include "freertos/task.h"
 #include "hal/usb_serial_jtag_ll.h"
 #include "scheda/audio.h"
+#include "scheda/scheda.h"
 #include "usb/usb_host.h"
 #include "usb_audio/dsp.h"
 #include "usb_audio/uac_desc.h"
@@ -673,6 +674,7 @@ void esci(Errore motivo) {
     portENTER_CRITICAL(&g_muxStat);
     g->stat.ramInternaDopo = dopo;
     portEXIT_CRITICAL(&g_muxStat);
+    scheda::tieni(scheda::Tieni::CUFFIE, false);
     impostaStato(Stato::SPENTE, motivo);
     ESP_LOGI(TAG, "RAM interna libera: %u prima, %u minima, %u dopo", unsigned(g->stat.ramInternaPrima),
              unsigned(g->stat.ramInternaMin), unsigned(dopo));
@@ -680,6 +682,9 @@ void esci(Errore motivo) {
 }
 
 void entra(uint32_t secondiProva) {
+    // Col risparmio di energia la CPU scende a 40 MHz e il PLL si spegne: la USB host (che nella libreria di
+    // ESP-IDF non ha un blocco suo) resta alla frequenza piena fino alla fine di esci().
+    scheda::tieni(scheda::Tieni::CUFFIE, true);
     const uint32_t prima = ramInterna();
     portENTER_CRITICAL(&g_muxStat);
     const uint32_t sessioni = g->stat.sessioni + 1;

@@ -30,3 +30,9 @@ CONFIG_ESP_WIFI_RX_BA_WIN=6
 # prima della prima compilazione col componente usb.
 CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT=y
 CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=1024
+
+# Risparmio di energia: frequenza della CPU variabile, 240 MHz quando un compito lavora e 40 MHz (il quarzo)
+# quando sono tutti fermi (prima restava sempre a 240 MHz). La imposta scheda::init() con esp_pm_configure
+# (scheda_tdeck.cpp, risparmioInit). I driver tengono la frequenza che serve mentre usano una periferica; la
+# UART del GPS va col quarzo (gnss.cpp) e le cuffie USB-C tengono la frequenza piena (scheda::tieni).
+CONFIG_PM_ENABLE=y

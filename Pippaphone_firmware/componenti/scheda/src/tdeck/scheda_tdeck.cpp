@@ -15,6 +15,7 @@
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
+#include "esp_pm.h"
 #include "esp_private/esp_sleep_internal.h"  // modo RTC_USE_RC_FAST (vedi powerOff)
 #include "esp_sleep.h"
 #include "esp_system.h"
@@ -50,6 +51,7 @@ struct Blink {
 Blink g_blink{};
 bool g_blinking = false;
 TimerHandle_t g_blinkTimer = nullptr;
+uint32_t g_blinkId = 0;  // lampeggio in corso (ledBlink), 0 = nessuno
 
 // Luce della tastiera: quella voluta, oppure il lampeggio se la luce e' spenta.
 void applyKeyboardLight() {
@@ -99,6 +101,58 @@ void phyAlComputer() {
     usb_serial_jtag_ll_phy_enable_external(false);
     usb_serial_jtag_ll_phy_enable_pad(true);
 }
+
+// Touch GT911: c'e' ma il telefono non lo usa. Lasciato com'e' continua a scandire lo schermo (qualche mA
+// anche senza tocchi); il comando 0x05 nel registro 0x8040 lo mette a dormire. Si risveglierebbe solo con un
+// impulso alto sul suo INT (GPIO 16): resta un ingresso col pull-down.
+void touchADormire() {
+    gpio_config_t io = {};
+    io.pin_bit_mask = 1ULL << PIN_TOUCH_INT;
+    io.mode = GPIO_MODE_INPUT;
+    io.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    gpio_config(&io);
+    static I2cDev touch;
+    for (const uint8_t addr : {ADDR_GT911_A, ADDR_GT911_B}) {
+        if (!touch.present() && !touch.attach(i2cBus(), addr)) continue;
+        const uint8_t sonno[3] = {0x80, 0x40, 0x05};  // registro 0x8040 (big endian) = 5: sonno
+        const bool ok = touch.write(sonno, sizeof(sonno));
+        ESP_LOGI(TAG, "touch GT911 (0x%02x): %s", addr, ok ? "a dormire" : "non prende il comando di sonno");
+        return;
+    }
+    ESP_LOGI(TAG, "touch GT911 non trovato");
+}
+
+#if CONFIG_PM_ENABLE
+// Motivi per tenere il chip sveglio (tieni()): un blocco del risparmio di ESP-IDF ciascuno, e se e' preso.
+// Ogni motivo lo cambia un compito solo (CUFFIE: il controllo delle cuffie).
+struct Blocco {
+    const char* nome;
+    esp_pm_lock_type_t tipo;
+    esp_pm_lock_handle_t h;
+    bool preso;
+};
+Blocco g_blocchi[] = {
+    {"cuffie", ESP_PM_CPU_FREQ_MAX, nullptr, false},  // Tieni::CUFFIE
+};
+portMUX_TYPE g_bloccoMux = portMUX_INITIALIZER_UNLOCKED;
+#endif
+
+// Risparmio di energia (CONFIG_PM_ENABLE, sdkconfig.defaults.tdeck): la CPU va a 240 MHz quando un compito
+// lavora e scende a 40 MHz (il quarzo) quando sono tutti fermi; i driver di ESP-IDF tengono la frequenza
+// che serve finche' usano una periferica (SPI, I2C, I2S acceso, scrittura sulla UART).
+void risparmioInit() {
+#if CONFIG_PM_ENABLE
+    for (Blocco& b : g_blocchi)
+        if (esp_pm_lock_create(b.tipo, 0, b.nome, &b.h) != ESP_OK) b.h = nullptr;
+    esp_pm_config_t pm = {};
+    pm.max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+    pm.min_freq_mhz = 40;
+    pm.light_sleep_enable = false;
+    const esp_err_t e = esp_pm_configure(&pm);
+    if (e == ESP_OK) ESP_LOGI(TAG, "risparmio: CPU da %d a %d MHz", pm.min_freq_mhz, pm.max_freq_mhz);
+    else ESP_LOGW(TAG, "risparmio non attivato (errore %d)", int(e));
+#endif
+}
 }  // namespace
 
 Avvio holdPower() {
@@ -133,6 +187,24 @@ Avvio holdPower() {
 
 bool spiBusReady() { return g_spi; }
 
+void tieni(Tieni motivo, bool on) {
+#if CONFIG_PM_ENABLE
+    const size_t i = size_t(motivo);
+    if (i >= sizeof(g_blocchi) / sizeof(g_blocchi[0]) || !g_blocchi[i].h) return;
+    Blocco& b = g_blocchi[i];
+    portENTER_CRITICAL(&g_bloccoMux);
+    const bool cambia = b.preso != on;
+    b.preso = on;
+    portEXIT_CRITICAL(&g_bloccoMux);
+    if (!cambia) return;
+    if (on) esp_pm_lock_acquire(b.h);
+    else esp_pm_lock_release(b.h);
+#else
+    (void)motivo;
+    (void)on;
+#endif
+}
+
 void busSpiPrendi() {
     if (g_bus) xSemaphoreTake(g_bus, portMAX_DELAY);
 }
@@ -162,6 +234,8 @@ InitResult init(bool full) {
     r.display = display().begin();
     r.audio = audio().begin();
     r.gnss = gnss().begin();
+    touchADormire();
+    risparmioInit();
     ESP_LOGI(TAG, "tastiera %d (%s), batteria %d, display %d, audio %d, gnss %d", r.tastiera,
              !tastiera().modeKnown() ? "modo da capire al primo tasto" : tastiera().rawMode() ? "raw" : "caratteri",
              r.batteria, r.display, r.audio, r.gnss);
@@ -172,8 +246,8 @@ void vibrate(uint16_t) {}
 
 void vibratePattern(uint8_t, uint16_t, uint16_t) {}
 
-void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
-    if (!g_blinkTimer) return;
+uint32_t ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, uint8_t count) {
+    if (!g_blinkTimer) return 0;
     xTimerStop(g_blinkTimer, 0);
     uint16_t level = std::max(r, std::max(g, b));
     level = std::min<uint16_t>(255, level * 2 + 20);  // la luce della tastiera e' piu' debole del LED
@@ -181,12 +255,19 @@ void ledBlink(uint8_t r, uint8_t g, uint8_t b, uint16_t onMs, uint16_t offMs, ui
     g_blinking = true;
     applyKeyboardLight();
     xTimerChangePeriod(g_blinkTimer, pdMS_TO_TICKS(onMs), 0);
+    if (++g_blinkId == 0) g_blinkId = 1;
+    return g_blinkId;
 }
 
 void ledOff() {
     if (g_blinkTimer) xTimerStop(g_blinkTimer, 0);
     g_blinking = false;
+    g_blinkId = 0;
     applyKeyboardLight();
+}
+
+void ledOffSe(uint32_t id) {
+    if (id && id == g_blinkId) ledOff();
 }
 
 void keyboardLight(uint8_t level) {

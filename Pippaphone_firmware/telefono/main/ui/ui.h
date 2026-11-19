@@ -48,6 +48,8 @@ public:
     // La schermata del PIN: goHome() (END) non la toglie mai dalla pila, cosi' quello che si apre
     // sopra di lei (chiamata, vocale, sfida) non sblocca il telefono.
     virtual bool isLock() const { return false; }
+    // Aspetta una risposta (richiesta di posizione): finche' e' nella pila il LED di notifica lampeggia.
+    virtual bool attendeRisposta() const { return false; }
 #if TDECK
     // Campo di testo in cui si sta scrivendo (nullptr = nessuno). Sul T-Deck decide se il tasto
     // 0/microfono e' il PTT o la cifra 0, e se il tasto cancella e' BACK.

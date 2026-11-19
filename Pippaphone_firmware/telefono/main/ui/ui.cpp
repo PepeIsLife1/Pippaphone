@@ -57,6 +57,20 @@ bool g_on = true;
 int64_t g_lastActivity = 0;
 int64_t g_pwrDownAt = 0, g_volBothAt = 0;
 bool g_volUp = false, g_volDn = false, g_pwrLongDone = false, g_sosDone = false;
+#if TDECK
+// Risparmio a schermo acceso (T-Deck): luce dello schermo al minimo dopo LUCE_BASSA_DOPO_MS senza tasti (poi
+// si spegne come prima), luce della tastiera spenta LUCE_TASTI_MS dopo l'ultimo tasto.
+constexpr int64_t LUCE_BASSA_DOPO_MS = 10000;
+constexpr uint8_t LUCE_BASSA = 10;  // %: il primo dei 16 livelli del T-Deck
+constexpr int64_t LUCE_TASTI_MS = 5000;
+bool g_luceBassa = false;
+bool g_luceTasti = false;
+int64_t g_luceTastiFino = 0;
+bool g_luceDopoDisegno = false;  // schermo appena riacceso: la luce dopo il primo disegno (wake)
+#endif
+// Lampeggio dei messaggi non letti e delle richieste di posizione (0 = nessuno): finisce quando non resta
+// niente da leggere ne' a cui rispondere (refreshBars). Prima continuava per sempre, anche dopo aver letto.
+uint32_t g_ledAvviso = 0;
 
 int64_t nowMs() { return esp_timer_get_time() / 1000; }
 
@@ -219,6 +233,25 @@ void screenOff() {
     g_on = false;
     scheda::display().backlight(0);
     scheda::keyboardLight(0);
+#if TDECK
+    g_luceBassa = g_luceTasti = g_luceDopoDisegno = false;
+    // A schermo spento LVGL non disegna piu' niente (prima la barra di stato si ridisegnava e partiva sulla
+    // SPI ogni 2 secondi) e il pannello dorme (SLPIN): wake() fa il contrario.
+    lv_display_enable_invalidation(g_disp, false);
+    scheda::display().sleep();
+#endif
+}
+
+// Luce della tastiera per un tasto (o per lo schermo che si riaccende), se e' nelle impostazioni. Sul T-Deck
+// si spegne da sola LUCE_TASTI_MS dopo (uiTask) e non si riscrive al C3 a ogni tasto.
+void luceTastiera() {
+    if (!app::dati().settings().keyLight) return;
+#if TDECK
+    g_luceTastiFino = nowMs() + LUCE_TASTI_MS;
+    if (g_luceTasti) return;
+    g_luceTasti = true;
+#endif
+    scheda::keyboardLight(60);
 }
 
 // Tasti che valgono ovunque. true = consumato.
@@ -280,6 +313,9 @@ bool globalKey(Key k, bool pressed) {
 void handleKey(const scheda::KeyEvent& e) {
     g_lastActivity = nowMs();
     if (e.pressed) clockNoteActivity();  // un T-Deck acceso dalla sveglia e' in uso: non si rispegne
+#if TDECK
+    if (g_on && g_luceBassa) wake();  // luce bassa: torna quella di prima (e il tasto vale)
+#endif
     if (!g_on) {
         // Il primo tasto accende solo lo schermo (PWR e PTT fanno anche il loro lavoro).
         if (e.pressed && e.key != Key::PWR && e.key != Key::PTT) {
@@ -288,7 +324,7 @@ void handleKey(const scheda::KeyEvent& e) {
         }
         if (e.key == Key::PTT) wake();
     }
-    if (e.pressed && app::dati().settings().keyLight) scheda::keyboardLight(60);
+    if (e.pressed) luceTastiera();
     if (globalKey(e.key, e.pressed)) return;
     // Finestra di scelta aperta.
     if (g_ask.box) {
@@ -384,7 +420,7 @@ void handleEvent(const app::Event& e) {
     auto alert = [&](const std::vector<scheda::Note>& tune, uint8_t r, uint8_t g, uint8_t b) {
         if (st.ringtone) scheda::audio().play(tune);
         if (st.vibration) scheda::vibratePattern(2, 150, 120);
-        scheda::ledBlink(r, g, b, 150, 2500, 0);
+        g_ledAvviso = scheda::ledBlink(r, g, b, 150, 2500, 0);
     };
     switch (e.type) {
         case Ev::MESSAGE: {
@@ -400,7 +436,7 @@ void handleEvent(const app::Event& e) {
             wake();
             toast("Nuovo messaggio · " + who, text);
             alert(st.ringtone == 1 ? scheda::suoni::CLASSICA : scheda::suoni::SQUILLO, 0, 0, 0);
-            scheda::ledBlink(40, 30, 0, 150, 2500, 0);
+            g_ledAvviso = scheda::ledBlink(40, 30, 0, 150, 2500, 0);
             break;
         }
         case Ev::POS_REQUEST:
@@ -516,6 +552,13 @@ void handleEvent(const app::Event& e) {
 
 void uiTask(void*) {
     int64_t lastTick = 0, lastBars = 0;
+#if TDECK
+    // La luce della tastiera accesa all'avvio (main.cpp) si spegne da sola come dopo un tasto.
+    if (app::dati().settings().keyLight) {
+        g_luceTasti = true;
+        g_luceTastiFino = nowMs() + LUCE_TASTI_MS;
+    }
+#endif
     goHome();  // principale, oppure primo avvio se manca il numero
     if (!app::rete().radioOk()) toast("Radio LoRa non trovata", "Controlla il modulo SX1262", ROSSO());
     for (;;) {
@@ -592,9 +635,36 @@ void uiTask(void*) {
             screenOff();
             if (!app::dati().settings().pin.empty() && !isLockOpen()) push(makeLock());
         }
+#if TDECK
+        // Luce bassa dopo 10 s senza tasti, se lo schermo si spegne piu' tardi, con le stesse eccezioni dello
+        // spegnimento (SOS, suoni, registrazione). Un tasto o un avviso la riportano com'era (wake).
+        if (g_on && !g_luceBassa && off > LUCE_BASSA_DOPO_MS / 1000 && now - g_lastActivity > LUCE_BASSA_DOPO_MS &&
+            app::dati().settings().brightness > LUCE_BASSA && !app::rete().sosActive() &&
+            !scheda::audio().busy() && !scheda::audio().recording()) {
+            g_luceBassa = true;
+            scheda::display().backlight(LUCE_BASSA);
+        }
+        if (g_luceTasti && now > g_luceTastiFino) {
+            g_luceTasti = false;
+            scheda::keyboardLight(0);
+        }
+#endif
         g_trash.clear();
         const uint32_t wait = lv_timer_handler();
+#if TDECK
+        if (g_luceDopoDisegno) {  // lv_timer_handler ha appena mandato l'immagine nuova: ora la luce
+            g_luceDopoDisegno = false;
+            if (g_on) scheda::display().backlight(g_luceBassa ? LUCE_BASSA : app::dati().settings().brightness);
+        }
+        // Si aspetta un tasto (arriva subito) o il prossimo lavoro: a schermo acceso al massimo 20 ms come
+        // prima (almeno 1, perche' il compito ceda la CPU); a schermo spento 250 ms (niente da disegnare;
+        // sveglie, avvisi e giochi non hanno fretta).
+        scheda::KeyEvent arrivato;
+        const uint32_t attesa = g_on ? std::max<uint32_t>(1, std::min<uint32_t>(wait, 20)) : 250;
+        xQueuePeek(scheda::tastiera().queue(), &arrivato, pdMS_TO_TICKS(attesa));
+#else
         vTaskDelay(pdMS_TO_TICKS(g_on ? std::min<uint32_t>(wait, 20) : 60));
+#endif
     }
 }
 }  // namespace
@@ -739,6 +809,14 @@ void refreshBars() {
     lv_label_set_text(g_sbTime, (s && !s->showClock()) || !t ? "" : timeHM(t).c_str());
     const uint16_t unread = app::dati().unreadTotal();
     lv_label_set_text(g_sbUnread, unread ? (std::string(IC_BUSTA " ") + std::to_string(unread)).c_str() : "");
+    if (g_ledAvviso && !unread) {
+        bool risposta = false;  // una richiesta di posizione ancora aperta tiene il lampeggio
+        for (const auto& sc : g_stack) risposta = risposta || sc->attendeRisposta();
+        if (!risposta) {
+            scheda::ledOffSe(g_ledAvviso);  // non un lampeggio partito dopo (SOS, chiamata, sveglia)
+            g_ledAvviso = 0;
+        }
+    }
     if (app::rete().sosActive()) lv_obj_clear_flag(g_sbSos, LV_OBJ_FLAG_HIDDEN);
     else lv_obj_add_flag(g_sbSos, LV_OBJ_FLAG_HIDDEN);
     bool alarm = false;
@@ -851,11 +929,29 @@ bool askOpen() { return g_ask.box != nullptr; }
 
 void wake() {
     g_lastActivity = nowMs();
+#if TDECK
+    if (g_on) {
+        if (g_luceBassa) {  // luce bassa: torna quella di prima
+            g_luceBassa = false;
+            if (!g_luceDopoDisegno) scheda::display().backlight(app::dati().settings().brightness);
+        }
+        return;
+    }
+    g_on = true;
+    // Prima il pannello e un'immagine nuova, poi la luce (uiTask, dopo lv_timer_handler): niente immagine
+    // vecchia per un attimo, come l'ora di quando si era spento.
+    scheda::display().wake();
+    lv_display_enable_invalidation(g_disp, true);
+    lv_obj_invalidate(lv_screen_active());
+    g_luceDopoDisegno = true;
+    luceTastiera();
+#else
     if (g_on) return;
     g_on = true;
     scheda::display().backlight(app::dati().settings().brightness);
     if (app::dati().settings().keyLight) scheda::keyboardLight(60);
     lv_obj_invalidate(lv_screen_active());
+#endif
 }
 
 bool screenOn() { return g_on; }

@@ -39,6 +39,15 @@ constexpr gpio_num_t PIN_I2C_SCL = GPIO_NUM_8;
 constexpr bool I2C_PULLUP_INTERNE = true;  // in aggiunta a quelle della scheda, non fanno danni
 constexpr uint8_t ADDR_TASTIERA = 0x55;
 constexpr uint8_t ADDR_ES7210 = 0x40;
+// Touch GT911: il telefono non lo usa, ma all'avvio va messo a dormire. L'indirizzo dipende dal suo INT
+// all'accensione (0x5D o 0x14).
+constexpr uint8_t ADDR_GT911_A = 0x5D, ADDR_GT911_B = 0x14;
+constexpr gpio_num_t PIN_TOUCH_INT = GPIO_NUM_16;
+// Linea C3_INT dello schema LilyGO: GPIO 8 dell'ESP32-C3 della tastiera -> GPIO 46 dell'ESP32-S3. Il firmware
+// di fabbrica del C3 non la usa; quello del Pippaphone (strumenti/tastiera_c3) la alza quando cambia un tasto.
+// GPIO 46 e' anche uno strapping: alto con GPIO 0 basso all'accensione non va bene, quindi il C3 la tiene bassa
+// e la alza solo per pochi millisecondi.
+constexpr gpio_num_t PIN_KB_INT = GPIO_NUM_46;
 
 // ---- altoparlante: MAX98357A su I2S0 ----
 constexpr gpio_num_t PIN_I2S_BCLK = GPIO_NUM_7;
