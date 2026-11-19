@@ -31,8 +31,9 @@ Pippaphone_firmware/
 ├── test/                test del protocollo sul PC (rete simulata)
 ├── strumenti/           generazione dei font (Atkinson Hyperlegible, IBM Plex Mono, Font Awesome),
 │   ├── flasher/         pagina per caricare il firmware dal browser (T-Deck e ripetitori)
-│   └── simulatore/      l'interfaccia del telefono sul PC (screenshot di tutte le schermate)
-│                        e nel browser col T-Deck disegnato (web/)
+│   ├── simulatore/      l'interfaccia del telefono sul PC (screenshot di tutte le schermate)
+│   │                    e nel browser col T-Deck disegnato (web/)
+│   └── tastiera_c3/     firmware a basso consumo per la tastiera (ESP32-C3) del T-Deck
 └── PROTOCOLLO.md        descrizione del protocollo PippaNet
 ```
 
@@ -175,8 +176,9 @@ inviare, MENU è SHIFT+$, CALL è ALT+C, END è SYM+SHIFT+H, l'SOS si annulla te
 trackball, e non ci sono il riquadro degli accenti, il volume dai tasti, la scorciatoia dell'SOS e PWR
 (SYM+spazio): niente "Spegni", si spegne solo con l'interruttore e l'ora si perde.
 Per avere tutto basta aggiornare il firmware del C3 (esempio Keyboard_ESP32C3 di LilyGO, con un
-adattatore USB-seriale sui pin accanto al tasto RST). Il monitor seriale e `info.txt` scrivono quale
-modo è in uso.
+adattatore USB-seriale sui pin accanto al tasto RST), oppure caricare quello del Pippaphone
+(`strumenti/tastiera_c3`: stesso protocollo, consuma molto meno, vedi "Risparmio di energia"). Il
+monitor seriale e `info.txt` scrivono quale modo è in uso.
 
 ### Differenze dalla PCB
 
@@ -376,6 +378,46 @@ Il driver è nostro (`componenti/usb_audio`, sopra la USB host di ESP-IDF: nient
 scaricati); il modo cuffie è `telefono/main/app/cuffie.cpp`. Sulla PCB non c'è niente di tutto
 questo e il suo firmware è rimasto identico.
 
+### Risparmio di energia
+
+Con una carica (2000 mAh) il T-Deck durava circa 20 ore: circa 100 mA di media. A schermo spento
+restava acceso quasi tutto. Le stime qui sotto vengono dai datasheet, non da misure:
+
+| Dove | Prima (mA, stima) | Adesso |
+|---|---|---|
+| ESP32-S3 sempre a 240 MHz, mai in sonno | 30–40 | 40 MHz a riposo e light sleep a schermo spento: pochi mA |
+| ESP32-C3 della tastiera, sempre sveglio a 80 MHz | 8–13 | col firmware di `strumenti/tastiera_c3`: dorme |
+| display acceso al buio (solo la luce spenta) | 3–6 | pannello in sonno (SLPIN) |
+| I2S dell'altoparlante sempre acceso + MAX98357A | 1–3 | acceso solo mentre suona qualcosa |
+| touch GT911 (non usato) | qualche mA (?) | a dormire dall'avvio |
+| SX1262 in ricezione | circa 5 | uguale: la radio deve sentire |
+
+Cosa fa il firmware (tre fasi, un commit ciascuna; prima il bug della radio):
+
+- **radio**: il compito della radio non gira più ogni 5 ms a vuoto quando un pacchetto aspetta il suo
+  turno o un beacon scade durante una chiamata (vale anche per i ripetitori; 3 test nuovi);
+- **fase 1**: frequenza della CPU variabile (`CONFIG_PM_ENABLE`), UART del GPS sul quarzo, I2S a
+  richiesta, pannello in sonno e niente disegni a schermo spento, GT911 a dormire, ES7210 spento davvero,
+  luce dello schermo al minimo dopo 10 s senza tasti, luce della tastiera spenta 5 s dopo l'ultimo
+  tasto, interfaccia a schermo spento ogni 250 ms. Corregge anche il lampeggio degli avvisi, che non
+  finiva mai (ora si ferma quando non resta niente da leggere: anche sulla PCB);
+- **fase 2**: light sleep automatico (`CONFIG_FREERTOS_USE_TICKLESS_IDLE`). Tengono il chip sveglio lo
+  schermo acceso, il GPS che parla, l'I2S acceso, le cuffie, il Wi-Fi e un computer sulla USB. I pin
+  della scheda restano com'erano (se no ESP-IDF li isolerebbe, POWERON compreso). DIO1 della LoRa
+  sveglia il chip; tastiera e trackball si leggono ogni 40 ms;
+- **fase 3**: il firmware del C3 (`strumenti/tastiera_c3`, da caricare a parte). Con quello l'S3 a
+  schermo spento non legge più la tastiera: aspetta la linea `C3_INT`.
+
+**Compilare.** Le opzioni nuove sono in `sdkconfig.defaults.tdeck`: prima di compilare cancella
+`build-tdeck/sdkconfig` (ESP-IDF non riapplica i valori predefiniti a un sdkconfig che esiste già).
+Per tornare indietro di una fase: senza `CONFIG_FREERTOS_USE_TICKLESS_IDLE` resta la fase 1; senza
+anche `CONFIG_PM_ENABLE` il chip va sempre a 240 MHz come prima.
+
+**Misurare.** Il modo più semplice: batteria carica al 100%, un misuratore USB tra caricatore e T-Deck
+(non un computer: col computer collegato il light sleep è spento apposta) e lo schermo spento da un
+minuto. Quello che segna è quasi solo il consumo del telefono. Confronta prima e dopo ogni fase, e col
+firmware del C3 nuovo.
+
 ### Da provare sul T-Deck vero
 
 Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non ancora su un T-Deck:
@@ -408,6 +450,17 @@ Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non anc
     sdoppiatore veri: quali cuffie vanno (il log dei descrittori), se la porta torna sempre al
     computer (anche dopo un riavvio, un crash e il sonno profondo presi a cuffie accese), buchi e
     clic nella musica con radio, schermo e microSD al lavoro, RAM interna dopo tante accensioni.
+11. **risparmio di energia** (vedi sopra), a schermo spento:
+    - un messaggio arriva e suona subito (DIO1 sveglia il chip), anche dopo ore;
+    - un tasto e il clic del trackball riaccendono lo schermo; l'immagine compare già aggiornata;
+    - sveglie, timer, musica, chiamate e vocali come prima; il GPS trova la posizione;
+    - suoni brevi (il clic del volume) non tagliati all'inizio: se lo sono, aumentare l'attesa dopo
+      `amp(true)` in `audio.cpp`;
+    - collegando il computer la console compare (con la CPU a 40 MHz al massimo qualche secondo); se
+      no, `pm.min_freq_mhz = 80` in `scheda_tdeck.cpp`;
+    - nel registro `risparmio: CPU da 40 a 240 MHz, light sleep a schermo spento` e
+      `touch GT911 (0x5d): a dormire`;
+    - il consumo, prima e dopo, e poi col firmware nuovo del C3.
 
 ## Mettere in piedi la rete
 
@@ -465,7 +518,8 @@ Un SOS chiude la chiamata. In chat resta una riga: chiamata fatta, ricevuta, per
 **Grafica.** Due temi, in Impostazioni > Tema. **Carta** (quello normale): fondo bianco e testo
 nero come un foglio stampato, che si legge anche al sole; bordi neri decisi al posto delle superfici
 grigie, il selezionato pieno di blu, l'arancio per le cose urgenti, la barra di stato nera. **Scuro**:
-la grafica di prima, per la notte (lo schermo bianco abbaglia e consuma di più). Tutti e due usano
+la grafica di prima, per la notte (lo schermo bianco abbaglia; sui display LCD di T-Deck e PCB il tema
+non cambia il consumo, che dipende dalla luminosità). Tutti e due usano
 solo i colori che il pannello della PCB mostra senza sfumature (rosso e blu a 5 livelli). Il tema
 cambia subito, senza riavviare. Nel file `impostazioni.txt` della microSD è la chiave `tema`
 (0 Carta, 1 Scuro).
@@ -561,7 +615,7 @@ persi, collisioni, nodi nascosti):
 ```sh
 cd Pippaphone_firmware
 cmake -S test -B build-test && cmake --build build-test
-./build-test/pippanet_test                  # 35 test
+./build-test/pippanet_test                  # 38 test
 PN_SEED=7 ./build-test/pippanet_test        # altro seme casuale
 PN_TRACE=1 ./build-test/pippanet_test       # stampa ogni trasmissione
 ```
@@ -692,10 +746,10 @@ una PCB vera):
 
 **Ancora da fare:**
 
-- **risparmio di energia**: ora a schermo spento resta accesa la radio in ricezione (ok) ma
-  anche il bus RGB del display. Il prossimo passo è fermare il display e usare il light sleep
-  dell'ESP32-S3, svegliandosi con l'interruzione della radio o dei tasti. Si misura sulla PCB
-  vera;
+- **risparmio di energia sulla PCB**: sul T-Deck è fatto (vedi "Risparmio di energia", da provare);
+  sulla PCB a schermo spento restano accesi la radio in ricezione (ok) ma anche il bus RGB del
+  display. Si possono riprendere le stesse cose (frequenza variabile, light sleep coi pin della scheda
+  che restano com'erano, DIO1 a livello) fermando il display RGB. Si misura sulla PCB vera;
 - il **programma di amministrazione dei ripetitori** (a parte, come deciso): i tipi di
   pacchetto 0x30–0x3F sono già riservati e il ripetitore li passa a una funzione apposita;
 - **ripetitori su Heltec WiFi LoRa 32 V3** (in casa) **e LilyGO T3-S3** (solari, fuori): il
@@ -719,6 +773,7 @@ licenze (i file di licenza sono nelle rispettive cartelle):
 | minimp3 (lettore musicale del T-Deck) | CC0 (pubblico dominio) |
 | esptool-js (solo nella pagina per caricare il firmware, non nel firmware) | Apache 2.0 |
 | MapLibre GL JS (solo nella pagina per caricare il firmware, per disegnare le mappe) | BSD-3 |
+| firmware della tastiera del T-Deck (`strumenti/tastiera_c3`, deriva dall'esempio LilyGO) | MIT: l'avviso è in cima al file |
 
 Le mappe che la pagina disegna usano i dati di **OpenStreetMap** (© OpenStreetMap contributors,
 licenza ODbL) con gli stili di OpenFreeMap: chi distribuisce le tile deve citare OpenStreetMap.
