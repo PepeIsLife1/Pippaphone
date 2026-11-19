@@ -17,6 +17,7 @@
 #if !CONFIG_SCHEDA_TDECK_PLUS
 #include "scheda/expander.h"
 #else
+#include "scheda/scheda.h"
 #include "tdeck/gnss_pilota.h"
 #endif
 
@@ -104,7 +105,22 @@ void gnssTask(void*) {
     for (;;) {
         g_pilota.giro();
         g_modulo = g_pilota.modulo();
+        // Risparmio: finche' il GPS parla, o lo si vuole, o lo si sta cercando, svegliando o addormentando, il
+        // chip non va in light sleep (la UART perderebbe i caratteri). Quando dorme (STANDBY) o non c'e' (MUTO)
+        // e non lo si vuole, la seriale si guarda ogni mezzo secondo invece che ogni 50 ms (power() e le altre
+        // richieste svegliano subito il compito). L'L76K non si addormenta: se non lo si vuole, le sue frasi
+        // si possono perdere.
+        const Gnss::Stato st = g_pilota.stato();
+        const bool fermo = st == Gnss::Stato::STANDBY || st == Gnss::Stato::MUTO;
+        const bool serve = g_pilota.voluto() || (!fermo && st != Gnss::Stato::ACCESO);
+        tieni(Tieni::GPS, serve);
+        if (!serve && fermo) ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
     }
+}
+
+// Una richiesta per il compito del GPS: se sta aspettando a riposo, che guardi subito.
+void sveglia() {
+    if (g_compito) xTaskNotifyGive(g_compito);
 }
 #else
 int hexVal(char c) { return (c >= '0' && c <= '9') ? c - '0' : (c >= 'A' && c <= 'F') ? c - 'A' + 10 : -1; }
@@ -331,6 +347,7 @@ void Gnss::eco(uint32_t secondi) { g_ecoFino = esp_timer_get_time() / 1000 + int
 void Gnss::freddo() {
 #if CONFIG_SCHEDA_TDECK_PLUS
     g_pilota.freddo();  // la fa il compito del GPS appena il ricevitore e' sveglio (CFG-RST o PCAS10,2)
+    sveglia();
 #endif
 }
 
@@ -338,6 +355,7 @@ void Gnss::freddo() {
 void Gnss::power(bool on, const char* perche) {
     on_ = on;
     g_pilota.vuoi(on, perche);
+    sveglia();
 }
 
 Gnss::Stato Gnss::stato() const { return g_pilota.stato(); }
@@ -356,11 +374,17 @@ Gnss::Diagnosi Gnss::diagnosi() const {
 
 int Gnss::storia(Evento* out, int max) const { return g_pilota.storia(out, max); }
 
-void Gnss::chiediVersione() { g_pilota.chiediVersione(); }
+void Gnss::chiediVersione() {
+    g_pilota.chiediVersione();
+    sveglia();
+}
 
 Gnss::Versione Gnss::versione() const { return g_pilota.versione(); }
 
-void Gnss::prova(int cicli, bool forza) { g_pilota.prova(cicli, forza); }
+void Gnss::prova(int cicli, bool forza) {
+    g_pilota.prova(cicli, forza);
+    sveglia();
+}
 
 Gnss::Prova Gnss::provaStato() const { return g_pilota.provaStato(); }
 #endif

@@ -30,11 +30,18 @@ bool spiBusReady();
 // la microSD partiva con l'hardware ancora occupato -> assert in spi_hal_setup_trans e riavvio.
 void busSpiPrendi();
 void busSpiLascia();
-// Risparmio di energia (scheda_tdeck.cpp): la CPU scende a 40 MHz quando i compiti sono fermi. Chi ha bisogno
-// di altro lo tiene finche' serve (on = true, poi false; chiamate in piu' con lo stesso valore non contano):
-//   CUFFIE  frequenza piena: la USB host (cuffie USB-C) vuole il PLL, che a 40 MHz si spegne.
-enum class Tieni : uint8_t { CUFFIE };
+// Risparmio di energia (scheda_tdeck.cpp): la CPU scende a 40 MHz quando i compiti sono fermi e, a schermo
+// spento, il chip va in light sleep tra un risveglio e l'altro (radio, tastiera, timer). Chi ha bisogno di
+// altro lo tiene finche' serve (on = true, poi false; chiamate in piu' con lo stesso valore non contano; ogni
+// motivo lo cambia un compito solo):
+//   CUFFIE   frequenza piena: la USB host (cuffie USB-C) vuole il PLL, che a 40 MHz si spegne;
+//   SCHERMO  niente light sleep a schermo acceso (trackball, disegno). Preso all'avvio: lo lascia ui.cpp;
+//   GPS      niente light sleep mentre il GPS parla (la UART in light sleep perde i caratteri). Preso
+//            all'avvio: lo lascia il compito del GPS quando il ricevitore dorme.
+enum class Tieni : uint8_t { CUFFIE, SCHERMO, GPS };
 void tieni(Tieni motivo, bool on);
+// Tastiera e trackball a riposo (schermo spento): si leggono piu' di rado. Lo dice ui.cpp.
+void inputRiposo(bool riposo);
 #else
 constexpr bool HAS_VIBRATION = true;
 #endif

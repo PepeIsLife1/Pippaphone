@@ -5,6 +5,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "hal/gpio_ll.h"
 
 namespace pippa {
 
@@ -14,6 +15,17 @@ constexpr uint32_t HAL_INPUT = 0x01, HAL_OUTPUT = 0x03, HAL_LOW = 0, HAL_HIGH = 
 bool isrServiceInstalled = false;
 
 void IRAM_ATTR trampoline(void* arg) { reinterpret_cast<void (*)(void)>(arg)(); }
+
+// Interruzione a livello (setLevelInterrupt): una sola, quella di DIO1.
+gpio_num_t g_levelPin = GPIO_NUM_NC;
+void (*g_levelCb)(void) = nullptr;
+
+// Prima si spegne (con la funzione inline dell'HAL: l'ISR puo' girare a cache della flash spenta), poi il
+// callback di RadioLib.
+void IRAM_ATTR trampolineLevel(void*) {
+    gpio_ll_intr_disable(GPIO_LL_GET_HW(0), uint32_t(g_levelPin));
+    if (g_levelCb) g_levelCb();
+}
 }  // namespace
 
 EspHal::EspHal(spi_host_device_t host, int sck, int miso, int mosi, bool initBus, int clockHz)
@@ -77,15 +89,37 @@ void EspHal::attachInterrupt(uint32_t interruptNum, void (*cb)(void), uint32_t m
         isrServiceInstalled = true;
     }
     gpio_num_t pin = gpio_num_t(interruptNum);
+    if (level_) {
+        const gpio_int_type_t t = mode == HAL_RISING ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL;
+        g_levelPin = pin;
+        g_levelCb = cb;
+        gpio_set_intr_type(pin, t);
+        gpio_wakeup_enable(pin, t);  // risveglio dal light sleep (esp_sleep_enable_gpio_wakeup lo fa la scheda)
+        gpio_isr_handler_add(pin, trampolineLevel, nullptr);
+        gpio_intr_enable(pin);
+        return;
+    }
     gpio_set_intr_type(pin, mode == HAL_RISING ? GPIO_INTR_POSEDGE : GPIO_INTR_NEGEDGE);
     gpio_isr_handler_add(pin, trampoline, reinterpret_cast<void*>(cb));
     gpio_intr_enable(pin);
+}
+
+bool EspHal::rearmInterrupt() {
+    if (!level_ || g_levelPin == GPIO_NUM_NC) return true;
+    if (gpio_get_level(g_levelPin)) return false;
+    gpio_intr_enable(g_levelPin);  // se DIO1 sale proprio adesso l'interruzione (a livello) scatta subito
+    return true;
 }
 
 void EspHal::detachInterrupt(uint32_t interruptNum) {
     if (interruptNum == RADIOLIB_NC) return;
     gpio_num_t pin = gpio_num_t(interruptNum);
     gpio_isr_handler_remove(pin);
+    if (level_ && pin == g_levelPin) {
+        gpio_wakeup_disable(pin);
+        g_levelPin = GPIO_NUM_NC;
+        g_levelCb = nullptr;
+    }
     gpio_set_intr_type(pin, GPIO_INTR_DISABLE);
 }
 

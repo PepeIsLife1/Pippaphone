@@ -18,6 +18,14 @@ public:
         busTake_ = take;
         busGive_ = give;
     }
+    // Interruzione di DIO1 a livello invece che sul fronte, valida anche come risveglio dal light sleep
+    // (gpio_wakeup_enable vuole un livello; un fronte durante il light sleep si perde). Da chiamare prima di
+    // attachInterrupt. Quando scatta l'interruzione si spegne da sola (niente raffica finche' DIO1 resta
+    // alto): la riaccende rearmInterrupt(), dopo aver letto la radio.
+    void setLevelInterrupt(bool on) { level_ = on; }
+    // Riaccende l'interruzione a livello se il pin e' tornato basso: true; false se e' ancora alto (la radio
+    // ha un'altra interruzione da leggere: si riguarda presto). Senza livello: sempre true.
+    bool rearmInterrupt();
 
     void init() override;
     void term() override;
@@ -45,6 +53,7 @@ private:
     spi_device_handle_t dev_ = nullptr;
     void (*busTake_)() = nullptr;
     void (*busGive_)() = nullptr;
+    bool level_ = false;
 };
 
 }  // namespace pippa

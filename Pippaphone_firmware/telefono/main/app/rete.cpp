@@ -67,6 +67,9 @@ bool Rete::begin() {
     cfg.initBus = false;
     cfg.busTake = scheda::busSpiPrendi;  // un turno sul bus con display e microSD
     cfg.busGive = scheda::busSpiLascia;
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    cfg.lightSleep = true;  // DIO1 a livello: un pacchetto sveglia il chip dal light sleep (scheda_tdeck.cpp)
+#endif
 #else
     cfg.resetFn = [](bool level) { scheda::expander().set(scheda::Exp::LORA_RST_N, level); };
 #endif

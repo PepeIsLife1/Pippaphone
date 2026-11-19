@@ -61,6 +61,9 @@ public:
     bool modeKnown() const { return mode_ != UNKNOWN; }
     // Luce della tastiera 0..255 (comando 0x01 del C3).
     void light(uint8_t level);
+    // A riposo (schermo spento) il compito "input" legge ogni 40 ms invece che ogni 12: basta una lettura per
+    // accettare un tasto (a quel passo il filtro delle due letture uguali perderebbe i tasti brevi).
+    void setRiposo(bool riposo) { riposo_ = riposo; }
 
 private:
     enum Mode : uint8_t { UNKNOWN, RAW, CHARS };
@@ -85,6 +88,7 @@ private:
     bool clickDown_ = false;
     bool clickIgnora_ = false;    // clic tenuto all'accensione (risveglio col trackball): non e' un OK
     int64_t clickChangeMs_ = 0;
+    bool riposo_ = false;
 };
 #else
 class Tastiera {

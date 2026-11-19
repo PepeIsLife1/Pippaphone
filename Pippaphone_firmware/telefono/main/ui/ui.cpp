@@ -239,6 +239,9 @@ void screenOff() {
     // SPI ogni 2 secondi) e il pannello dorme (SLPIN): wake() fa il contrario.
     lv_display_enable_invalidation(g_disp, false);
     scheda::display().sleep();
+    // E il chip puo' andare in light sleep tra un risveglio e l'altro; tasti e trackball si leggono piu' di rado.
+    scheda::inputRiposo(true);
+    scheda::tieni(scheda::Tieni::SCHERMO, false);
 #endif
 }
 
@@ -938,6 +941,8 @@ void wake() {
         return;
     }
     g_on = true;
+    scheda::tieni(scheda::Tieni::SCHERMO, true);  // niente light sleep a schermo acceso (trackball, disegno)
+    scheda::inputRiposo(false);
     // Prima il pannello e un'immagine nuova, poi la luce (uiTask, dopo lv_timer_handler): niente immagine
     // vecchia per un attimo, come l'ora di quando si era spento.
     scheda::display().wake();

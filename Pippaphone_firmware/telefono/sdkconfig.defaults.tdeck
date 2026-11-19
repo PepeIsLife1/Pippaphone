@@ -36,3 +36,16 @@ CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=1024
 # (scheda_tdeck.cpp, risparmioInit). I driver tengono la frequenza che serve mentre usano una periferica; la
 # UART del GPS va col quarzo (gnss.cpp) e le cuffie USB-C tengono la frequenza piena (scheda::tieni).
 CONFIG_PM_ENABLE=y
+
+# Risparmio, fase 2: light sleep automatico. Quando i compiti aspettano tutti e nessuno tiene il chip sveglio
+# (schermo acceso, GPS che parla, I2S acceso, cuffie, Wi-Fi) il chip dorme fino al prossimo timer o a un
+# pacchetto della LoRa (DIO1 a livello, radio_link). In pratica succede a schermo spento. I pin della scheda
+# restano com'erano durante il sonno (scheda_tdeck.cpp, PIN_USATI): se no ESP-IDF li isolerebbe, POWERON
+# compreso. Per tornare alla sola frequenza variabile basta togliere questa riga (e cancellare
+# build-tdeck/sdkconfig).
+CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+# Col computer sulla USB niente light sleep: console, pagina del flasher e comandi @ funzionano come prima.
+CONFIG_USJ_NO_AUTO_LS_ON_CONNECTION=y
+# CPU accesa nel light sleep: spegnerla risparmierebbe circa 0,65 mA ma costa circa 17 KB di RAM interna
+# (contesto della CPU e tag della cache), che servono al Wi-Fi dell'aggiornamento e alle cuffie USB-C.
+CONFIG_PM_POWER_DOWN_CPU_IN_LIGHT_SLEEP=n

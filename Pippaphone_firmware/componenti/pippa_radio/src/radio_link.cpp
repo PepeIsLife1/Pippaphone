@@ -41,6 +41,7 @@ bool RadioLink::begin(const RadioConfig& cfg, pn::Node* node, SemaphoreHandle_t 
 
     g_hal = new EspHal(cfg.host, cfg.sck, cfg.miso, cfg.mosi, cfg.initBus);
     g_hal->setBusTurn(cfg.busTake, cfg.busGive);
+    g_hal->setLevelInterrupt(cfg.lightSleep);
     g_module = new Module(g_hal, uint32_t(cfg.nss), uint32_t(cfg.dio1),
                           cfg.reset >= 0 ? uint32_t(cfg.reset) : RADIOLIB_NC, uint32_t(cfg.busy));
     g_radio = new SX1262(g_module);
@@ -114,9 +115,11 @@ void RadioLink::loop() {
         const uint32_t notified = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(waitMs));
         xSemaphoreTakeRecursive(lock_, portMAX_DELAY);
         pn::Millis now = nowMs();
+        // Interruzione a livello (light sleep): DIO1 alto conta anche senza notifica.
+        const bool dio1 = cfg_.lightSleep && g_hal->digitalRead(uint32_t(cfg_.dio1));
 
         // Interruzione (o controllo periodico durante una trasmissione).
-        if (notified || txBusy_) {
+        if (notified || dio1 || txBusy_) {
             const uint32_t irq = g_radio->getIrqFlags();
             if (txBusy_ && (irq & RADIOLIB_SX126X_IRQ_TX_DONE)) {
                 g_radio->finishTransmit();
@@ -184,6 +187,9 @@ void RadioLink::loop() {
         if (txBusy_) next = std::min<pn::Millis>(next, 50);
         if (backoffUntil_ > now) next = std::min<pn::Millis>(next, backoffUntil_ - now);
         waitMs = uint32_t(std::max<pn::Millis>(5, std::min<pn::Millis>(next, 1000)));
+        // Interruzione a livello: si riaccende quando la radio ha abbassato DIO1 (lette e cancellate le sue
+        // interruzioni); se DIO1 e' ancora alto la si riguarda tra 5 ms.
+        if (cfg_.lightSleep && !g_hal->rearmInterrupt()) waitMs = 5;
         xSemaphoreGiveRecursive(lock_);
     }
 }

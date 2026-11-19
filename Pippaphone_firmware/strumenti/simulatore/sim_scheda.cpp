@@ -53,6 +53,9 @@ void Display::backlight(uint8_t percent) {
 #if CONFIG_SCHEDA_TDECK_PLUS
 void Display::sleep() { asleep_ = true; }
 void Display::wake() { asleep_ = false; }
+// Risparmio: sul PC non c'e' niente da tenere sveglio.
+void tieni(Tieni, bool) {}
+void inputRiposo(bool) {}
 #endif
 
 // ---------------------------------------------------------------- audio

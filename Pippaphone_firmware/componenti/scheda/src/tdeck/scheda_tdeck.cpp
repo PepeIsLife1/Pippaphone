@@ -38,6 +38,10 @@ SemaphoreHandle_t g_bus = nullptr;
 bool g_full = false;
 TaskHandle_t g_inputTask = nullptr;
 constexpr TickType_t INPUT_PERIOD = pdMS_TO_TICKS(12);
+// A schermo spento (inputRiposo): tastiera e trackball si leggono ogni 40 ms. Ogni lettura sveglia il chip dal
+// light sleep; un tasto premuto per accendere lo schermo dura di solito ben piu' di 40 ms.
+constexpr TickType_t INPUT_PERIOD_RIPOSO = pdMS_TO_TICKS(40);
+volatile bool g_inputRiposo = false;
 
 uint8_t g_kbLevel = 0;  // luce della tastiera voluta dall'interfaccia
 uint32_t g_wakeAfterS = 0;  // "Spegni": risveglio per la sveglia (0 = nessuno)
@@ -80,8 +84,12 @@ void blinkCb(TimerHandle_t) {
 void inputTask(void*) {
     TickType_t last = xTaskGetTickCount();
     for (;;) {
+        // A riposo solo col modo della tastiera gia' capito: si capisce da due letture di fila al primo tasto,
+        // e a 40 ms un tasto breve sembrerebbe il firmware vecchio del C3.
+        const bool riposo = g_inputRiposo && tastiera().modeKnown();
+        tastiera().setRiposo(riposo);
         tastiera().service();
-        vTaskDelayUntil(&last, INPUT_PERIOD);
+        vTaskDelayUntil(&last, riposo ? INPUT_PERIOD_RIPOSO : INPUT_PERIOD);
     }
 }
 
@@ -132,24 +140,58 @@ struct Blocco {
     bool preso;
 };
 Blocco g_blocchi[] = {
-    {"cuffie", ESP_PM_CPU_FREQ_MAX, nullptr, false},  // Tieni::CUFFIE
+    {"cuffie", ESP_PM_CPU_FREQ_MAX, nullptr, false},     // Tieni::CUFFIE
+    {"schermo", ESP_PM_NO_LIGHT_SLEEP, nullptr, false},  // Tieni::SCHERMO
+    {"gps", ESP_PM_NO_LIGHT_SLEEP, nullptr, false},      // Tieni::GPS
 };
 portMUX_TYPE g_bloccoMux = portMUX_INITIALIZER_UNLOCKED;
+
+// I blocchi si creano per primi (holdPower): all'avvio schermo e GPS sono accesi e li tengono gia'.
+void blocchiInit() {
+    for (Blocco& b : g_blocchi)
+        if (esp_pm_lock_create(b.tipo, 0, b.nome, &b.h) != ESP_OK) b.h = nullptr;
+    for (const Tieni t : {Tieni::SCHERMO, Tieni::GPS}) {
+        Blocco& b = g_blocchi[size_t(t)];
+        if (b.h && esp_pm_lock_acquire(b.h) == ESP_OK) b.preso = true;
+    }
+}
+
+// Tutti i pin che la scheda usa. In light sleep ESP-IDF (CONFIG_ESP_SLEEP_GPIO_RESET_WORKAROUND, attivo
+// sull'S3) li isolerebbe tutti, uscite comprese: POWERON (GPIO 10) andrebbe giu' e si spegnerebbero radio,
+// tastiera, display e GPS a ogni sonno; i CS e il reset della LoRa, la TX verso il GPS (un fronte sveglia
+// l'u-blox) e le pull-up del trackball resterebbero per aria. Cosi' tengono lo stato di quando si e' svegli.
+const gpio_num_t PIN_USATI[] = {
+    PIN_POWERON, PIN_SPI_MOSI, PIN_SPI_SCK, PIN_SPI_MISO, PIN_LORA_NSS, PIN_LORA_BUSY, PIN_LORA_DIO1, PIN_LORA_RST,
+    PIN_LCD_CS, PIN_LCD_DC, PIN_LCD_BL, PIN_SD_CS, PIN_I2C_SDA, PIN_I2C_SCL, PIN_I2S_BCLK, PIN_I2S_WS,
+    PIN_I2S_DOUT, PIN_MIC_MCLK, PIN_MIC_SCK, PIN_MIC_LRCK, PIN_MIC_DIN, PIN_GNSS_RX, PIN_GNSS_TX, PIN_TB_UP,
+    PIN_TB_DOWN, PIN_TB_LEFT, PIN_TB_RIGHT, PIN_TB_CLICK, PIN_TOUCH_INT, PIN_KB_INT,
+};
 #endif
 
 // Risparmio di energia (CONFIG_PM_ENABLE, sdkconfig.defaults.tdeck): la CPU va a 240 MHz quando un compito
 // lavora e scende a 40 MHz (il quarzo) quando sono tutti fermi; i driver di ESP-IDF tengono la frequenza
 // che serve finche' usano una periferica (SPI, I2C, I2S acceso, scrittura sulla UART).
+// Light sleep automatico (CONFIG_FREERTOS_USE_TICKLESS_IDLE): quando nessuno tiene il chip sveglio (schermo
+// acceso, GPS che parla, I2S acceso, cuffie, Wi-Fi, un computer sulla USB) e i compiti aspettano tutti,
+// il chip dorme fino al prossimo timer o a un risveglio dai GPIO (DIO1 della LoRa, radio_link).
 void risparmioInit() {
 #if CONFIG_PM_ENABLE
-    for (Blocco& b : g_blocchi)
-        if (esp_pm_lock_create(b.tipo, 0, b.nome, &b.h) != ESP_OK) b.h = nullptr;
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    for (const gpio_num_t p : PIN_USATI) gpio_sleep_sel_dis(p);
+    esp_sleep_enable_gpio_wakeup();
+#endif
     esp_pm_config_t pm = {};
     pm.max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
     pm.min_freq_mhz = 40;
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    pm.light_sleep_enable = true;
+#else
     pm.light_sleep_enable = false;
+#endif
     const esp_err_t e = esp_pm_configure(&pm);
-    if (e == ESP_OK) ESP_LOGI(TAG, "risparmio: CPU da %d a %d MHz", pm.min_freq_mhz, pm.max_freq_mhz);
+    if (e == ESP_OK)
+        ESP_LOGI(TAG, "risparmio: CPU da %d a %d MHz, light sleep %s", pm.min_freq_mhz, pm.max_freq_mhz,
+                 pm.light_sleep_enable ? "a schermo spento" : "no");
     else ESP_LOGW(TAG, "risparmio non attivato (errore %d)", int(e));
 #endif
 }
@@ -157,6 +199,9 @@ void risparmioInit() {
 
 Avvio holdPower() {
     phyAlComputer();  // per prima cosa: anche il log dell'avvio torna sulla console
+#if CONFIG_PM_ENABLE
+    blocchiInit();
+#endif
     // Periferiche accese (display, tastiera, LoRa, GPS, audio).
     gpio_hold_dis(PIN_POWERON);
     gpio_deep_sleep_hold_dis();
@@ -186,6 +231,8 @@ Avvio holdPower() {
 }
 
 bool spiBusReady() { return g_spi; }
+
+void inputRiposo(bool riposo) { g_inputRiposo = riposo; }
 
 void tieni(Tieni motivo, bool on) {
 #if CONFIG_PM_ENABLE

@@ -206,11 +206,12 @@ void Tastiera::service() {
     pendingCount_ = 1;
 }
 
-// Modo raw: un cambiamento si accetta quando due letture di fila sono uguali (rimbalzi).
+// Modo raw: un cambiamento si accetta quando due letture di fila sono uguali (rimbalzi). A riposo (una
+// lettura ogni 40 ms, piu' lenta della scansione del C3) basta una lettura.
 void Tastiera::serviceRaw(const uint8_t* cols) {
     if (std::memcmp(cols, last_, 5) != 0) {
         std::memcpy(last_, cols, 5);
-        return;
+        if (!riposo_) return;
     }
     for (int col = 0; col < 5; col++) {
         const uint8_t diff = uint8_t((cols[col] ^ stable_[col]) & 0x7F);

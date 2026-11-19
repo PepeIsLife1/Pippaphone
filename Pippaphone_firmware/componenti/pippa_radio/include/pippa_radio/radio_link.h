@@ -30,6 +30,8 @@ struct RadioConfig {
     // Turno sul bus SPI condiviso, prima e dopo ogni transazione (vedi EspHal::setBusTurn).
     void (*busTake)() = nullptr;
     void (*busGive)() = nullptr;
+    // Light sleep (T-Deck): DIO1 a livello, che sveglia anche il chip (EspHal::setLevelInterrupt).
+    bool lightSleep = false;
 };
 
 class RadioLink {
