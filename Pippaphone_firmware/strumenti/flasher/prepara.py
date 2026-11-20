@@ -51,11 +51,26 @@ TASTIERA_INO = TASTIERA / "Keyboard_ESP32C3_Pippaphone" / "Keyboard_ESP32C3_Pipp
 ESP32_C3 = 5   # il numero del chip nell'intestazione delle immagini (esp_chip_id_t)
 
 
+def python_per(build):
+    """Il Python con cui lanciare idf.py: quello con cui la cartella di compilazione e' stata configurata, se e'
+    dello stesso ambiente. idf.py confronta i percorsi e si ferma ("Run 'idf.py fullclean'") se per esempio la
+    cartella l'ha configurata "idf.py build" (bin/python) e adesso gira "python3 prepara.py" (bin/python3)."""
+    cache = build / "CMakeCache.txt"
+    if cache.is_file():
+        m = re.search(r"^PYTHON:[A-Z]+=(.+)$", cache.read_text(encoding="utf-8", errors="replace"), re.M)
+        if m:
+            p = Path(m.group(1).strip())
+            if p.is_file() and p.parent == Path(sys.executable).parent:
+                return str(p)
+    return sys.executable
+
+
 def compila(progetto, cartella, defaults):
     idf = os.environ.get("IDF_PATH")
     if not idf:
         sys.exit("ESP-IDF non e' attivo (manca IDF_PATH): attivalo, oppure usa --solo-pagina.")
-    cmd = [sys.executable, str(Path(idf) / "tools" / "idf.py"), "-B", cartella, "-D", f"SDKCONFIG={cartella}/sdkconfig",
+    cmd = [python_per(FW / progetto / cartella), str(Path(idf) / "tools" / "idf.py"), "-B", cartella,
+           "-D", f"SDKCONFIG={cartella}/sdkconfig",
            "-D", f"SDKCONFIG_DEFAULTS={defaults}", "build"]
     print(f"== {progetto}: {' '.join(cmd[2:])}", flush=True)
     subprocess.run(cmd, cwd=FW / progetto, check=True)
