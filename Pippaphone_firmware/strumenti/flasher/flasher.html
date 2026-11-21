@@ -1136,10 +1136,11 @@ async function disegnatore(nome) {
   return dis;
 }
 // Un blocco alla volta, anche se lo chiedono in due (la copia che disegna avanti e la prova).
+// La coda va avanti appena le tile del blocco sono ritagliate: i loro PNG si fanno mentre si disegna il dopo.
 function disegna(b, nome = $('#mStile').value) {
   const p = codaDisegno.then(() => disegnaBlocco(b, nome));
   codaDisegno = p.catch(() => {});
-  return p;
+  return p.then(r => r.png);
 }
 function aspettaFerma(m, ms) {   // true quando la cartina ha finito di disegnare tutto (evento "idle"), false dopo ms
   return new Promise(ok => {
@@ -1216,8 +1217,9 @@ async function disegnaBlocco({ z, bx, by, tile }, nome) {
     throw new Error(`Errore della pagina: il blocco ${z}/${bx}/${by} non torna con la numerazione delle tile (angolo a ${no.x.toFixed(2)}, ${no.y.toFixed(2)}).`);
   if (ox !== BORDO || oy !== BORDO) d.spostati++;   // solo vicino ai poli, dove la cartina non va oltre il bordo del mondo
   d.disegnati++;   // per la prova: i blocchi gia' completi nella cartella non si disegnano
-  // Le tile si ritagliano subito, tutte insieme, prima che la cartina possa disegnare altro.
-  return Promise.all(tile.map(async ([x, y]) => {
+  // Le tile si ritagliano subito, tutte insieme, prima che la cartina possa disegnare altro (drawImage parte
+  // prima del primo await); i PNG arrivano dopo, in png.
+  return { png: Promise.all(tile.map(async ([x, y]) => {
     const c = document.createElement('canvas');
     c.width = c.height = LATO;
     const g = c.getContext('2d', { alpha: false });
@@ -1226,7 +1228,7 @@ async function disegnaBlocco({ z, bx, by, tile }, nome) {
     g.drawImage(tela, ox + (x - bx) * LATO, oy + (y - by) * LATO, LATO, LATO, 0, 0, LATO, LATO);
     const png = await new Promise((ok, no) => c.toBlob(b => b ? ok(b) : no(new Error('Il browser non riesce a fare il PNG.')), 'image/png'));
     return { z, x, y, dati: new Uint8Array(await png.arrayBuffer()) };
-  }));
+  })) };
 }
 
 // ---- la copia
@@ -1273,16 +1275,22 @@ function progresso(c) {
   // la velocita' degli ultimi 30 secondi; con c.gratis le tile che c'erano gia' non contano, non costano niente,
   // e nemmeno quelle dei blocchi che "Continua" salta senza disegnarli (c.senzaCosto)
   const ora = performance.now(), lavorate = c.fatte - (c.gratis ? c.saltate : c.senzaCosto);
-  c.campioni.push([ora, lavorate]);
+  c.campioni.push([ora, lavorate, c.attesaDisegno, c.attesaTelefono]);
   while (ora - c.campioni[0][0] > 30000) c.campioni.shift();
-  const [t0, f0] = c.campioni[0], misurata = ora - t0 >= 4000 ? (lavorate - f0) * 1000 / (ora - t0) : 0;
+  const [t0, f0, d0, p0] = c.campioni[0], misurata = ora - t0 >= 4000 ? (lavorate - f0) * 1000 / (ora - t0) : 0;
+  // Col cavo: come viaggiano le tile e, a flusso, chi fa aspettare (negli ultimi 30 secondi la copia ha
+  // aspettato il disegno o il telefono per piu' di meta' del tempo).
+  const quota = v => ora - t0 >= 4000 ? v / (ora - t0) : 0;
+  const modo = c.modo === 'vecchio' ? ' · una tile alla volta (firmware vecchio: aggiornalo)'
+    : c.modo !== 'flusso' ? '' : quota(c.attesaDisegno - d0) > 0.5 ? (c.cartella ? ' · a flusso, aspetta i file della cartella' : ' · a flusso, aspetta il disegno')
+    : quota(c.attesaTelefono - p0) > 0.5 ? ' · a flusso, aspetta il telefono (microSD)' : ' · a flusso';
   const resta = durata((c.totale - c.fatte) / (misurata || c.velocita));
   barraMappe(c.fatte / c.totale);
   $('#mDati').textContent = `${numero(c.fatte)} di ${numero(c.totale)} tile · ${megabyte(c.byte)} ${c.verbo}` +
     (misurata ? ` · ${decimali(misurata, 1)} tile al secondo` : '') +
     (c.fatte < c.totale ? ` · ancora ${resta.startsWith('meno') ? resta : 'circa ' + resta}` : '') +
     (c.saltate ? ` · ${numero(c.saltate)} c’erano già` : '') +
-    (c.scartate ? ` · ${numero(c.scartate)} file rotti lasciati stare` : '');
+    (c.scartate ? ` · ${numero(c.scartate)} file rotti lasciati stare` : '') + modo;
 }
 // I conti di una copia: verbo "mandati" o "scritti", velocita' per le stime finche' non si misura,
 // gratis se le tile che c'erano gia' non costano tempo (nella cartella non si disegnano nemmeno).
@@ -1290,7 +1298,7 @@ function progresso(c) {
 // fatte dopo un buco (a flusso le risposte "ci" arrivano prima degli "ok" delle tile di prima): numero -> come.
 const contiNuovi = (totale, verbo, velocita, gratis = false) =>
   ({ totale, fatte: 0, saltate: 0, mandate: 0, scartate: 0, senzaCosto: 0, byte: 0, campioni: [], inizio: 0, verbo, velocita, gratis,
-     fino: 0, fuori: new Map() });
+     fino: 0, fuori: new Map(), modo: '', attesaDisegno: 0, attesaTelefono: 0 });
 // Una tile fatta (t.i: il suo numero nel giro): 'mandata' (coi suoi byte), 'saltata' (il telefono l'aveva gia') o
 // 'rotta' (un file della cartella che non e' una tile).
 function fatta(c, t, come) {
@@ -1396,6 +1404,7 @@ async function copiaAlTelefono({ conti: c, lotti, testo, dove, impara = false, e
       risponde = true; c.porta = apertaAlle;   // la sessione della porta: per riprendere senza ricontrollare tutto
       lavoro = testo; statoMappe(testo);
       aFlusso = !!telefono.flusso;
+      c.modo = aFlusso ? 'flusso' : 'vecchio';
       if (aFlusso) {
         try { await copiaAFlusso(lotti, c, st); } finally { ricevute = st.ricevute ?? null; }
         // Tutto confermato, se non ci si e' fermati: se no qualche tile e' andata persa per strada.
@@ -1447,7 +1456,8 @@ async function copiaAlTelefono({ conti: c, lotti, testo, dove, impara = false, e
       statoMappe(`${motivo} Premi “Riprova${seguito}”: le tile già copiate si saltano.`, 'err');
     }
     etichetta(esito === 'fatto' ? '' : esito === 'fermato' ? 'continua' : 'riprova');
-    if (ricevute != null) scrivi(`[mappe${aFlusso ? ' a flusso' : ''}: ${numero(c.fatte - prima)} tile in ${durata(secondi)}; il telefono dice di averne ricevute ${ricevute}]\n`);
+    const attese = !aFlusso ? '' : `; aspettando ${c.cartella ? 'i file' : 'il disegno'} ${durata(c.attesaDisegno / 1000)}, il telefono ${durata(c.attesaTelefono / 1000)}`;
+    if (ricevute != null) scrivi(`[mappe${aFlusso ? ' a flusso' : ' una tile alla volta'}: ${numero(c.fatte - prima)} tile in ${durata(secondi)}${attese}; il telefono dice di averne ricevute ${ricevute}]\n`);
   } finally {
     copiando = false; lavoro = '';
     schermoAcceso(false);
@@ -1600,13 +1610,25 @@ async function copiaAFlusso(lotti, c, st) {
   const vivo = setInterval(() => {
     if (!f.chiuso && !f.chiudendo && performance.now() - f.ultimo > VIVO) manda(f, A_CAPO).catch(() => {});
   }, VIVO / 4);
-  // Il lotto dopo si prepara mentre si manda questo: la domanda e poi, se serve, il disegno.
+  // I lotti dopo si preparano mentre si manda questo: la domanda al telefono e il disegno insieme (la risposta
+  // serve solo dopo il disegno). Fino a PRONTI lotti in anticipo: cosi' il disegno non si ferma quando il
+  // telefono rallenta un momento, e il telefono non aspetta quando un blocco e' lento da disegnare.
+  const PRONTI = 4;
   const prepara = async l => {
     if (l.gia) return { l };
-    const ha = await chiediPesi(f, l);
-    return { l, ha, tile: await l.dati() };
+    let pronte = 0;   // quando il disegno (o la lettura dei file) e' finito: dopo si aspetta solo il telefono
+    const [ha, tile] = await Promise.all([chiediPesi(f, l), l.dati().then(v => { pronte = performance.now(); return v; })]);
+    return { l, ha, tile, pronte };
   };
   const avvia = l => { const p = prepara(l); p.catch(() => {}); return p; };
+  const pronti = [];
+  const riempi = () => {
+    while (pronti.length < PRONTI && !fermati && !f.errore) {
+      const n = lotti.next();
+      if (n.done) break;
+      pronti.push(avvia(n.value));
+    }
+  };
   // Tutte le risposte delle tile partite, poi "@FINE" e "fine".
   const chiudi = async () => {
     await aspettaFlusso(f, () => f.inVolo <= 0 || f.chiuso || f.rotto, TEMPI.fine, 'Il telefono non risponde più: controlla il cavo.');
@@ -1615,18 +1637,20 @@ async function copiaAFlusso(lotti, c, st) {
     await aspettaFlusso(f, () => f.chiuso, TEMPI.fine, 'Il telefono non chiude la copia: controlla il cavo.');
   };
   try {
-    let n = lotti.next(), avanti = n.done ? null : avvia(n.value);
-    while (avanti && !fermati && !f.errore) {
-      const { l, ha, tile } = await avanti;
-      n = lotti.next();
-      avanti = n.done || fermati ? null : avvia(n.value);
+    riempi();
+    while (pronti.length && !fermati && !f.errore) {
+      let t0 = performance.now();
+      const { l, ha, tile, pronte } = await pronti.shift();
+      const t1 = performance.now(), disegno = tile ? Math.max(0, Math.min(pronte, t1) - t0) : 0;
+      c.attesaDisegno += disegno; c.attesaTelefono += t1 - t0 - disegno;
+      riempi();
       if (!tile) { saltaLotto(c, l); continue; }
       let resta = tile.length;
       const fatto = () => { if (--resta === 0 && l.chiave) c.lottiFatti?.add(l.chiave); };
       for (const [k, t] of tile.entries()) {
         if (t.rotta) { fatta(c, t, 'rotta'); fatto(); }
         else if (ha[k] === t.dati.length) { fatta(c, t, 'saltata'); fatto(); }
-        else await mandaFlusso(f, c, t, fatto);
+        else { t0 = performance.now(); await mandaFlusso(f, c, t, fatto); c.attesaTelefono += performance.now() - t0; }
         if (fermati || f.errore) break;
       }
     }
@@ -1934,7 +1958,7 @@ async function eseguiManda(p) {
   pacco = p; riprendiSalva = '';   // si riprende una cartella sola alla volta (vedi "mAltra")
   const resto = p.totale - (di ? di.fatte : 0);
   const r = await copiaAlTelefono({
-    conti: di || contiNuovi(p.totale, 'mandati', velocitaCavo()), lotti: lottiDelPacco(p, di ? di.fatte : 0), seguito: ' a mandare', inFila: true,
+    conti: di || Object.assign(contiNuovi(p.totale, 'mandati', velocitaCavo()), { cartella: true }), lotti: lottiDelPacco(p, di ? di.fatte : 0), seguito: ' a mandare', inFila: true,
     testo: `Mando al telefono le ${numero(resto)} tile ${di ? 'che mancano ' : ''}della ${p.nome} (${zoomDi(p.zmin, p.zmax)}), in ${colCavo(resto)}…`,
     dove: `della ${p.nome}`, etichetta: e => { riprendiManda = e; } });
   if (r) mandaDa = r.esito !== 'fatto' && r.conti.porta != null && r.conti.porta === apertaAlle ? { pacco: p, conti: r.conti, porta: apertaAlle } : null;
@@ -3121,6 +3145,7 @@ window.provaFlusso = async ({ registro = false } = {}) => {
       r?.esito, r?.motivo, `file=${f.file.size}/${nomi.length}`, `fine=${r?.ricevute}`);
     prova('a flusso: mai più della finestra in viaggio, nessun errore di protocollo', !f.errori.length, f.errori.slice(0, 3).join('; '));
     prova('a flusso: un solo @FLUSSO, niente @HAI né @FILE', f.comandi.filter(c => c === '@FLUSSO').length === 1 && !f.comandi.some(c => /^@(HAI|FILE)/.test(c)), f.comandi.join(','));
+    prova('a flusso: sotto la barra si legge “a flusso”', / · a flusso/.test($('#mDati').textContent), $('#mDati').textContent);
     // 2. di nuovo la stessa zona: tutte uguali, nessuna tile mandata
     let n = righeT(f);
     r = await copia();
@@ -3201,6 +3226,7 @@ window.provaFlusso = async ({ registro = false } = {}) => {
     r = await copia();
     prova('firmware di prima: una tile alla volta con @HAI e @FILE', r?.esito === 'fatto' && !r.aFlusso && giusti(f) && f.comandi.some(c => c.startsWith('@FILE')) && !f.comandi.includes('@FLUSSO') && !f.errori.length,
       r?.esito, r?.motivo, f.errori.slice(0, 2).join('; '));
+    prova('firmware di prima: sotto la barra si legge di aggiornarlo', /una tile alla volta \(firmware vecchio: aggiornalo\)/.test($('#mDati').textContent), $('#mDati').textContent);
     variante = 10; f = usa(telefonoFinto({ fermaDopo: 7 }));
     riprendi = ''; disegnati = 0;
     r = await copia();

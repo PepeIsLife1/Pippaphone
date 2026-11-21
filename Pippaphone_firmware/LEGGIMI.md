@@ -264,7 +264,12 @@ secondo. Adesso, col firmware che lo sa (a `@PIPPA?` risponde anche `flusso=<fin
   resta un file vuoto, che la mappa salta e la copia rifà) e le cartelle si fanno una volta sola;
 - "Continua" non ridisegna i blocchi già finiti (stessa zona, zoom e cartina, porta non chiusa);
   "Manda da una cartella" riparte dalla prima tile non confermata;
-- durante la copia la CPU resta a 240 MHz (`Tieni::MAPPE`).
+- durante la copia la CPU resta a 240 MHz (`Tieni::MAPPE`);
+- la pagina disegna fino a 4 blocchi in anticipo (la domanda al telefono parte insieme al disegno, e
+  i PNG di un blocco si fanno mentre si disegna il dopo), e sotto la barra dice come viaggiano le tile
+  ("a flusso" o "una tile alla volta" col firmware vecchio) e chi fa aspettare: "aspetta il disegno"
+  (il browser) o "aspetta il telefono (microSD)". Alla fine la console dice quanto tempo è andato in
+  ciascuna delle due attese.
 
 Quanto va più veloce sul T-Deck vero non è ancora misurato (vedi "Da provare"): adesso il limite
 dovrebbe essere la microSD (ogni tile è un file in una cartella con centinaia di altri) o il
@@ -669,7 +674,7 @@ cmake -S test -B build-test -G Ninja && cmake --build build-test --target usb_au
 Le mappe dal computer a flusso hanno `flusso_mappe_test`: il lettore del telefono
 (`telefono/main/app/flusso_mappe.h`) coi byte spezzati a caso, i comandi sbagliati, la tile a metà e,
 con `PN_FLUSSO=<file>`, un flusso vero registrato dalla pagina del flasher. La pagina ha la sua prova
-senza internet e senza telefono: dalla console del browser `await provaFlusso()` (16 prove col telefono
+senza internet e senza telefono: dalla console del browser `await provaFlusso()` (18 prove col telefono
 finto a flusso e con quello di prima); `await provaFlusso({ registro: true })` dà anche i byte da
 passare al test sul PC (in `registro.base64`, e `registro.atteso` va nel file `<file>.atteso`):
 
