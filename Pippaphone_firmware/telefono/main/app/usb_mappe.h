@@ -3,7 +3,19 @@
 //
 // Sulla stessa porta continua a passare il log: le risposte del telefono sono righe che
 // cominciano con "@PIPPA ". Comandi (righe di testo):
-//   @PIPPA?                         -> @PIPPA ciao <versione> sd=<0|1> libero=<MB liberi>
+//   @PIPPA?                         -> @PIPPA ciao <versione> sd=<0|1> libero=<MB liberi> flusso=<finestra>
+//                                      (flusso= c'e' dal firmware che sa il flusso qui sotto)
+//   @FLUSSO                         -> @PIPPA flusso <finestra> | @PIPPA errore <motivo>, e poi il flusso:
+//     la pagina manda senza aspettare le risposte (righe e byte in app/flusso_mappe.h):
+//       T <id> z/x/y.png <byte> <crc32> + i byte  -> (quando e' scritta) @PIPPA ok <id> | @PIPPA ko <id> <motivo>
+//       C <id> <z> <x0> <y0> <x1> <y1>           -> @PIPPA ci <id> <byte> ... (0 = non c'e'; colonna per
+//                                                  colonna, dall'alto; passa davanti alle tile in coda)
+//       riga vuota (tiene viva la sessione), @FINE
+//     crediti: @PIPPA letti <byte> (tutti i byte tolti dal buffer della USB dopo la riga "@FLUSSO"); la
+//     pagina non ne tiene mai piu' di <finestra> in viaggio, se no il buffer si riempie e il driver li butta.
+//     Un comando sbagliato: @PIPPA rotto <motivo>, poi i byte si buttano finche' la USB tace. Sempre, alla
+//     fine (@FINE, rotto, o 5 minuti senza niente): @PIPPA fine <tile scritte>, dopo l'ultimo ok/ko.
+//   Il protocollo di prima, per le pagine vecchie (una tile alla volta, ogni passo con la sua risposta):
 //   @HAI z/x/y.png <byte>           -> @PIPPA si (c'e' gia', uguale) | @PIPPA no
 //   @FILE z/x/y.png <byte> <crc32>  seguito da esattamente <byte> byte (il PNG)
 //                                   -> @PIPPA ok z/x/y.png | @PIPPA errore <motivo>
@@ -26,7 +38,8 @@
 //                                      @PIPPA cuffie accese per <s> s: poi la console torna (e la console
 //                                      sparisce fino ad allora) | @PIPPA cuffie errore <motivo>
 // Solo percorsi "cifre/cifre/cifre.png" (zoom 0-20) dentro /mappe, al massimo 1 MB per file; il
-// CRC32 e' quello di zlib. Un file si scrive come .tmp e si rinomina solo se e' arrivato intero.
+// CRC32 e' quello di zlib. Un file si scrive col suo nome solo se il CRC torna: se si stacca tutto a
+// meta' resta vuoto (la FatFs scrive la grandezza alla chiusura), mai mezza tile col nome giusto.
 #pragma once
 
 namespace app {

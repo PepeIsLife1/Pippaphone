@@ -244,14 +244,38 @@ non ce ne sono). Lo stesso punto che si muove c'è sulla mappa della posizione d
 disegna i tile della zona scelta su una cartina, coi dati OpenStreetMap di OpenFreeMap (serve
 internet sul computer), e li manda al telefono lungo lo stesso cavo USB, anche subito dopo
 l'aggiornamento: il telefono li scrive in `/mappe` della sua microSD. Il protocollo è in
-`telefono/main/app/usb_mappe.h` (righe di testo `@...`, file a pezzi da 4 kB con conferma e
-CRC32, solo percorsi `zoom/x/y.png`). Sul telefono compare "Mappe dal computer" e alla fine
-"Mappe arrivate"; la mappa vede subito i tile nuovi.
+`telefono/main/app/usb_mappe.h` (solo percorsi `zoom/x/y.png`, CRC32 per ogni tile). Sul telefono
+compare "Mappe dal computer" e alla fine "Mappe arrivate"; la mappa vede subito i tile nuovi.
+
+**Col cavo, a flusso.** Prima ogni tile costava una decina di andate e ritorni sulla USB (`@HAI`,
+`@FILE`, un "+" ogni 4 kB, la risposta dopo la scrittura), ognuno coi tempi del browser, e sulla
+microSD una scrittura in un `.tmp` poi rinominato con tre `mkdir` ogni volta: circa 2 tile al
+secondo. Adesso, col firmware che lo sa (a `@PIPPA?` risponde anche `flusso=<finestra>`):
+
+- la pagina manda le tile di fila senza aspettare le risposte, tenendo in viaggio al massimo la
+  "finestra" (7 kB: quello che il buffer della USB del telefono tiene senza buttare byte); il
+  telefono dice quanti byte ha già tolto dal buffer (`letti`) e la pagina va avanti;
+- sul telefono un compito legge e mette le tile in coda (fino a 2 MB in PSRAM), un altro le scrive
+  sulla microSD intanto che arrivano le altre e risponde `ok`/`ko` per ognuna (un `ko` fa rimandare
+  la tile, fino a tre volte);
+- per ogni blocco di 16 tile la pagina chiede con una riga sola quanto pesano quelle che il telefono
+  ha già (`C`, letta in un giro della cartella con la FatFs) e salta quelle uguali, come prima;
+- la tile si scrive direttamente col suo nome (niente `.tmp` e rinomina: se si stacca tutto a metà
+  resta un file vuoto, che la mappa salta e la copia rifà) e le cartelle si fanno una volta sola;
+- "Continua" non ridisegna i blocchi già finiti (stessa zona, zoom e cartina, porta non chiusa);
+  "Manda da una cartella" riparte dalla prima tile non confermata;
+- durante la copia la CPU resta a 240 MHz (`Tieni::MAPPE`).
+
+Quanto va più veloce sul T-Deck vero non è ancora misurato (vedi "Da provare"): adesso il limite
+dovrebbe essere la microSD (ogni tile è un file in una cartella con centinaia di altri) o il
+disegno nel browser, non più il cavo. Col firmware di prima la pagina usa ancora il protocollo vecchio
+e propone di aggiornarlo; le pagine vecchie col firmware nuovo vanno come prima.
 
 **Zone pronte e cartelle.** In "Zone pronte" c'è già la Liguria da Finale Ligure a Sestri Levante,
 Genova compresa; con "Salva questa zona" se ne aggiungono altre, che restano nel browser di quel
-computer. Oltre a "Copia sulla microSD" (col cavo, circa 8 tile al secondo, al massimo 400 000 per
-volta) ci sono due modi con le cartelle del computer, solo con Chrome o Edge:
+computer. Oltre a "Copia sulla microSD" (col cavo, al massimo 400 000 tile per volta; la stima
+della durata parte da 15 tile al secondo a flusso e poi usa quella misurata) ci sono due modi con
+le cartelle del computer, solo con Chrome o Edge:
 
 - **Salva in una cartella…** disegna i tile e li scrive in una cartella, senza telefono. Il modo più
   veloce è scegliere la microSD stessa nel lettore di schede del computer (per esempio `E:`): i tile
@@ -446,7 +470,11 @@ Scritto dagli schemi e dagli esempi di LilyGO, provato nel simulatore ma non anc
      - la politica nuova (`@GPS!STORIA` e le righe `GPS acceso` e `GPS spento` del registro);
 6. **batteria**: curva tensione → percentuale e riconoscimento della carica
    (`batteria_tdeck.cpp`);
-7. **microSD**: montaggio, copia dei dati dalla memoria interna, mappe;
+7. **microSD**: montaggio, copia dei dati dalla memoria interna, mappe; le mappe col cavo **a flusso**:
+   quante tile al secondo (la pagina lo scrive sotto la barra e nella console alla fine), con una
+   microSD veloce e una lenta, in città e in campagna; che "Ferma", "Continua" e lo stacco del cavo a
+   metà lascino solo tile intere o file vuoti; se non basta, misurare dove va il tempo (registro
+   `mappe dal computer a flusso` e i tempi delle tile nel registro del compito `mappe`);
 8. **radio** sul bus SPI condiviso col display;
 9. **sonno profondo**: il consumo da "spento". Il risveglio è provato sul T-Deck vero (14/11/2026):
    col trackball e da solo dopo un tempo (come per una sveglia), anche più volte di fila, e l'ora
@@ -636,6 +664,18 @@ ottimizzato e i suoi tempi). Su Windows con MSYS2:
 ```sh
 cmake -S test -B build-test -G Ninja && cmake --build build-test --target usb_audio_test
 ./build-test/usb_audio_test uac_            # descrittori; dsp_ per il ricampionatore
+```
+
+Le mappe dal computer a flusso hanno `flusso_mappe_test`: il lettore del telefono
+(`telefono/main/app/flusso_mappe.h`) coi byte spezzati a caso, i comandi sbagliati, la tile a metà e,
+con `PN_FLUSSO=<file>`, un flusso vero registrato dalla pagina del flasher. La pagina ha la sua prova
+senza internet e senza telefono: dalla console del browser `await provaFlusso()` (16 prove col telefono
+finto a flusso e con quello di prima); `await provaFlusso({ registro: true })` dà anche i byte da
+passare al test sul PC (in `registro.base64`, e `registro.atteso` va nel file `<file>.atteso`):
+
+```sh
+cmake --build build-test --target flusso_mappe_test && ./build-test/flusso_mappe_test
+PN_FLUSSO=flusso.bin ./build-test/flusso_mappe_test registrato   # flusso.bin e flusso.bin.atteso dalla pagina
 ```
 
 Il GPS del T-Deck ha due gruppi di test. `gps_politica_test` (10 test) prova quando il telefono lo

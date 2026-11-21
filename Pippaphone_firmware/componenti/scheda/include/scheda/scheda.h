@@ -37,8 +37,9 @@ void busSpiLascia();
 //   CUFFIE   frequenza piena: la USB host (cuffie USB-C) vuole il PLL, che a 40 MHz si spegne;
 //   SCHERMO  niente light sleep a schermo acceso (trackball, disegno). Preso all'avvio: lo lascia ui.cpp;
 //   GPS      niente light sleep mentre il GPS parla (la UART in light sleep perde i caratteri). Preso
-//            all'avvio: lo lascia il compito del GPS quando il ricevitore dorme.
-enum class Tieni : uint8_t { CUFFIE, SCHERMO, GPS };
+//            all'avvio: lo lascia il compito del GPS quando il ricevitore dorme;
+//   MAPPE    frequenza piena mentre arrivano le mappe dal computer a flusso (USB e microSD senza pause).
+enum class Tieni : uint8_t { CUFFIE, SCHERMO, GPS, MAPPE };
 void tieni(Tieni motivo, bool on);
 // Tastiera e trackball a riposo (schermo spento): si leggono piu' di rado. Lo dice ui.cpp.
 void inputRiposo(bool riposo);

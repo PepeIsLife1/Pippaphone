@@ -70,3 +70,19 @@ if(USB_AUDIO_SANITIZER)
     target_compile_options(gps_politica_test PRIVATE -fsanitize=address,undefined)
     target_link_options(gps_politica_test PRIVATE -fsanitize=address,undefined)
 endif()
+
+# Mappe dal computer a flusso (T-Deck): il lettore dei byte della pagina del flasher
+# (telefono/main/app/flusso_mappe.h). Con PN_FLUSSO=<file> legge anche un flusso registrato dalla pagina.
+#   cmake --build build-test --target flusso_mappe_test && ./build-test/flusso_mappe_test
+add_executable(flusso_mappe_test
+    main.cpp
+    platform_host.cpp
+    test_flusso_mappe.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../telefono/main/app/flusso_mappe.cpp)
+target_include_directories(flusso_mappe_test PRIVATE ${PN}/include ${CMAKE_CURRENT_SOURCE_DIR}
+                           ${CMAKE_CURRENT_SOURCE_DIR}/../telefono/main)
+target_compile_options(flusso_mappe_test PRIVATE -Wall -Wextra -Wno-unused-parameter -g)
+if(USB_AUDIO_SANITIZER)
+    target_compile_options(flusso_mappe_test PRIVATE -fsanitize=address,undefined)
+    target_link_options(flusso_mappe_test PRIVATE -fsanitize=address,undefined)
+endif()

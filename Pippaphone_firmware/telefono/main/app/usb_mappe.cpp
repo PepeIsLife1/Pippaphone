@@ -3,20 +3,25 @@
 #include "sdkconfig.h"
 
 #if CONFIG_SCHEDA_TDECK_PLUS
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <atomic>
+#include <cctype>
 #include <cerrno>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <unordered_set>
 
 #include "app/aggiorna.h"
 #include "app/cuffie.h"
 #include "app/eventi.h"
+#include "app/flusso_mappe.h"
 #include "app/memoria.h"
 #include "app/rete.h"
 #include "driver/usb_serial_jtag.h"
@@ -29,38 +34,30 @@
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_vfs_fat.h"
+#include "ff.h"
 #include "lwip/sockets.h"
 #include "scheda/gnss.h"
 #include "scheda/scheda.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 namespace app {
 
 namespace {
 const char* TAG = "usb";
-constexpr size_t MAX_FILE = 1024 * 1024;
+constexpr size_t MAX_FILE = flusso::MAX_FILE;
 // Il file arriva a pezzi da 4 kB, ognuno confermato con "@PIPPA +": il driver della USB butta i
 // byte se il suo buffer si riempie, quindi chi manda deve aspettare.
 constexpr size_t PEZZO = 4096;
 constexpr uint32_t ATTESA_MS = 5000;
-
-uint32_t g_tab[256];
-
-void crcInit() {
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t c = i;
-        for (int k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320u ^ (c >> 1) : c >> 1;
-        g_tab[i] = c;
-    }
-}
-
-// CRC-32 come zlib.
-uint32_t crc32(const uint8_t* p, size_t n) {
-    uint32_t c = 0xFFFFFFFFu;
-    for (size_t i = 0; i < n; i++) c = g_tab[(c ^ p[i]) & 0xFF] ^ (c >> 8);
-    return ~c;
-}
+// Il buffer della USB (ricezione) e, a flusso, quanti byte la pagina puo' avere in viaggio senza che il
+// telefono li abbia ancora tolti dal buffer: un po' meno, cosi' il buffer non si riempie mai (il driver
+// butterebbe i byte). I crediti ("letti") partono al piu' ogni RIPORTA byte e quando la USB tace.
+constexpr size_t BUFFER_USB = PEZZO * 2;
+constexpr size_t FINESTRA = BUFFER_USB - 1024;
+constexpr size_t RIPORTA = 2048;
 
 // Risposta: una riga sola (una printf sola, cosi' non si mescola col log degli altri compiti).
 void rispondi(const char* fmt, ...) {
@@ -103,16 +100,6 @@ bool leggi(uint8_t* p, size_t n) {
         got += size_t(r);
     }
     return true;
-}
-
-// "z/x/y.png" scritto esattamente cosi' (niente altro: niente "..", zeri davanti, segni), zoom 0-20.
-bool percorso(const char* rel, int& z, long& x, long& y) {
-    char g = 0;
-    if (std::sscanf(rel, "%d/%ld/%ld.pn%c", &z, &x, &y, &g) != 4 || g != 'g') return false;
-    char b[48];
-    snprintf(b, sizeof(b), "%d/%ld/%ld.png", z, x, y);
-    if (std::strcmp(b, rel) != 0) return false;
-    return z >= 0 && z <= 20 && x >= 0 && y >= 0 && x < (1L << z) && y < (1L << z);
 }
 
 // Tutti gli n byte sul socket (send puo' mandarne meno).
@@ -200,12 +187,28 @@ void provaOta() {
     spegni();  // se il firmware e' stato scritto, qui il telefono si riavvia
 }
 
-// Salva una tile: cartelle /mappe/z e /mappe/z/x, poi il file (prima .tmp, rinominato solo se
-// scritto e chiuso tutto: una tile a meta' non resta mai col nome giusto). false con il passo che
-// non e' riuscito e il motivo (errno della FatFs: per esempio "Input/output error" se la scheda non
+// Le cartelle /mappe/z/x gia' fatte o viste (chiave: z e x insieme): mkdir solo la prima volta, invece di
+// tre per tile. Ogni ricerca in una cartella della FatFs ne legge le voci una per una dalla microSD, e in
+// /mappe/z ce ne sono centinaia. Si dimenticano all'inizio di ogni copia (la microSD potrebbe essere
+// cambiata) e se una cartella risulta sparita.
+std::unordered_set<uint32_t> g_cartelle;
+bool g_radice = false;
+bool g_zoom[21] = {};
+uint32_t chiaveCartella(int z, long x) { return (uint32_t(z) << 21) | uint32_t(x); }
+void dimenticaCartelle() {
+    g_cartelle.clear();
+    g_radice = false;
+    std::fill(std::begin(g_zoom), std::end(g_zoom), false);
+}
+
+// Salva una tile in /mappe/z/x/y.png, direttamente col suo nome: la FatFs scrive la grandezza del file
+// solo alla chiusura, quindi se si stacca tutto a meta' resta un file vuoto (la mappa lo salta, la copia
+// lo rifa'), mai mezza tile col nome giusto; se la scrittura non va, il file si toglie. Prima si scriveva
+// un .tmp e lo si rinominava: quattro ricerche nella cartella in piu' per ogni tile. false con il passo
+// che non e' riuscito e il motivo (errno della FatFs: per esempio "Input/output error" se la scheda non
 // risponde, "Permission denied" se e' piena o la cartella non si puo' allargare).
 bool salvaTile(int z, long x, long y, const uint8_t* dati, size_t n, char* motivo, size_t m) {
-    char dir[64], path[80], tmp[84];
+    char dir[64], path[80];
     auto errore = [&](const char* passo, const char* chi) {
         const int e = errno;
         // Se il percorso e' lungo il motivo si accorcia: va bene, l'inizio basta per capire.
@@ -215,26 +218,44 @@ bool salvaTile(int z, long x, long y, const uint8_t* dati, size_t n, char* motiv
     // Una cartella che c'e' gia' va bene; un altro errore si dice subito (se no l'apertura dopo
     // direbbe solo "No such file or directory").
     auto cartella = [&](const char* d) { return mkdir(d, 0775) == 0 || errno == EEXIST; };
-    if (!cartella(MAPPE)) return errore("cartella", MAPPE);
-    snprintf(dir, sizeof(dir), "%s/%d", MAPPE, z);
-    if (!cartella(dir)) return errore("cartella", dir);
     snprintf(dir, sizeof(dir), "%s/%d/%ld", MAPPE, z, x);
-    if (!cartella(dir)) return errore("cartella", dir);
     snprintf(path, sizeof(path), "%s/%ld.png", dir, y);
-    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    errno = 0;
-    FILE* f = std::fopen(tmp, "wb");
-    if (!f) return errore("apertura", tmp);
-    const size_t scritti = std::fwrite(dati, 1, n, f);
-    const int eScrittura = errno;
-    if (std::fclose(f) != 0 || scritti != n) {  // la chiusura scrive gli ultimi pezzi: si controlla anche lei
+    int fd = -1;
+    for (int prova = 0;; prova++) {
+        if (!g_cartelle.count(chiaveCartella(z, x))) {
+            char zdir[48];
+            snprintf(zdir, sizeof(zdir), "%s/%d", MAPPE, z);
+            if (!g_radice && !cartella(MAPPE)) return errore("cartella", MAPPE);
+            g_radice = true;
+            if (!g_zoom[z] && !cartella(zdir)) return errore("cartella", zdir);
+            g_zoom[z] = true;
+            if (!cartella(dir)) return errore("cartella", dir);
+            g_cartelle.insert(chiaveCartella(z, x));
+        }
+        errno = 0;
+        fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0664);
+        if (fd >= 0) break;
+        // La cartella non c'e' piu' (tolta dal computer, microSD cambiata): si rifanno le cartelle, una volta.
+        if (errno != ENOENT || prova) return errore("apertura", path);
+        dimenticaCartelle();
+    }
+    size_t scritti = 0;
+    int eScrittura = 0;
+    while (scritti < n) {
+        const ssize_t w = write(fd, dati + scritti, n - scritti);
+        if (w <= 0) {
+            eScrittura = w < 0 ? errno : ENOSPC;  // 0 byte scritti: la microSD e' piena
+            break;
+        }
+        scritti += size_t(w);
+    }
+    const int chiusa = close(fd);  // la chiusura scrive grandezza e FAT: si controlla anche lei
+    if (chiusa != 0 || scritti != n) {
         if (scritti != n) errno = eScrittura;
-        errore(scritti != n ? "scrittura" : "chiusura", tmp);
-        std::remove(tmp);
+        errore(scritti != n ? "scrittura" : "chiusura", path);
+        unlink(path);  // niente mezze tile
         return false;
     }
-    if (std::remove(path) != 0 && errno != ENOENT) return errore("cancellazione", path);
-    if (std::rename(tmp, path) != 0) return errore("rinomina", path);
     return true;
 }
 
@@ -434,8 +455,246 @@ __attribute__((noinline)) void comandoGpsFreddo() {
                  scheda::gnss().modulo(), scheda::Gnss::nomeStato(scheda::gnss().stato()));
 }
 
+// ---------------------------------------------------------------- mappe a flusso ("@FLUSSO")
+// Col protocollo di prima ogni tile costava una decina di andate e ritorni sulla USB (@HAI, @FILE, un "+"
+// ogni 4 kB, "ok"), ognuno coi tempi del browser, e la tile si scriveva mentre la pagina aspettava: circa 2
+// tile al secondo. A flusso la pagina manda di fila finche' ha credito; questo compito legge e mette le
+// tile in coda (PSRAM), e un secondo compito ("mappe") le scrive sulla microSD intanto che le altre
+// arrivano, e risponde per ognuna. Le domande ("quanto pesano queste tile?") passano davanti alle tile
+// in coda: la pagina le fa per il blocco dopo mentre manda quello di adesso.
+constexpr size_t CODA_MAX = 2 * 1024 * 1024;  // byte di tile in coda, al massimo (in PSRAM)
+constexpr int VOCI = 64, DOMANDE = 8;
+// Senza niente dalla pagina per 5 minuti (pagina chiusa, cavo staccato) il flusso e' finito. La pagina manda una
+// riga vuota ogni 10 s mentre disegna; dopo una pausa piu' lunga (computer in sospensione) riapre il flusso.
+constexpr int64_t SILENZIO_US = 5 * 60 * 1000000LL;
+
+struct Voce {
+    flusso::Tile t;
+    uint8_t* dati;  // nullptr: fine del flusso
+};
+
+struct Sessione final : flusso::Azioni {
+    QueueHandle_t coda = nullptr, domande = nullptr;
+    SemaphoreHandle_t lavoro = nullptr;    // uno per ogni voce o domanda in coda
+    SemaphoreHandle_t liberato = nullptr;  // lo scrittore ha liberato memoria
+    SemaphoreHandle_t finito = nullptr;    // lo scrittore ha finito
+    std::atomic<size_t> inCoda{0};
+    std::atomic<bool> fermo{false};  // lo scrittore non c'e' piu'
+    uint32_t ricevuti = 0;           // tile scritte (dello scrittore; lette dopo "finito")
+    bool chiuso = false;             // la fine e' gia' in coda
+    uint8_t rx[1024];
+
+    bool crea() {
+        coda = xQueueCreate(VOCI, sizeof(Voce));
+        domande = xQueueCreate(DOMANDE, sizeof(flusso::Domanda));
+        lavoro = xSemaphoreCreateCounting(VOCI + DOMANDE, 0);
+        liberato = xSemaphoreCreateBinary();
+        finito = xSemaphoreCreateBinary();
+        return coda && domande && lavoro && liberato && finito;
+    }
+    ~Sessione() {
+        // Tile rimaste in coda (solo se lo scrittore non e' partito).
+        Voce v;
+        while (coda && xQueueReceive(coda, &v, 0) == pdTRUE) heap_caps_free(v.dati);
+        if (coda) vQueueDelete(coda);
+        if (domande) vQueueDelete(domande);
+        if (lavoro) vSemaphoreDelete(lavoro);
+        if (liberato) vSemaphoreDelete(liberato);
+        if (finito) vSemaphoreDelete(finito);
+    }
+
+    // Il posto per una tile in PSRAM; se la coda e' piena si aspetta lo scrittore (intanto la USB non si
+    // legge e i crediti non partono: la pagina aspetta). nullptr solo se non c'e' memoria nemmeno a coda vuota.
+    uint8_t* posto(const flusso::Tile& t) override {
+        for (;;) {
+            const size_t usati = inCoda.load();
+            if (usati == 0 || usati + t.byte <= CODA_MAX) {
+                if (uint8_t* p = static_cast<uint8_t*>(heap_caps_malloc(t.byte, MALLOC_CAP_SPIRAM))) {
+                    inCoda += t.byte;
+                    return p;
+                }
+                if (usati == 0) return nullptr;
+            }
+            if (fermo) return nullptr;
+            xSemaphoreTake(liberato, pdMS_TO_TICKS(500));
+        }
+    }
+    void tile(const flusso::Tile& t, uint8_t* dati) override {
+        const Voce v = {t, dati};
+        xQueueSend(coda, &v, portMAX_DELAY);
+        xSemaphoreGive(lavoro);
+    }
+    void domanda(const flusso::Domanda& d) override {
+        xQueueSend(domande, &d, portMAX_DELAY);
+        xSemaphoreGive(lavoro);
+    }
+    void fine() override {
+        if (chiuso) return;
+        chiuso = true;
+        const Voce v = {{}, nullptr};
+        xQueueSend(coda, &v, portMAX_DELAY);
+        xSemaphoreGive(lavoro);
+    }
+};
+
+// "123.png" (anche .PNG, come per la mappa), senza zeri davanti: 123; -1 se il nome non e' cosi'.
+long numeroTile(const char* nome) {
+    if (nome[0] < '0' || nome[0] > '9' || (nome[0] == '0' && nome[1] != '.')) return -1;
+    char* fine = nullptr;
+    const long v = std::strtol(nome, &fine, 10);
+    if (fine == nome || v < 0 || std::strlen(fine) != 4) return -1;
+    for (int i = 0; i < 4; i++)
+        if (std::tolower(static_cast<unsigned char>(fine[i])) != ".png"[i]) return -1;
+    return v;
+}
+
+// "ci <id> <byte> ...": quanto pesano le tile del rettangolo (0 se non c'e'), una colonna dopo l'altra e
+// dall'alto in basso, come le conta la pagina. Ogni cartella /mappe/z/x si legge una volta sola con la
+// FatFs, che da' anche le grandezze (stat() per ogni tile rifarebbe ogni volta la ricerca nella cartella).
+void rispondiGrandezze(const flusso::Domanda& d) {
+    uint32_t g[flusso::MAX_DOMANDA] = {};
+    const long alto = d.y1 - d.y0 + 1;
+    const int unita = sdUnitaFat();
+    for (long x = d.x0; unita >= 0 && x <= d.x1; x++) {
+        char p[48];
+        snprintf(p, sizeof(p), "%d:/mappe/%d/%ld", unita, d.z, x);
+        FF_DIR dir;
+        if (f_opendir(&dir, p) != FR_OK) continue;
+        FILINFO fi;
+        while (f_readdir(&dir, &fi) == FR_OK && fi.fname[0]) {
+            if (fi.fattrib & AM_DIR) continue;
+            const long y = numeroTile(fi.fname);
+            if (y >= d.y0 && y <= d.y1) g[(x - d.x0) * alto + (y - d.y0)] = uint32_t(fi.fsize);
+        }
+        f_closedir(&dir);
+    }
+    char b[40 + flusso::MAX_DOMANDA * 9];
+    int k = snprintf(b, sizeof(b), "@PIPPA ci %lu", (unsigned long)d.id);
+    for (int i = 0; i < d.quante() && k + 12 < int(sizeof(b)); i++) k += snprintf(b + k, sizeof(b) - k, " %lu", (unsigned long)g[i]);
+    b[k++] = '\n';
+    b[k] = 0;
+    fputs(b, stdout);
+    fflush(stdout);
+}
+
+// Il compito che scrive: le domande prima (la pagina le aspetta), poi le tile nell'ordine in cui sono
+// arrivate. "ok <id>" o "ko <id> <motivo>" per ognuna; alla fine del flusso si ferma.
+void scrittore(void* arg) {
+    Sessione& s = *static_cast<Sessione*>(arg);
+    for (;;) {
+        xSemaphoreTake(s.lavoro, portMAX_DELAY);
+        flusso::Domanda d;
+        if (xQueueReceive(s.domande, &d, 0) == pdTRUE) {
+            rispondiGrandezze(d);
+            continue;
+        }
+        Voce v;
+        if (xQueueReceive(s.coda, &v, 0) != pdTRUE) continue;
+        if (!v.dati) break;
+        char motivo[96] = "CRC sbagliato";
+        bool salvata = flusso::crc32(v.dati, v.t.byte) == v.t.crc;
+        if (salvata) {
+            salvata = salvaTile(v.t.z, v.t.x, v.t.y, v.dati, v.t.byte, motivo, sizeof(motivo));
+            if (!salvata) {  // una seconda prova dopo un attimo (un intoppo sul bus SPI comune passa)
+                ESP_LOGW(TAG, "tile %d/%ld/%ld non salvata (%s): riprovo", v.t.z, v.t.x, v.t.y, motivo);
+                vTaskDelay(pdMS_TO_TICKS(200));
+                salvata = salvaTile(v.t.z, v.t.x, v.t.y, v.dati, v.t.byte, motivo, sizeof(motivo));
+            }
+        }
+        heap_caps_free(v.dati);
+        s.inCoda -= v.t.byte;
+        xSemaphoreGive(s.liberato);
+        if (salvata) {
+            if (!s.ricevuti) post({Ev::MAPPE, {}, 0, 0, 0});
+            s.ricevuti++;
+            rispondi("ok %lu", (unsigned long)v.t.id);
+        } else {
+            ESP_LOGE(TAG, "tile %d/%ld/%ld non salvata: %s", v.t.z, v.t.x, v.t.y, motivo);
+            rispondi("ko %lu %s", (unsigned long)v.t.id, motivo);
+        }
+    }
+    s.fermo = true;
+    xSemaphoreGive(s.liberato);
+    xSemaphoreGive(s.finito);
+    vTaskDelete(nullptr);
+}
+
+// Dopo un flusso rotto i byte che la pagina stava ancora mandando si buttano, finche' la USB tace per
+// 300 ms (al massimo 10 s): poi si torna ai comandi.
+void svuota(Sessione& s) {
+    const int64_t inizio = esp_timer_get_time();
+    int64_t ultimo = inizio;
+    while (esp_timer_get_time() - ultimo < 300000 && esp_timer_get_time() - inizio < 10000000) {
+        if (usb_serial_jtag_read_bytes(s.rx, sizeof(s.rx), pdMS_TO_TICKS(50)) > 0) ultimo = esp_timer_get_time();
+    }
+}
+
+// "@FLUSSO": "flusso <finestra>", poi il flusso fino a "@FINE" (o rotto, o 5 minuti di silenzio) e
+// sempre, alla fine, "fine <tile scritte>" dopo l'ultima risposta dello scrittore.
+__attribute__((noinline)) void sessioneFlusso() {
+    Sessione* s = new (std::nothrow) Sessione();
+    if (!s || !s->crea()) {
+        delete s;
+        rispondi("errore memoria finita");
+        return;
+    }
+    dimenticaCartelle();
+    if (xTaskCreatePinnedToCore(scrittore, "mappe", 6144, s, 3, nullptr, tskNO_AFFINITY) != pdPASS) {
+        delete s;
+        rispondi("errore memoria finita");
+        return;
+    }
+    scheda::tieni(scheda::Tieni::MAPPE, true);
+    rispondi("flusso %u", unsigned(FINESTRA));
+    flusso::Lettore lettore(*s);
+    uint64_t letti = 0, detti = 0;  // byte tolti dal buffer della USB, e quelli gia' detti alla pagina
+    int64_t ultimo = esp_timer_get_time();
+    const char* come = "@FINE";
+    for (;;) {
+        int r = usb_serial_jtag_read_bytes(s->rx, sizeof(s->rx), 0);
+        if (r <= 0) {
+            // La USB tace: prima di aspettare si dice alla pagina tutto quello che e' stato letto.
+            if (letti != detti) {
+                rispondi("letti %llu", (unsigned long long)letti);
+                detti = letti;
+            }
+            r = usb_serial_jtag_read_bytes(s->rx, sizeof(s->rx), pdMS_TO_TICKS(500));
+            if (r <= 0) {
+                if (esp_timer_get_time() - ultimo > SILENZIO_US) {
+                    come = "flusso senza @FINE";
+                    break;
+                }
+                continue;
+            }
+        }
+        ultimo = esp_timer_get_time();
+        letti += uint64_t(r);
+        lettore.consuma(s->rx, size_t(r));
+        if (lettore.stato() == flusso::Lettore::Stato::FINE) break;
+        if (lettore.stato() == flusso::Lettore::Stato::ROTTO) {
+            ESP_LOGW(TAG, "mappe a flusso: %s", lettore.motivo());
+            rispondi("rotto %s", lettore.motivo());
+            come = "flusso rotto";
+            svuota(*s);
+            break;
+        }
+        if (letti - detti >= RIPORTA) {
+            rispondi("letti %llu", (unsigned long long)letti);
+            detti = letti;
+        }
+    }
+    heap_caps_free(lettore.lasciaPosto());  // una tile a meta' (5 minuti di silenzio in mezzo ai suoi byte)
+    s->fine();  // (dopo @FINE e' gia' in coda) lo scrittore finisce le tile in coda e si ferma
+    xSemaphoreTake(s->finito, portMAX_DELAY);
+    scheda::tieni(scheda::Tieni::MAPPE, false);
+    const uint32_t n = s->ricevuti;
+    delete s;
+    rispondi("fine %lu", (unsigned long)n);
+    ESP_LOGI(TAG, "mappe dal computer a flusso: %lu tile (%s)", (unsigned long)n, come);
+    if (n) post({Ev::MAPPE, {}, 0, 1, int32_t(n)});
+}
+
 void compito(void*) {
-    crcInit();
     char line[160];
     uint32_t ricevuti = 0;
     uint8_t* buf = nullptr;
@@ -456,13 +715,20 @@ void compito(void*) {
             if (ricevuti) fineSessione("nuova copia senza @FINE della precedente");
             uint64_t tot = 0, libero = 0;
             const bool sd = sdPresente() && esp_vfs_fat_info("/sd", &tot, &libero) == ESP_OK;
-            rispondi("ciao %s sd=%d libero=%lu", firmwareVersion(), sd ? 1 : 0, (unsigned long)(libero / (1024 * 1024)));
+            dimenticaCartelle();
+            // flusso=<finestra>: questo firmware sa anche il flusso (le pagine vecchie non lo guardano).
+            rispondi("ciao %s sd=%d libero=%lu flusso=%u", firmwareVersion(), sd ? 1 : 0,
+                     (unsigned long)(libero / (1024 * 1024)), unsigned(FINESTRA));
+        } else if (!std::strcmp(line, "@FLUSSO")) {
+            if (ricevuti) fineSessione("flusso dopo una copia senza @FINE");
+            if (!sdPresente()) rispondi("errore niente microSD");
+            else sessioneFlusso();
         } else if (!std::strncmp(line, "@HAI ", 5)) {
             char rel[48] = {};
             unsigned long size = 0;
             int z;
             long x, y;
-            if (std::sscanf(line + 5, "%47s %lu", rel, &size) != 2 || !percorso(rel, z, x, y)) {
+            if (std::sscanf(line + 5, "%47s %lu", rel, &size) != 2 || !flusso::percorso(rel, z, x, y)) {
                 rispondi("errore comando non valido");
                 continue;
             }
@@ -474,7 +740,7 @@ void compito(void*) {
             unsigned long size = 0;
             int z;
             long x, y;
-            if (std::sscanf(line + 6, "%47s %lu %15s", rel, &size, crcHex) != 3 || !percorso(rel, z, x, y)) {
+            if (std::sscanf(line + 6, "%47s %lu %15s", rel, &size, crcHex) != 3 || !flusso::percorso(rel, z, x, y)) {
                 rispondi("errore comando non valido");
                 continue;
             }
@@ -503,7 +769,7 @@ void compito(void*) {
                 rispondi("errore tempo scaduto");
                 continue;
             }
-            if (crc32(buf, size) != uint32_t(std::strtoul(crcHex, nullptr, 16))) {
+            if (flusso::crc32(buf, size) != uint32_t(std::strtoul(crcHex, nullptr, 16))) {
                 rispondi("errore CRC sbagliato");
                 continue;
             }
@@ -639,7 +905,7 @@ void compito(void*) {
 
 void usbMappeAvvia() {
     usb_serial_jtag_driver_config_t cfg = USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT();
-    cfg.rx_buffer_size = PEZZO * 2;
+    cfg.rx_buffer_size = BUFFER_USB;
     cfg.tx_buffer_size = 1024;
     if (usb_serial_jtag_driver_install(&cfg) != ESP_OK) {
         ESP_LOGW(TAG, "driver della USB non installato: niente mappe dal computer");

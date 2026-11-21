@@ -150,7 +150,7 @@ void touchADormire() {
 
 #if CONFIG_PM_ENABLE
 // Motivi per tenere il chip sveglio (tieni()): un blocco del risparmio di ESP-IDF ciascuno, e se e' preso.
-// Ogni motivo lo cambia un compito solo (CUFFIE: il controllo delle cuffie).
+// Ogni motivo lo cambia un compito solo (CUFFIE: il controllo delle cuffie; MAPPE: quello della USB).
 struct Blocco {
     const char* nome;
     esp_pm_lock_type_t tipo;
@@ -161,6 +161,7 @@ Blocco g_blocchi[] = {
     {"cuffie", ESP_PM_CPU_FREQ_MAX, nullptr, false},     // Tieni::CUFFIE
     {"schermo", ESP_PM_NO_LIGHT_SLEEP, nullptr, false},  // Tieni::SCHERMO
     {"gps", ESP_PM_NO_LIGHT_SLEEP, nullptr, false},      // Tieni::GPS
+    {"mappe", ESP_PM_CPU_FREQ_MAX, nullptr, false},      // Tieni::MAPPE
 };
 portMUX_TYPE g_bloccoMux = portMUX_INITIALIZER_UNLOCKED;
 

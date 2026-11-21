@@ -230,7 +230,7 @@ ul.piccolo { padding-left: 1.2em; display: grid; gap: 4px; }
     <ul class="piccolo" id="mCartelleNota">
       <li data-cartelle><b>Salva in una cartella</b> è il modo più veloce: metti la microSD nel lettore di schede del computer e scegli la microSD stessa (per esempio <b>E:</b>), non una cartella che c’è dentro. Le mappe vanno subito al loro posto, nella cartella “mappe” della cartella principale, l’unico posto dove il telefono le cerca; alla fine espelli la microSD e rimettila nel telefono. Se il browser non apre la microSD, fai sulla microSD una cartella “mappe” e scegli quella.</li>
       <li data-cartelle>Per tenere le mappe pronte sul computer scegli invece una cartella tua, per esempio “Mappe Pippaphone” dentro Documenti (Documenti, Desktop e Download interi il browser non li apre). Poi <b>Manda da una cartella</b> le manda al telefono col cavo senza disegnarle di nuovo; oppure copi tu la cartella “mappe” che c’è dentro nella cartella principale della microSD.</li>
-      <li><b>Copia sulla microSD</b> disegna le tile e le manda al telefono col cavo, senza cartelle: va bene per una zona piccola.</li>
+      <li><b>Copia sulla microSD</b> disegna le tile e le manda al telefono col cavo, senza cartelle. Col firmware nuovo le tile viaggiano a flusso, molte volte più in fretta di prima (con un firmware vecchio la pagina lo dice: aggiornalo con “Aggiorna”, le mappe e i dati restano). Per una zona grande la microSD nel lettore di schede resta la più veloce.</li>
       <li>La microSD dev’essere FAT32, non exFAT: quelle fino a 32 GB escono già così, quelle più grandi di solito sono exFAT e il telefono non le legge.</li>
     </ul>
     <p class="avviso" id="mNoCartelle" hidden>Questo browser non può scrivere nelle cartelle del computer: per salvare le mappe in una cartella, o mandarle da lì, apri la pagina con Chrome o Edge sul computer.</p>
@@ -713,7 +713,10 @@ if (hasSerial) {
 //     dopo l'ultimo byte            -> ok z/x/y.png | errore <motivo>
 //   @FINE                           -> fine <tile ricevute>
 // Un comando (o un pezzo) alla volta: il successivo parte solo dopo la risposta, perche' il telefono
-// non ha posto per altro e quello che non ci sta lo perde.
+// non ha posto per altro e quello che non ci sta lo perde. Cosi' ogni tile costa una decina di andate e
+// ritorni (circa 2 tile al secondo): i firmware che a "@PIPPA?" dicono anche "flusso=<finestra>" sanno la
+// copia a flusso (piu' sotto, "a flusso"; il protocollo e' in telefono/main/app/usb_mappe.h), molto piu'
+// veloce. Col firmware di prima si usa ancora questo.
 const PREFISSO = '@PIPPA ', PEZZO = 4096, MAX_FILE = 1048576, ZMIN = 6, ZMAX = 17;
 const TEMPI = { ciao: 3000, risposta: 15000, fine: 30000, disegno: 30000 };   // millisecondi
 const TANTE = 15000, TROPPE = 400000;   // avviso oltre 15 000 tile, col cavo non si parte oltre 400 000
@@ -736,6 +739,11 @@ const puoCartelle = typeof window.showDirectoryPicker === 'function';
 // Per le stime: 15 kB, 8 tile al secondo col cavo e 30 in una cartella, finche' una copia vera non dice
 // quanto (in citta' le tile pesano di piu', in campagna di meno).
 let kbTile = 15, velocita = 8, velocitaCartella = 30;
+// Col cavo a flusso (firmware nuovo): stima, finche' una copia vera non dice quanto. Il telefono scrive ogni
+// tile in una cartella della microSD mentre le altre arrivano: quasi sempre il limite e' la microSD.
+let velocitaFlusso = 15;
+// La velocita' del cavo per le stime: quella del flusso, se il telefono (o quello di prima) lo sa.
+const velocitaCavo = () => telefono && !telefono.flusso ? velocita : velocitaFlusso;
 // Il peso e' la media di tutte le tile copiate o salvate davvero (kbPeso: su quante, al massimo PESO_MAX,
 // cosi' le ultime contano di piu'), non solo dell'ultima volta: riprendendo una copia fermata si scrivono
 // solo le tile che mancavano, magari tutte di mare o tutte di citta'.
@@ -776,8 +784,10 @@ function smistatore(mostra, risposta) {
   };
 }
 function rispostaTelefono(r) {
+  if (flusso && rispostaFlusso(flusso, r)) return;   // la copia a flusso in corso
   const a = attesa;
   if (a && a.va(r)) { attesa = null; clearTimeout(a.timer); a.fatto(r); }
+  else if (/^(letti \d|ok \d+$|ko \d|ci \d|rotto\b|fine \d)/.test(r)) {}   // di un flusso gia' chiuso: niente da dire
   else scrivi(`[risposta del telefono non aspettata: ${r}]\n`);   // in ritardo, di un comando vecchio
 }
 const smista = smistatore(scrivi, rispostaTelefono);
@@ -880,7 +890,7 @@ function durata(s) {
   return (h === 1 ? 'un’ora' : `${h} ore`) + (r ? ` e ${r === 1 ? 'un minuto' : r + ' minuti'}` : '');
 }
 // quanto ci vuole a mandare n tile col cavo: "meno di un minuto", "circa 2 ore"
-const colCavo = n => { const d = durata(n / velocita); return d.startsWith('meno') ? d : 'circa ' + d; };
+const colCavo = n => { const d = durata(n / velocitaCavo()); return d.startsWith('meno') ? d : 'circa ' + d; };
 // "dallo zoom 10 al 16", o "zoom 14" se e' uno solo
 const zoomDi = (a, b) => a === b ? `zoom ${a}` : `dallo zoom ${a} al ${b}`;
 function statoIn(sel, t, kind) { const e = $(sel); e.textContent = t; e.className = 'stato' + (kind ? ' ' + kind : ''); }
@@ -915,13 +925,21 @@ function aggiornaMappe() {
 
 // ---- il telefono: "@PIPPA?". Appena aperta la porta forse si sta ancora avviando: si chiede tre volte.
 async function chiediCiao() {
-  const volte = Date.now() - apertaAlle < 10000 ? 3 : 1;
+  let volte = Date.now() - apertaAlle < 10000 ? 3 : 1;
   for (let i = 0; i < volte; i++) {
-    const r = await alTelefono('@PIPPA?', r => /^ciao\b/.test(r), TEMPI.ciao);
+    // "rotto": il telefono era ancora in una copia a flusso (la pagina ricaricata a meta'): butta quello che
+    // arriva finche' la USB tace, chiude la copia e torna ai comandi. Si richiede dopo un attimo.
+    const r = await alTelefono('@PIPPA?', r => /^(ciao|rotto)\b/.test(r), TEMPI.ciao);
+    if (r && r.startsWith('rotto')) {
+      if (volte < 4) volte++;
+      await pausa(800);
+      continue;
+    }
     if (r) {
-      const v = /^ciao\s+([^\s=]+)(\s|$)/.exec(r), sd = /\bsd=(\d)/.exec(r), lib = /\blibero=(\d+)/.exec(r);
+      const v = /^ciao\s+([^\s=]+)(\s|$)/.exec(r), sd = /\bsd=(\d)/.exec(r), lib = /\blibero=(\d+)/.exec(r), fl = /\bflusso=(\d+)/.exec(r);
       conosciuto = true;
-      return { versione: v ? v[1] : '?', sd: !!sd && sd[1] === '1', liberoMB: lib ? +lib[1] : null };
+      // flusso: la finestra della copia a flusso (0: firmware di prima, una tile alla volta)
+      return { versione: v ? v[1] : '?', sd: !!sd && sd[1] === '1', liberoMB: lib ? +lib[1] : null, flusso: fl && +fl[1] >= 1024 ? +fl[1] : 0 };
     }
   }
   return null;
@@ -934,7 +952,8 @@ function mostraTelefono() {
   const t = telefono;
   if (!t) statoSd(nonRisponde(), 'err');
   else if (!t.sd) statoSd('Il telefono risponde, ma non trova la microSD: mettila e riaccendilo. Se c’è già, forse non è FAT32 (le exFAT il telefono non le legge) o è rovinata.', 'err');
-  else statoSd(`microSD presente${t.liberoMB == null ? '' : `, ${spazio(t.liberoMB)} liberi`} (telefono col firmware ${t.versione}).`, 'ok');
+  else statoSd(`microSD presente${t.liberoMB == null ? '' : `, ${spazio(t.liberoMB)} liberi`} (telefono col firmware ${t.versione}).` +
+    (t.flusso ? '' : ' Col firmware nuovo le mappe col cavo vanno molto più in fretta: aggiornalo qui sopra (“Aggiorna”).'), 'ok');
 }
 async function controlla() {
   if (controllando || copiando || salvando || leggendo || busy) return;
@@ -1063,7 +1082,7 @@ function mostraStima() {
     const n = contaTile(zona, zz[0], zz[1]), mb = n * kbTile / 1024, lat = (zona.sud + zona.nord) / 2 * Math.PI / 180;
     const larga = (zona.est - zona.ovest) * 111.32 * Math.cos(lat), alta = (zona.nord - zona.sud) * 110.57;
     testo = `Zona di circa ${km(larga)} × ${km(alta)} km, ${zoomDi(zz[0], zz[1])}: ${numero(n)} tile, ` +
-      `circa ${spazio(mb)} sulla microSD e ${durata(n / velocita)} per copiarle col cavo` +
+      `circa ${spazio(mb)} sulla microSD e ${durata(n / velocitaCavo())} per copiarle col cavo` +
       (puoCartelle ? ` (${durata(n / velocitaCartella)} per salvarle in una cartella).` : '.');
     if (n > TROPPE_CARTELLA || (n > TROPPE && !puoCartelle))
       avviso = `Sono troppe: stringi la zona o abbassa lo zoom massimo (al massimo ${numero(TROPPE)} tile per volta col cavo` +
@@ -1251,8 +1270,9 @@ function zitto(nome) {
 }
 
 function progresso(c) {
-  // la velocita' degli ultimi 30 secondi; con c.gratis le tile che c'erano gia' non contano, non costano niente
-  const ora = performance.now(), lavorate = c.gratis ? c.fatte - c.saltate : c.fatte;
+  // la velocita' degli ultimi 30 secondi; con c.gratis le tile che c'erano gia' non contano, non costano niente,
+  // e nemmeno quelle dei blocchi che "Continua" salta senza disegnarli (c.senzaCosto)
+  const ora = performance.now(), lavorate = c.fatte - (c.gratis ? c.saltate : c.senzaCosto);
   c.campioni.push([ora, lavorate]);
   while (ora - c.campioni[0][0] > 30000) c.campioni.shift();
   const [t0, f0] = c.campioni[0], misurata = ora - t0 >= 4000 ? (lavorate - f0) * 1000 / (ora - t0) : 0;
@@ -1266,50 +1286,107 @@ function progresso(c) {
 }
 // I conti di una copia: verbo "mandati" o "scritti", velocita' per le stime finche' non si misura,
 // gratis se le tile che c'erano gia' non costano tempo (nella cartella non si disegnano nemmeno).
+// fino: le tile del giro fatte tutte dall'inizio (da li' riprende "Manda da una cartella"); fuori: quelle gia'
+// fatte dopo un buco (a flusso le risposte "ci" arrivano prima degli "ok" delle tile di prima): numero -> come.
 const contiNuovi = (totale, verbo, velocita, gratis = false) =>
-  ({ totale, fatte: 0, saltate: 0, mandate: 0, scartate: 0, byte: 0, campioni: [], inizio: 0, verbo, velocita, gratis });
+  ({ totale, fatte: 0, saltate: 0, mandate: 0, scartate: 0, senzaCosto: 0, byte: 0, campioni: [], inizio: 0, verbo, velocita, gratis,
+     fino: 0, fuori: new Map() });
+// Una tile fatta (t.i: il suo numero nel giro): 'mandata' (coi suoi byte), 'saltata' (il telefono l'aveva gia') o
+// 'rotta' (un file della cartella che non e' una tile).
+function fatta(c, t, come) {
+  c.fatte++;
+  if (come === 'mandata') { c.mandate++; c.byte += t.dati.length; } else if (come === 'saltata') c.saltate++; else c.scartate++;
+  if (t.i === c.fino) { c.fino++; while (c.fuori.delete(c.fino)) c.fino++; }
+  else c.fuori.set(t.i, { come, byte: come === 'mandata' ? t.dati.length : 0 });
+  progresso(c);
+}
+// Dopo "Ferma" o un errore, per riprendere da c.fino: le tile fatte dopo il primo buco non contano (si
+// rifanno, o si saltano perche' ci sono gia').
+function soloInFila(c) {
+  for (const { come, byte } of c.fuori.values()) {
+    c.fatte--;
+    if (come === 'mandata') { c.mandate--; c.byte -= byte; } else if (come === 'saltata') c.saltate--; else c.scartate--;
+  }
+  c.fuori.clear();
+}
 // Un blocco da disegnare; se non lo aspetta nessuno (ci si e' fermati prima) l'errore si lascia perdere.
 function avvia(b) { const p = disegna(b); p.catch(() => {}); return p; }
+
+// ---- i lotti: le tile a gruppi, per la copia col cavo
+// Un lotto e' un blocco da disegnare o una fila di file di una colonna di una cartella: z e il rettangolo che
+// contiene le sue tile (per chiedere al telefono quanto pesano quelle che ha), coord ([x, y] delle tile, in
+// ordine), primo (il numero della prima tile nel giro), chiave (del blocco, per "Continua") e dati(), che le da'
+// coi loro byte (disegnandole o leggendo i file). gia: blocco gia' finito prima, da saltare senza disegnarlo.
+function* lottiDisegnati(zona, zmin, zmax, fatti = new Set()) {
+  let i = 0;
+  for (const b of blocchi(zona, zmin, zmax)) {
+    const xs = b.tile.map(t => t[0]), ys = b.tile.map(t => t[1]), primo = i, chiave = `${b.z}/${b.bx}/${b.by}`;
+    yield { z: b.z, x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), coord: b.tile, primo, chiave,
+      gia: fatti.has(chiave), dati: async () => (await disegna(b)).map((t, k) => ({ ...t, i: primo + k })) };
+    i += b.tile.length;
+  }
+}
+// Un lotto gia' fatto: le sue tile si contano come gia' sul telefono, senza costo.
+function saltaLotto(c, l) {
+  l.coord.forEach((_, k) => fatta(c, { i: l.primo + k }, 'saltata'));
+  c.senzaCosto += l.coord.length;
+}
+// Le tile dei lotti una alla volta, per il firmware di prima: mentre si mandano quelle di un lotto si
+// prepara gia' quello dopo (il disegno). Dopo "Ferma" non ne da' piu'. Un lotto mandato tutto finisce in
+// c.lottiFatti (per "Continua").
+async function* tileDeiLotti(lotti, c) {
+  const prepara = l => { if (l.gia) return null; const p = l.dati(); p.catch(() => {}); return p; };
+  let n = lotti.next(), avanti = n.done ? null : prepara(n.value);
+  while (!n.done && !fermati) {
+    const l = n.value, pezzi = l.gia ? null : await avanti;
+    n = lotti.next();
+    avanti = n.done ? null : prepara(n.value);
+    if (!pezzi) { saltaLotto(c, l); continue; }
+    for (const t of pezzi) { if (fermati) return; yield t; }
+    if (l.chiave) c.lottiFatti?.add(l.chiave);
+  }
+}
 
 $('#mVia').addEventListener('click', () => { const zz = leggiZoom(); if (zona && zz) eseguiCopia({ zona, zmin: zz[0], zmax: zz[1] }); });
 $('#mFerma').addEventListener('click', () => {
   fermati = true; $('#mFerma').disabled = true;
-  statoMappe(salvando ? 'Mi fermo appena ho scritto le tile già disegnate…' : 'Mi fermo appena finisce questa tile…');
+  statoMappe(salvando ? 'Mi fermo appena ho scritto le tile già disegnate…'
+    : flusso ? 'Mi fermo appena il telefono ha scritto le tile già partite…' : 'Mi fermo appena finisce questa tile…');
 });
 
-// Le tile della zona, disegnate a blocchi: mentre si mandano quelle di un blocco si disegna gia' il
-// blocco dopo. Dopo "Ferma" non ne da' piu'.
-async function* tileDisegnate(zona, zmin, zmax) {
-  const giro = blocchi(zona, zmin, zmax);
-  let b = giro.next(), avanti = b.done ? null : avvia(b.value);
-  while (avanti && !fermati) {
-    const pezzi = await avanti;
-    b = giro.next();
-    avanti = b.done ? null : avvia(b.value);
-    for (const t of pezzi) { if (fermati) return; yield t; }
-  }
-}
-function eseguiCopia({ zona, zmin, zmax }) {
-  return copiaAlTelefono({ conti: contiNuovi(contaTile(zona, zmin, zmax), 'mandati', velocita), tile: tileDisegnate(zona, zmin, zmax),
+// "Continua" (o "Riprova") della copia: i blocchi gia' finiti si saltano senza disegnarli, se zona, zoom e
+// cartina sono quelli di prima e la porta non si e' chiusa nel frattempo (stesso telefono, stessa microSD).
+// Se no si ridisegna tutto e si saltano le tile che il telefono ha gia' uguali.
+let ripresa = null;   // { chiave, porta, fatti: Set dei blocchi "z/bx/by" gia' sulla microSD }
+async function eseguiCopia({ zona, zmin, zmax }) {
+  const chiave = JSON.stringify([zona, zmin, zmax, $('#mStile').value]);
+  const fatti = riprendi && ripresa && ripresa.chiave === chiave && ripresa.porta === apertaAlle && canale.aperto() ? ripresa.fatti : new Set();
+  const conti = contiNuovi(contaTile(zona, zmin, zmax), 'mandati', velocitaCavo());
+  conti.lottiFatti = fatti;
+  const r = await copiaAlTelefono({ conti, lotti: lottiDisegnati(zona, zmin, zmax, fatti),
     testo: 'Disegno le tile e le copio sulla microSD…', dove: 'della zona', impara: true, etichetta: e => { riprendi = e; } });
+  if (r) ripresa = r.esito !== 'fatto' && r.conti.porta != null ? { chiave, porta: r.conti.porta, fatti } : null;
+  return r;
 }
 
 // Il giro della copia col telefono, uguale per le tile disegnate qui e per quelle di una cartella:
-// controlla il telefono, gli manda una alla volta le tile che da' "tile" (quelle che ha gia' le salta),
-// chiude con "@FINE" e dice com'e' andata. conti: nuovi, o quelli di prima per riprendere da li'.
+// controlla il telefono, gli manda i lotti (quelle che ha gia' uguali le salta) a flusso o, col firmware di
+// prima, una tile alla volta; chiude con "@FINE" e dice com'e' andata. conti: nuovi, o quelli di prima per
+// riprendere da li' (inFila: alla fine i conti tornano a c.fino, da dove si riprende).
 // etichetta(e) riceve cosa scrivere sul pulsante: '' (fatto), 'continua' (fermato) o 'riprova' (errore);
 // seguito e' quello che il pulsante ha dopo "Continua" e "Riprova" (" a mandare").
-async function copiaAlTelefono({ conti: c, tile, testo, dove, impara = false, etichetta, seguito = '' }) {
+async function copiaAlTelefono({ conti: c, lotti, testo, dove, impara = false, etichetta, seguito = '', inFila = false }) {
   if (copiando || salvando || leggendo || busy || controllando) return null;
   copiando = true; fermati = false; $('#mFerma').disabled = false;
   schermoAcceso(true);
   const prima = c.fatte;
   c.campioni = []; c.inizio = performance.now(); c.porta = null;
-  let esito = 'errore', motivo = '', risponde = false, ricevute = null;
+  let esito = 'errore', motivo = '', risponde = false, ricevute = null, aFlusso = false;
   try {
     aggiorna(false); consoleAperta(canale.aperto());
     barraMappe(c.fatte / c.totale); $('#mDati').textContent = '';
     statoMappe('Controllo il telefono…');
+    const st = {};   // a flusso: le tile che il telefono dice di aver scritto (fine), anche dopo un errore
     try {
       if (!await canale.apri()) throw new Error('La porta non è aperta: collega il telefono acceso e scegli la sua porta.');
       telefono = await chiediCiao();
@@ -1318,22 +1395,28 @@ async function copiaAlTelefono({ conti: c, tile, testo, dove, impara = false, et
       if (!telefono.sd) throw new Error('Il telefono non trova la microSD: mettila e riaccendilo (se c’è già, forse non è FAT32 o è rovinata).');
       risponde = true; c.porta = apertaAlle;   // la sessione della porta: per riprendere senza ricontrollare tutto
       lavoro = testo; statoMappe(testo);
-      for await (const t of tile) {
-        if (fermati) break;
-        if (t.rotta) { c.fatte++; c.scartate++; progresso(c); continue; }   // un file della cartella che non e' una tile
-        const r = await mandaTile(t);
-        c.fatte++;
-        if (r === 'si') c.saltate++; else { c.mandate++; c.byte += t.dati.length; }
-        progresso(c);
+      aFlusso = !!telefono.flusso;
+      if (aFlusso) {
+        try { await copiaAFlusso(lotti, c, st); } finally { ricevute = st.ricevute ?? null; }
+        // Tutto confermato, se non ci si e' fermati: se no qualche tile e' andata persa per strada.
+        esito = fermati ? 'fermato' : c.fatte < c.totale ? 'errore' : 'fatto';
+        if (esito === 'errore') motivo = `Il telefono non ha confermato ${numero(c.totale - c.fatte)} tile.`;
+      } else {
+        for await (const t of tileDeiLotti(lotti, c)) {
+          if (fermati) break;
+          if (t.rotta) { fatta(c, t, 'rotta'); continue; }   // un file della cartella che non e' una tile
+          fatta(c, t, await mandaTile(t) === 'si' ? 'saltata' : 'mandata');
+        }
+        esito = c.fatte < c.totale ? 'fermato' : 'fatto';
       }
-      esito = c.fatte < c.totale ? 'fermato' : 'fatto';
     } catch (e) {
       motivo = e.message || String(e);
       if (e.tempo) risponde = false;
       console.warn('mappe:', e);
     }
-    // Anche dopo "Ferma" o un errore del telefono: rilegge l'elenco delle mappe e usa quelle che ha.
-    if (risponde) {
+    // Anche dopo "Ferma" o un errore del telefono: rilegge l'elenco delle mappe e usa quelle che ha (a flusso
+    // la "@FINE" l'ha gia' mandata copiaAFlusso).
+    if (risponde && !aFlusso) {
       try {
         const r = await alTelefono('@FINE', r => /^fine\b/.test(r) || r.startsWith('errore'), TEMPI.fine);
         const m = r && /^fine\s+(\d+)/.exec(r);
@@ -1346,9 +1429,10 @@ async function copiaAlTelefono({ conti: c, tile, testo, dove, impara = false, et
     const secondi = (performance.now() - c.inizio) / 1000;
     if (impara && c.mandate >= 50) {   // per le prossime stime (solo con le tile disegnate qui, come quelle da stimare)
       imparaPeso(c.byte, c.mandate);
-      if (c.saltate < c.fatte / 10) velocita = (c.fatte - prima) / secondi;
+      if (c.saltate < c.fatte / 10) { if (aFlusso) velocitaFlusso = (c.fatte - prima) / secondi; else velocita = (c.fatte - prima) / secondi; }
       ricorda();
     }
+    if (inFila && esito !== 'fatto') soloInFila(c);
     const quante = `${numero(c.mandate)} copiate${c.saltate ? `, ${numero(c.saltate)} c’erano già` : ''}`;
     const rotte = !c.scartate ? '' : c.scartate === 1 ? ' Un file della cartella era vuoto o rotto: non l’ho mandato.'
       : ` ${numero(c.scartate)} file della cartella erano vuoti o rotti: non li ho mandati.`;
@@ -1363,13 +1447,204 @@ async function copiaAlTelefono({ conti: c, tile, testo, dove, impara = false, et
       statoMappe(`${motivo} Premi “Riprova${seguito}”: le tile già copiate si saltano.`, 'err');
     }
     etichetta(esito === 'fatto' ? '' : esito === 'fermato' ? 'continua' : 'riprova');
-    if (ricevute != null) scrivi(`[mappe: ${numero(c.fatte - prima)} tile in ${durata(secondi)}; il telefono dice di averne ricevute ${ricevute}]\n`);
+    if (ricevute != null) scrivi(`[mappe${aFlusso ? ' a flusso' : ''}: ${numero(c.fatte - prima)} tile in ${durata(secondi)}; il telefono dice di averne ricevute ${ricevute}]\n`);
   } finally {
     copiando = false; lavoro = '';
     schermoAcceso(false);
     aggiorna(false); consoleAperta(canale.aperto());
   }
-  return { esito, motivo, conti: c, ricevute };
+  return { esito, motivo, conti: c, ricevute, aFlusso };
+}
+
+// ---- a flusso (i firmware che a "@PIPPA?" dicono "flusso=<finestra>")
+// Dopo "@FLUSSO" le tile partono di fila, senza aspettare una risposta dopo l'altra: "T <id> z/x/y.png <byte>
+// <crc32>" e i byte. Il telefono toglie i byte dal buffer della sua USB, mette le tile in coda e le scrive sulla
+// microSD mentre arrivano le altre; ogni tanto dice quanti byte ha tolto ("letti"), e la pagina non ne tiene mai
+// in viaggio piu' della finestra (il buffer pieno butterebbe i byte). Per ogni tile scritta "ok <id>" (o "ko <id>
+// <motivo>": la tile si rimanda, fino a tre volte). Prima di mandare un lotto si chiede quanto pesano le sue tile
+// che il telefono ha gia' ("C", risposta "ci"): quelle della stessa grandezza si saltano, come con "@HAI". La
+// domanda del lotto dopo parte mentre si manda questo, e il telefono la fa passare davanti alle tile in coda.
+// Alla fine "@FINE": il telefono risponde "fine <tile scritte>" dopo l'ultima risposta.
+let flusso = null;   // il flusso aperto: gli vanno le risposte "letti", "ok", "ko", "ci", "rotto" e "fine"
+const testo8 = t => new TextEncoder().encode(t), A_CAPO = testo8('\n');
+// Il telefono chiude da solo un flusso dopo 5 minuti senza niente (pagina chiusa, cavo staccato); la pagina
+// manda una riga vuota ogni 10 s di silenzio (mentre disegna). Se invece e' stata ferma piu' di 4 minuti (computer
+// in sospensione, scheda nascosta a lungo) chiude e riapre il flusso prima di mandare altro.
+const SILENZIO = 4 * 60000, VIVO = 10000;
+const tempoScaduto = m => Object.assign(new Error(m), { tempo: true });
+
+function nuovoFlusso(r) {
+  return { finestra: +r.split(/\s+/)[1], mandati: 0, letti: 0, id: 0, tile: new Map(), domande: new Map(), attese: new Set(), inVolo: 0,
+    rotto: '', chiuso: false, chiudendo: false, ricevute: 0, errore: null, ultimo: performance.now(), coda: Promise.resolve() };
+}
+async function chiediFlusso() {
+  const r = await alTelefono('@FLUSSO', r => /^flusso\s+\d+$/.test(r) || r.startsWith('errore'), TEMPI.risposta);
+  if (r === null) throw tempoScaduto(nonRisponde());
+  if (!r.startsWith('flusso') || +r.split(/\s+/)[1] < 1024) throw new Error(`Il telefono non comincia la copia: ${motivoDi(r)}.`);
+  return r;
+}
+// Qualcosa e' cambiato (crediti, risposte, fine): chi aspetta ricontrolla.
+function svegliaFlusso(f) { const a = [...f.attese]; f.attese.clear(); a.forEach(s => s()); }
+// Aspetta che pronto() sia vero, ricontrollando a ogni risposta; dopo ms senza risposte, errore di tempo.
+async function aspettaFlusso(f, pronto, ms, perche) {
+  while (!pronto()) {
+    await new Promise((ok, no) => {
+      const t = setTimeout(() => { f.attese.delete(via); no(tempoScaduto(perche)); }, ms);
+      const via = () => { clearTimeout(t); ok(); };
+      f.attese.add(via);
+    });
+  }
+}
+function erroreFlusso(f) {
+  return f.rotto ? new Error(`Il telefono ha interrotto la copia (${f.rotto}).`)
+    : new Error('Il telefono ha chiuso la copia prima della fine: forse è stato fermo troppo a lungo.');
+}
+function rispostaFlusso(f, r) {
+  const [cosa, a = '', ...resto] = r.split(' '), id = /^\d+$/.test(a) ? +a : -1;
+  if (cosa === 'letti' && id >= 0) f.letti = Math.max(f.letti, id);
+  else if ((cosa === 'ok' || cosa === 'ko') && f.tile.has(id)) {
+    const t = f.tile.get(id);
+    f.tile.delete(id);
+    t(cosa === 'ok' ? '' : resto.join(' ') || 'senza motivo');
+  } else if (cosa === 'ci' && f.domande.has(id)) {
+    const d = f.domande.get(id);
+    f.domande.delete(id);
+    d(resto.map(Number));
+  } else if (cosa === 'rotto') f.rotto = [a, ...resto].join(' ') || 'senza motivo';
+  else if (cosa === 'fine' && id >= 0) {
+    if (!f.chiuso) {
+      f.chiuso = true; f.ricevute += id;
+      // Le risposte che mancano non arrivano piu': tile non confermate (non contano) e domande senza risposta.
+      for (const t of f.tile.values()) t(null);
+      for (const d of f.domande.values()) d(null);
+      f.tile.clear(); f.domande.clear();
+    }
+  } else return false;
+  svegliaFlusso(f);
+  return true;
+}
+// I byte sul flusso, a pezzi grandi quanto il credito; uno scrittore alla volta (manda()).
+async function scriviFlusso(f, u8) {
+  for (let da = 0; da < u8.length;) {
+    if (f.rotto || f.chiuso) throw erroreFlusso(f);
+    const libero = f.finestra - (f.mandati - f.letti), resta = u8.length - da;
+    if (libero < Math.min(resta, 512)) {
+      const letti = f.letti;
+      await aspettaFlusso(f, () => f.letti !== letti || f.rotto || f.chiuso, TEMPI.risposta, 'Il telefono non prende più i dati: controlla il cavo.');
+      continue;
+    }
+    const n = Math.min(libero, resta);
+    await canale.scrivi(u8.subarray(da, da + n), TEMPI.risposta);
+    f.mandati += n; da += n; f.ultimo = performance.now();
+  }
+}
+// Una riga o una tile intera sul flusso, dopo quelle gia' partite. Dopo un silenzio lungo (o se il telefono ha
+// chiuso da solo il flusso) prima si chiude e si riapre: "@FINE" va bene anche se il telefono ha gia' chiuso
+// (risponde "fine 0"), e ogni "@FLUSSO" ricomincia a contare i byte da zero. parte() si chiama subito prima di
+// scrivere, dopo l'eventuale riapertura: li' si aspetta la risposta (se no la chiusura la darebbe per persa).
+function manda(f, u8, parte = null) {
+  const p = f.coda.then(async () => {
+    if (!f.chiudendo && !f.rotto && (f.chiuso || performance.now() - f.ultimo > SILENZIO)) {
+      if (!f.chiuso) {
+        await scriviFlusso(f, testo8('@FINE\n'));
+        await aspettaFlusso(f, () => f.chiuso, TEMPI.fine, 'Il telefono non risponde più: controlla il cavo.');
+      }
+      const r = await chiediFlusso();
+      Object.assign(f, { finestra: +r.split(/\s+/)[1], mandati: 0, letti: 0, chiuso: false, ultimo: performance.now() });
+    }
+    if (f.rotto || f.chiuso) throw erroreFlusso(f);
+    parte?.();
+    await scriviFlusso(f, u8);
+  });
+  f.coda = p.catch(() => {});
+  return p;
+}
+// Quanto pesano le tile del lotto che il telefono ha gia' (0: non c'e'), nell'ordine di l.coord.
+async function chiediPesi(f, l) {
+  const id = ++f.id, alto = l.y1 - l.y0 + 1, quante = (l.x1 - l.x0 + 1) * alto;
+  let g;   // la risposta: le grandezze, o null se il flusso si e' chiuso prima
+  await manda(f, testo8(`C ${id} ${l.z} ${l.x0} ${l.y0} ${l.x1} ${l.y1}\n`), () => f.domande.set(id, v => { g = v; }));
+  await aspettaFlusso(f, () => g !== undefined || f.rotto, TEMPI.risposta, 'Il telefono non risponde più: controlla il cavo.');
+  if (!g) throw erroreFlusso(f);
+  if (g.length !== quante || g.some(v => !Number.isInteger(v) || v < 0)) throw new Error('Il telefono ha risposto male alla domanda sulle tile che ha.');
+  return l.coord.map(([x, y]) => g[(x - l.x0) * alto + (y - l.y0)]);
+}
+// Una tile sul flusso: torna quando e' partita (la risposta arriva dopo, per conto suo). Scritta, fatto() la
+// conta; dopo tre "ko" la copia si ferma con f.errore. f.inVolo: le tile partite e non ancora finite (scritte,
+// lasciate perdere o perse), rimandate comprese: la "@FINE" parte solo quando e' zero.
+function mandaFlusso(f, c, t, fatto, volta = 1) {
+  const id = ++f.id, nome = `${t.z}/${t.x}/${t.y}.png`;
+  if (volta === 1) f.inVolo++;
+  t.crc ??= esa8(crc32(t.dati));
+  const testa = testo8(`T ${id} ${nome} ${t.dati.length} ${t.crc}\n`), u8 = new Uint8Array(testa.length + t.dati.length);
+  u8.set(testa); u8.set(t.dati, testa.length);
+  const finita = () => { f.inVolo--; svegliaFlusso(f); };
+  const risposta = m => {
+    if (m === '') { fatta(c, t, 'mandata'); fatto(); finita(); return; }
+    if (m === null) { finita(); return; }   // il flusso si e' chiuso prima: la tile non conta
+    scrivi(`[mappe: il telefono non ha salvato ${nome} (${m})${volta < 3 && !f.errore ? ', la rimando' : ''}]\n`);
+    if (volta >= 3 && !f.errore) f.errore = new Error(`Il telefono non riesce a salvare la tile ${nome}: ${m}.`);
+    if (f.errore) { finita(); return; }
+    mandaFlusso(f, c, t, fatto, volta + 1).catch(e => { f.errore ??= e; });
+  };
+  let partita = false;
+  return manda(f, u8, () => { partita = true; f.tile.set(id, risposta); }).catch(e => {
+    if (!partita || f.tile.delete(id)) finita();   // la sua risposta non arrivera' piu'
+    throw e;
+  });
+}
+// La copia a flusso dei lotti: st.ricevute alla fine (anche dopo un errore, se il telefono l'ha detto).
+async function copiaAFlusso(lotti, c, st) {
+  const f = nuovoFlusso(await chiediFlusso());
+  flusso = f;
+  const vivo = setInterval(() => {
+    if (!f.chiuso && !f.chiudendo && performance.now() - f.ultimo > VIVO) manda(f, A_CAPO).catch(() => {});
+  }, VIVO / 4);
+  // Il lotto dopo si prepara mentre si manda questo: la domanda e poi, se serve, il disegno.
+  const prepara = async l => {
+    if (l.gia) return { l };
+    const ha = await chiediPesi(f, l);
+    return { l, ha, tile: await l.dati() };
+  };
+  const avvia = l => { const p = prepara(l); p.catch(() => {}); return p; };
+  // Tutte le risposte delle tile partite, poi "@FINE" e "fine".
+  const chiudi = async () => {
+    await aspettaFlusso(f, () => f.inVolo <= 0 || f.chiuso || f.rotto, TEMPI.fine, 'Il telefono non risponde più: controlla il cavo.');
+    f.chiudendo = true;
+    if (!f.chiuso && !f.rotto) await manda(f, testo8('@FINE\n'));
+    await aspettaFlusso(f, () => f.chiuso, TEMPI.fine, 'Il telefono non chiude la copia: controlla il cavo.');
+  };
+  try {
+    let n = lotti.next(), avanti = n.done ? null : avvia(n.value);
+    while (avanti && !fermati && !f.errore) {
+      const { l, ha, tile } = await avanti;
+      n = lotti.next();
+      avanti = n.done || fermati ? null : avvia(n.value);
+      if (!tile) { saltaLotto(c, l); continue; }
+      let resta = tile.length;
+      const fatto = () => { if (--resta === 0 && l.chiave) c.lottiFatti?.add(l.chiave); };
+      for (const [k, t] of tile.entries()) {
+        if (t.rotta) { fatta(c, t, 'rotta'); fatto(); }
+        else if (ha[k] === t.dati.length) { fatta(c, t, 'saltata'); fatto(); }
+        else await mandaFlusso(f, c, t, fatto);
+        if (fermati || f.errore) break;
+      }
+    }
+    await chiudi();
+    if (f.errore) throw f.errore;
+    if (f.rotto) throw erroreFlusso(f);
+  } catch (e) {
+    // Si chiude bene quando si puo': il telefono finisce le tile in coda e torna ai comandi. Se e' rotto lo fa
+    // da solo; se non risponde non serve aspettarlo.
+    if (!e.tempo && !f.chiuso) {
+      try { if (f.rotto) await aspettaFlusso(f, () => f.chiuso, 12000, ''); else await chiudi(); } catch (_) {}
+    }
+    throw e;
+  } finally {
+    clearInterval(vivo);
+    if (flusso === f) flusso = null;
+    st.ricevute = f.chiuso ? f.ricevute : null;
+  }
 }
 
 // ---- le mappe in una cartella, per non disegnarle ogni volta (File System Access: Chrome ed Edge)
@@ -1616,38 +1891,50 @@ async function leggiPacco(cartella) {
   return p;
 }
 const FIRMA_PNG = [137, 80, 78, 71, 13, 10, 26, 10];
-// Le tile del pacco una alla volta, dalla da-esima in poi (quelle prima si saltano senza leggerle). Un file
-// vuoto (salvataggio interrotto), troppo grande o che non e' un PNG non si manda: { rotta: true }.
-async function* tileDelPacco(p, da = 0) {
+// Le tile del pacco a lotti, dalla da-esima in poi (quelle prima si saltano senza leggerle): fino a 16 file di
+// fila della stessa colonna, con le y in un tratto di al massimo 64 (una domanda al telefono). Un file vuoto
+// (salvataggio interrotto), troppo grande o che non e' un PNG non si manda: { rotta: true }.
+function* lottiDelPacco(p, da = 0) {
+  let i = 0;
   for (const col of p.colonne) {
-    if (da >= col.file.length) { da -= col.file.length; continue; }
-    for (const [y, nome] of col.file.slice(da)) {
-      if (fermati) return;
-      let dati;
-      try {
-        dati = new Uint8Array(await (await (await col.cartella.getFileHandle(nome)).getFile()).arrayBuffer());
-      } catch (e) {
-        if (e.name !== 'NotFoundError') throw erroreCartella(e, `leggere la tile ${col.z}/${col.x}/${nome}`);
-        dati = new Uint8Array(0);   // tolta intanto dalla cartella
-      }
-      const buona = dati.length > 8 && dati.length <= MAX_FILE && FIRMA_PNG.every((b, i) => dati[i] === b);
-      yield buona ? { z: col.z, x: col.x, y, dati } : { z: col.z, x: col.x, y, rotta: true };
+    for (let k = Math.max(0, da - i); k < col.file.length;) {
+      const inizio = k, y0 = col.file[k][0];
+      while (k < col.file.length && k - inizio < 16 && col.file[k][0] - y0 < 64) k++;
+      const pezzo = col.file.slice(inizio, k), primo = i + inizio;
+      yield { z: col.z, x0: col.x, y0, x1: col.x, y1: pezzo.at(-1)[0], coord: pezzo.map(([y]) => [col.x, y]), primo, chiave: '',
+        dati: () => leggiTile(col, pezzo, primo) };
     }
-    da = 0;
+    i += col.file.length;
   }
+}
+async function leggiTile(col, pezzo, primo) {
+  const tile = [];
+  for (const [k, [y, nome]] of pezzo.entries()) {
+    let dati;
+    try {
+      dati = new Uint8Array(await (await (await col.cartella.getFileHandle(nome)).getFile()).arrayBuffer());
+    } catch (e) {
+      if (e.name !== 'NotFoundError') throw erroreCartella(e, `leggere la tile ${col.z}/${col.x}/${nome}`);
+      dati = new Uint8Array(0);   // tolta intanto dalla cartella
+    }
+    const buona = dati.length > 8 && dati.length <= MAX_FILE && FIRMA_PNG.every((b, j) => dati[j] === b);
+    tile.push(buona ? { z: col.z, x: col.x, y, dati, i: primo + k } : { z: col.z, x: col.x, y, rotta: true, i: primo + k });
+  }
+  return tile;
 }
 // Dopo "Ferma" o un errore si riparte da dove ci si era fermati, se la cartella e' la stessa e la porta
 // non si e' chiusa: le tile prima il telefono le ha confermate ("si" o "ok") in questa stessa sessione, e
 // richiederle una a una con "@HAI", per decine di migliaia di tile, vorrebbe dire minuti. Se la porta si e'
-// riaperta (il telefono si e' riavviato, magari con un'altra microSD) si riparte da capo, saltando con
-// "@HAI" quelle che ci sono.
+// riaperta (il telefono si e' riavviato, magari con un'altra microSD) si riparte da capo, saltando quelle che
+// ci sono (con "@HAI", o a flusso con una domanda ogni 16). A flusso le tile si confermano in ordine, ma
+// quelle saltate prima: si riparte dalla prima non confermata (c.fino).
 async function eseguiManda(p) {
   if (copiando || salvando || leggendo || busy || controllando) return null;
   const di = mandaDa && mandaDa.pacco === p && canale.aperto() && mandaDa.porta === apertaAlle ? mandaDa.conti : null;
   pacco = p; riprendiSalva = '';   // si riprende una cartella sola alla volta (vedi "mAltra")
   const resto = p.totale - (di ? di.fatte : 0);
   const r = await copiaAlTelefono({
-    conti: di || contiNuovi(p.totale, 'mandati', velocita), tile: tileDelPacco(p, di ? di.fatte : 0), seguito: ' a mandare',
+    conti: di || contiNuovi(p.totale, 'mandati', velocitaCavo()), lotti: lottiDelPacco(p, di ? di.fatte : 0), seguito: ' a mandare', inFila: true,
     testo: `Mando al telefono le ${numero(resto)} tile ${di ? 'che mancano ' : ''}della ${p.nome} (${zoomDi(p.zmin, p.zmax)}), in ${colCavo(resto)}…`,
     dove: `della ${p.nome}`, etichetta: e => { riprendiManda = e; } });
   if (r) mandaDa = r.esito !== 'fatto' && r.conti.porta != null && r.conti.porta === apertaAlle ? { pacco: p, conti: r.conti, porta: apertaAlle } : null;
@@ -1833,7 +2120,7 @@ $('#mTogliZona').addEventListener('click', () => {
 const MEMORIA = 'pippaphone-mappe';
 function ricorda() {
   try {
-    localStorage.setItem(MEMORIA, JSON.stringify({ zona, zmin: $('#mZmin').value, zmax: $('#mZmax').value, stile: $('#mStile').value, velocita, velocitaCartella, kbTile, kbPeso }));
+    localStorage.setItem(MEMORIA, JSON.stringify({ zona, zmin: $('#mZmin').value, zmax: $('#mZmax').value, stile: $('#mStile').value, velocita, velocitaFlusso, velocitaCartella, kbTile, kbPeso }));
   } catch (_) {}
 }
 try {
@@ -1843,12 +2130,283 @@ try {
   if (m.zmax >= ZMIN && m.zmax <= ZMAX) $('#mZmax').value = m.zmax;
   if ([...$('#mStile').options].some(o => o.value === m.stile)) $('#mStile').value = m.stile;
   if (m.velocita > 0.5 && m.velocita < 500) velocita = m.velocita;
+  if (m.velocitaFlusso > 0.5 && m.velocitaFlusso < 5000) velocitaFlusso = m.velocitaFlusso;
   if (m.velocitaCartella > 0.5 && m.velocitaCartella < 5000) velocitaCartella = m.velocitaCartella;
   if (m.kbTile > 1 && m.kbTile < 500) { kbTile = m.kbTile; if (m.kbPeso >= 0 && m.kbPeso <= PESO_MAX) kbPeso = m.kbPeso; }
 } catch (_) {}
 leggiMie(); mostraPronte();
 mostraStima();
 
+// ---- per le prove (provaMappe e provaFlusso): telefono e cartelle finti
+// Un telefono finto: fa quello che fa il firmware (file in memoria, CRC, pezzi da 4096 col "+", tempo
+// scaduto) e risponde in mezzo a righe di registro, a pezzi. perdi(r) decide le risposte che si perdono.
+function telefonoFinto({ perdi = () => false, rovina = -1, fermaDopo = 0, scaduto = 800 } = {}) {
+  const file = new Map(), errori = [], comandi = [], dec = new TextDecoder();
+  let arrivo = null, timer = 0, completati = 0, ricevute = 0;
+  const rispondi = r => {
+    if (perdi(r)) return;
+    const t = (Math.random() < 0.3 ? 'I (4242) usb: una riga di registro in mezzo\r\n' : '') + PREFISSO + r + '\r\n';
+    setTimeout(() => { for (let i = 0; i < t.length;) { const n = 1 + Math.floor(Math.random() * 16); smista.testo(t.slice(i, i + n)); i += n; } }, 1 + Math.random() * 3);
+  };
+  const aspetta = () => { clearTimeout(timer); timer = setTimeout(() => { arrivo = null; rispondi('errore tempo scaduto'); }, scaduto); };
+  return { file, errori, comandi, canale: {
+    aperto: () => true,
+    pronto: async () => true,
+    apri: async () => true,
+    async scrivi(dati) {
+      await pausa(1);
+      if (arrivo) {
+        const a = arrivo, atteso = Math.min(PEZZO, a.n - a.preso);
+        if (dati.length !== atteso) errori.push(`${a.nome}: pezzo di ${dati.length} byte invece di ${atteso}`);
+        const k = Math.min(dati.length, a.n - a.preso);
+        a.buf.set(dati.subarray(0, k), a.preso);
+        a.preso += k;
+        if (a.preso < a.n) { if (a.preso % PEZZO === 0) { rispondi('+'); aspetta(); } return; }
+        clearTimeout(timer); arrivo = null;
+        if (completati++ === rovina) a.buf[a.n >> 1] ^= 0xff;   // un byte rovinato per strada
+        if (esa8(crc32(a.buf)) !== a.crc) return rispondi('errore crc sbagliato');
+        file.set(a.nome, a.buf); ricevute++;
+        if (fermaDopo && file.size === fermaDopo) fermati = true;   // come se qui si premesse "Ferma"
+        return rispondi('ok ' + a.nome);
+      }
+      const riga = dec.decode(dati), cmd = riga.slice(0, -1);
+      if (riga.indexOf('\n') !== riga.length - 1) return errori.push('comando senza un solo a capo alla fine: ' + JSON.stringify(riga));
+      comandi.push(cmd);
+      let m;
+      if (cmd === '@PIPPA?') rispondi('ciao 0.0-finto sd=1 libero=14321');
+      else if ((m = /^@HAI (\d+\/\d+\/\d+\.png) (\d+)$/.exec(cmd))) rispondi(file.get(m[1])?.length === +m[2] ? 'si' : 'no');
+      else if ((m = /^@FILE ((\d+)\/\d+\/\d+\.png) (\d+) ([0-9a-f]{8})$/.exec(cmd)) && +m[2] <= 20 && +m[3] >= 1 && +m[3] <= MAX_FILE) {
+        arrivo = { nome: m[1], n: +m[3], crc: m[4], buf: new Uint8Array(+m[3]), preso: 0 };
+        rispondi('pronto'); aspetta();
+      } else if (cmd === '@FINE') { rispondi('fine ' + ricevute); ricevute = 0; }
+      else { errori.push('comando sbagliato: ' + cmd); rispondi('errore comando sbagliato'); }
+    },
+  } };
+}
+// Una cartella finta in memoria, come quelle di File System Access: getDirectoryHandle e getFileHandle
+// (con create), entries, keys e values, getFile, createWritable con write, close e abort. Come in Chrome
+// il file cambia solo alla chiusura, e getFileHandle con create fa subito il file vuoto (quello che resta
+// se la pagina si chiude a meta'). dopoChiusura(n, percorso) dopo l'n-esima tile (file .png) chiusa: se
+// da' un errore, la chiusura fallisce con quello. Ogni passo aspetta un poco, come un disco.
+function cartellaFinta(nome, { dopoChiusura = () => null } = {}) {
+  let chiusi = 0;
+  const lento = () => pausa(Math.random() * 2);
+  const file = (nome, percorso) => {
+    const h = { kind: 'file', name: nome, dati: new Uint8Array(0),
+      async getFile() { await lento(); return new File([h.dati], nome, { type: 'image/png' }); },
+      async createWritable() {
+        await lento();
+        let pezzi = [], finito = false;
+        return {
+          async write(d) {
+            if (finito) throw new TypeError('file già chiuso');
+            await lento();
+            pezzi.push(d instanceof Blob ? new Uint8Array(await d.arrayBuffer()) : ArrayBuffer.isView(d) ? new Uint8Array(d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength)) : new Uint8Array(d));
+          },
+          async close() {
+            if (finito) throw new TypeError('file già chiuso');
+            finito = true;
+            await lento();
+            const e = percorso.endsWith('.png') ? dopoChiusura(++chiusi, percorso) : null;
+            if (e) throw e;
+            const tutto = new Uint8Array(pezzi.reduce((s, p) => s + p.length, 0));
+            pezzi.reduce((k, p) => (tutto.set(p, k), k + p.length), 0);
+            h.dati = tutto;
+          },
+          async abort() { finito = true; pezzi = []; },
+        };
+      },
+    };
+    return h;
+  };
+  const cartella = (nome, percorso) => {
+    const voci = new Map();
+    const voce = async (n, tipo, crea) => {
+      await lento();
+      if (typeof n !== 'string' || !n || /[\\/]/.test(n) || n === '.' || n === '..') throw new TypeError(`nome non valido: ${n}`);
+      let v = voci.get(n);
+      if (v && v.kind !== tipo) throw new DOMException(`${percorso}${n} non è ${tipo === 'file' ? 'un file' : 'una cartella'}`, 'TypeMismatchError');
+      if (!v) {
+        if (!crea) throw new DOMException(`${percorso}${n} non c’è`, 'NotFoundError');
+        voci.set(n, v = tipo === 'file' ? file(n, percorso + n) : cartella(n, percorso + n + '/'));
+      }
+      return v;
+    };
+    const h = { kind: 'directory', name: nome,
+      getDirectoryHandle: (n, { create = false } = {}) => voce(n, 'directory', create),
+      getFileHandle: (n, { create = false } = {}) => voce(n, 'file', create),
+      async *entries() { for (const v of [...voci]) { await lento(); yield v; } },
+      async *keys() { for await (const [n] of h.entries()) yield n; },
+      async *values() { for await (const [, v] of h.entries()) yield v; },
+      [Symbol.asyncIterator]() { return h.entries(); },
+    };
+    return h;
+  };
+  return cartella(nome, '');
+}
+// Tutte le tile (i file .png) di una cartella finta: percorso -> byte
+async function tutti(d, su = '', acc = new Map()) {
+  for await (const [n, h] of d.entries()) { if (h.kind === 'directory') await tutti(h, su + n + '/', acc); else if (n.endsWith('.png')) acc.set(su + n, h.dati); }
+  return acc;
+}
+// Un file in una cartella finta, con le cartelle che servono (senza passare da createWritable)
+async function metti(d, percorso, dati) {
+  const parti = percorso.split('/');
+  for (const p of parti.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+  (await d.getFileHandle(parti.at(-1), { create: true })).dati = dati;
+}
+// Un telefono finto col firmware nuovo (la copia a flusso), come usb_mappe.cpp: dice "flusso=<finestra>" a
+// "@PIPPA?"; a flusso i byte arrivano in un buffer, un lettore li toglie (righe T/C/@FINE e i byte delle tile,
+// come app/flusso_mappe.cpp) e li mette in una coda di coda byte al massimo (piena: il lettore si ferma e non
+// manda crediti), e uno scrittore scrive una tile ogni lento ms e risponde ok/ko, le domande prima. Le risposte
+// arrivano nell'ordine giusto, a pezzi, in mezzo a righe di registro. Controlla che la pagina non tenga mai in
+// viaggio piu' della finestra. registro: i byte di ogni flusso, atteso: le tile e le domande come le ha lette
+// (per il test sul PC: test/test_flusso_mappe.cpp). rovina: il numero della tile (da 0) a cui si rovina un
+// byte per strada; ko(n, nome): il motivo per non scrivere la n-esima tile (da 1), '' se va; fermaDopo: "Ferma"
+// dopo tante tile scritte; rompiDopo: dopo tante tile la riga T dopo non si capisce ("rotto"); muto: niente crediti.
+function telefonoFlusso({ finestra = 7168, coda = 2 * 1048576, lento = 1, rovina = -1, ko = () => '', fermaDopo = 0, rompiDopo = -1, muto = false } = {}) {
+  const file = new Map(), errori = [], comandi = [], registro = [];
+  let atteso = '', righe = '', s = null, viste = 0, scritture = 0, uscita = '', inUscita = false;
+  // Le risposte in ordine (come sulla USB), a pezzi e con righe di registro in mezzo.
+  const rispondi = r => {
+    uscita += (Math.random() < 0.2 ? 'I (4242) usb: una riga di registro in mezzo\r\n' : '') + PREFISSO + r + '\r\n';
+    if (inUscita) return;
+    inUscita = true;
+    setTimeout(() => {
+      inUscita = false;
+      const t = uscita; uscita = '';
+      for (let i = 0; i < t.length;) { const n = 1 + Math.floor(Math.random() * 40); smista.testo(t.slice(i, i + n)); i += n; }
+    }, 1 + Math.random() * 2);
+  };
+  const latin = u8 => String.fromCharCode(...u8);
+  const numero = (t, max) => /^(0|[1-9]\d*)$/.test(t) && +t <= max ? +t : -1;
+  function apri() {
+    s = { arrivati: 0, consumati: 0, detti: 0, entrata: [], pos: 0, stato: 'riga', riga: '', tile: null, preso: 0, tile_: [], domande: [],
+      inCoda: 0, scritte: 0, finito: false, rotto: false, svuota: 0, sveglia: null, registro: [], log: '' };
+    rispondi('flusso ' + finestra);
+    scrittore(s);
+  }
+  const sveglia = ses => { const f = ses.sveglia; ses.sveglia = null; f?.(); };
+  function rompi(ses, motivo) {
+    ses.rotto = true; ses.svuota = performance.now();
+    rispondi('rotto ' + motivo);
+    // I byte si buttano finche' la pagina non tace per 300 ms; poi lo scrittore finisce e dice "fine".
+    const t = setInterval(() => {
+      if (performance.now() - ses.svuota < 300) return;
+      clearInterval(t);
+      ses.tile_.push({ fine: true }); sveglia(ses);
+    }, 50);
+  }
+  function riga(ses, l) {
+    let m;
+    if (l === '') return;
+    if (l === '@FINE') { ses.finito = true; ses.log += '@FINE\n'; ses.tile_.push({ fine: true }); sveglia(ses); return; }
+    if ((m = /^T (\S+) (\S+) (\S+) (\S+)$/.exec(l))) {
+      const id = numero(m[1], 4294967295), p = /^(0|[1-9]\d*)\/(0|[1-9]\d*)\/(0|[1-9]\d*)\.png$/.exec(m[2]), n = numero(m[3], MAX_FILE);
+      if (id < 0 || !p || +p[1] > 20 || +p[2] >= 2 ** +p[1] || +p[3] >= 2 ** +p[1] || n < 1 || !/^[0-9a-fA-F]{8}$/.test(m[4])) return rompi(ses, 'riga T sbagliata');
+      if (viste === rompiDopo) { viste++; return rompi(ses, 'comando sconosciuto'); }
+      ses.tile = { id, nome: m[2], n, crc: m[4].toLowerCase(), buf: new Uint8Array(n), rovina: viste++ === rovina };
+      ses.stato = 'attesa'; ses.preso = 0;
+      return;
+    }
+    if ((m = /^C (\S+) (\S+) (\S+) (\S+) (\S+) (\S+)$/.exec(l))) {
+      const id = numero(m[1], 4294967295), z = numero(m[2], 20), v = m.slice(3).map(t => numero(t, 2 ** z - 1));
+      if (id < 0 || z < 0 || v.some(n => n < 0) || v[2] < v[0] || v[3] < v[1] || (v[2] - v[0] + 1) * (v[3] - v[1] + 1) > 64) return rompi(ses, 'riga C sbagliata');
+      ses.log += `C ${id} ${z} ${v.join(' ')}\n`;
+      ses.domande.push({ id, z, x0: v[0], y0: v[1], x1: v[2], y1: v[3] }); sveglia(ses);
+      return;
+    }
+    rompi(ses, 'comando sconosciuto');
+  }
+  // Il lettore: toglie i byte dal buffer finche' puo' (la coda piena lo ferma), poi i crediti.
+  function leggi(ses) {
+    while (ses === s && !ses.rotto && !ses.finito && ses.entrata.length) {
+      const u8 = ses.entrata[0];
+      if (ses.pos >= u8.length) { ses.entrata.shift(); ses.pos = 0; continue; }
+      if (ses.stato === 'attesa') {
+        if (ses.inCoda && ses.inCoda + ses.tile.n > coda) break;   // coda piena: si aspetta lo scrittore
+        ses.inCoda += ses.tile.n; ses.stato = 'dati';
+      }
+      if (ses.stato === 'dati') {
+        const t = ses.tile, k = Math.min(u8.length - ses.pos, t.n - ses.preso);
+        if (t.rovina && ses.preso === 0) u8[ses.pos] ^= 0xff;   // un byte rovinato per strada
+        t.buf.set(u8.subarray(ses.pos, ses.pos + k), ses.preso);
+        ses.registro.push(u8.slice(ses.pos, ses.pos + k));
+        ses.preso += k; ses.pos += k; ses.consumati += k;
+        if (ses.preso === t.n) {
+          ses.log += `T ${t.id} ${t.nome.replace(/\.png$/, '')} ${t.n}${esa8(crc32(t.buf)) === t.crc ? '' : ' rovinata'}\n`;
+          ses.tile_.push(t); ses.stato = 'riga'; sveglia(ses);
+        }
+        continue;
+      }
+      const nl = u8.indexOf(10, ses.pos), fine = nl < 0 ? u8.length : nl + 1, pezzo = u8.subarray(ses.pos, fine);
+      ses.registro.push(pezzo.slice());
+      ses.pos = fine; ses.consumati += pezzo.length;
+      ses.riga += latin(nl < 0 ? pezzo : pezzo.subarray(0, pezzo.length - 1));
+      if (ses.riga.length >= 96) { rompi(ses, 'riga troppo lunga'); break; }
+      if (nl >= 0) { const l = ses.riga.replace(/\r$/, ''); ses.riga = ''; riga(ses, l); }
+    }
+    // Crediti: quando il buffer e' vuoto, o almeno ogni 2048 byte.
+    if (ses === s && !muto && ses.consumati !== ses.detti && (!ses.entrata.length || ses.consumati - ses.detti >= 2048)) {
+      ses.detti = ses.consumati;
+      rispondi('letti ' + ses.detti);
+    }
+  }
+  async function scrittore(ses) {
+    for (;;) {
+      if (!ses.domande.length && !ses.tile_.length) { await new Promise(ok => { ses.sveglia = ok; }); continue; }
+      if (ses.domande.length) {
+        const d = ses.domande.shift(), g = [];
+        for (let x = d.x0; x <= d.x1; x++) for (let y = d.y0; y <= d.y1; y++) g.push(file.get(`${d.z}/${x}/${y}.png`)?.length || 0);
+        rispondi(`ci ${d.id} ${g.join(' ')}`);
+        continue;
+      }
+      const t = ses.tile_.shift();
+      if (t.fine) break;
+      await pausa(lento);
+      ses.inCoda -= t.n;
+      setTimeout(() => leggi(ses), 0);   // c'e' posto: il lettore riparte
+      const m = esa8(crc32(t.buf)) !== t.crc ? 'CRC sbagliato' : ko(++scritture, t.nome);
+      if (m) { rispondi(`ko ${t.id} ${m}`); continue; }
+      file.set(t.nome, t.buf); ses.scritte++;
+      if (fermaDopo && file.size === fermaDopo) fermati = true;   // come se qui si premesse "Ferma"
+      rispondi('ok ' + t.id);
+    }
+    if (!ses.rotto) { registro.push(...ses.registro); atteso += ses.log; }
+    rispondi('fine ' + ses.scritte);
+    if (s === ses) s = null;
+  }
+  return { file, errori, comandi, registro, get atteso() { return atteso; }, canale: {
+    aperto: () => true,
+    pronto: async () => true,
+    apri: async () => true,
+    async scrivi(dati) {
+      await pausa(Math.random() < 0.5 ? 0 : 1);
+      const u8 = new Uint8Array(dati);   // una copia: la pagina puo' riusare i suoi byte
+      if (s) {
+        if (s.rotto) { s.svuota = performance.now(); return; }   // si buttano
+        s.arrivati += u8.length;
+        if (s.arrivati - s.detti > finestra) errori.push(`finestra superata: ${s.arrivati - s.detti} byte in viaggio su ${finestra}`);
+        s.entrata.push(u8);
+        const ses = s;
+        setTimeout(() => leggi(ses), 0);
+        return;
+      }
+      righe += latin(u8);
+      for (let a; (a = righe.indexOf('\n')) >= 0;) {
+        const cmd = righe.slice(0, a).replace(/\r$/, '');
+        righe = righe.slice(a + 1);
+        if (cmd) comandi.push(cmd);
+        if (cmd === '@PIPPA?') rispondi('ciao 0.0-finto sd=1 libero=14321' + (finestra ? ' flusso=' + finestra : ''));
+        else if (cmd === '@FLUSSO') {
+          if (!finestra) { errori.push('@FLUSSO a un telefono vecchio'); rispondi('errore comando sbagliato'); }
+          else { apri(); if (righe) errori.push('byte dopo @FLUSSO prima della risposta'); righe = ''; break; }
+        } else if (cmd === '@FINE') rispondi('fine 0');
+        else if (cmd) { errori.push('comando sbagliato: ' + cmd); rispondi('errore comando sbagliato'); }
+      }
+    },
+  } };
+}
 // ---- prova, per chi sviluppa: dalla console del browser, await provaMappe()
 // Controlla CRC e conti delle tile coi valori calcolati a parte (Python: zlib.crc32 e le formule di
 // OSM), le risposte "@PIPPA " in mezzo al registro spezzato a caso, il disegno (PNG 256x256, tile di
@@ -1906,51 +2464,6 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
   }
   prova('risposte riconosciute nel registro spezzato a caso', giusti === 300, `${giusti} su 300`);
 
-  // Un telefono finto: fa quello che fa il firmware (file in memoria, CRC, pezzi da 4096 col "+", tempo
-  // scaduto) e risponde in mezzo a righe di registro, a pezzi. perdi(r) decide le risposte che si perdono.
-  function telefonoFinto({ perdi = () => false, rovina = -1, fermaDopo = 0, scaduto = 800 } = {}) {
-    const file = new Map(), errori = [], comandi = [], dec = new TextDecoder();
-    let arrivo = null, timer = 0, completati = 0, ricevute = 0;
-    const rispondi = r => {
-      if (perdi(r)) return;
-      const t = (Math.random() < 0.3 ? 'I (4242) usb: una riga di registro in mezzo\r\n' : '') + PREFISSO + r + '\r\n';
-      setTimeout(() => { for (let i = 0; i < t.length;) { const n = 1 + Math.floor(Math.random() * 16); smista.testo(t.slice(i, i + n)); i += n; } }, 1 + Math.random() * 3);
-    };
-    const aspetta = () => { clearTimeout(timer); timer = setTimeout(() => { arrivo = null; rispondi('errore tempo scaduto'); }, scaduto); };
-    return { file, errori, comandi, canale: {
-      aperto: () => true,
-      pronto: async () => true,
-      apri: async () => true,
-      async scrivi(dati) {
-        await pausa(1);
-        if (arrivo) {
-          const a = arrivo, atteso = Math.min(PEZZO, a.n - a.preso);
-          if (dati.length !== atteso) errori.push(`${a.nome}: pezzo di ${dati.length} byte invece di ${atteso}`);
-          const k = Math.min(dati.length, a.n - a.preso);
-          a.buf.set(dati.subarray(0, k), a.preso);
-          a.preso += k;
-          if (a.preso < a.n) { if (a.preso % PEZZO === 0) { rispondi('+'); aspetta(); } return; }
-          clearTimeout(timer); arrivo = null;
-          if (completati++ === rovina) a.buf[a.n >> 1] ^= 0xff;   // un byte rovinato per strada
-          if (esa8(crc32(a.buf)) !== a.crc) return rispondi('errore crc sbagliato');
-          file.set(a.nome, a.buf); ricevute++;
-          if (fermaDopo && file.size === fermaDopo) fermati = true;   // come se qui si premesse "Ferma"
-          return rispondi('ok ' + a.nome);
-        }
-        const riga = dec.decode(dati), cmd = riga.slice(0, -1);
-        if (riga.indexOf('\n') !== riga.length - 1) return errori.push('comando senza un solo a capo alla fine: ' + JSON.stringify(riga));
-        comandi.push(cmd);
-        let m;
-        if (cmd === '@PIPPA?') rispondi('ciao 0.0-finto sd=1 libero=14321');
-        else if ((m = /^@HAI (\d+\/\d+\/\d+\.png) (\d+)$/.exec(cmd))) rispondi(file.get(m[1])?.length === +m[2] ? 'si' : 'no');
-        else if ((m = /^@FILE ((\d+)\/\d+\/\d+\.png) (\d+) ([0-9a-f]{8})$/.exec(cmd)) && +m[2] <= 20 && +m[3] >= 1 && +m[3] <= MAX_FILE) {
-          arrivo = { nome: m[1], n: +m[3], crc: m[4], buf: new Uint8Array(+m[3]), preso: 0 };
-          rispondi('pronto'); aspetta();
-        } else if (cmd === '@FINE') { rispondi('fine ' + ricevute); ricevute = 0; }
-        else { errori.push('comando sbagliato: ' + cmd); rispondi('errore comando sbagliato'); }
-      },
-    } };
-  }
   async function pixel(dati) {
     const bmp = await createImageBitmap(new Blob([dati], { type: 'image/png' }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
     const c = new OffscreenCanvas(bmp.width, bmp.height), g = c.getContext('2d');
@@ -1978,72 +2491,6 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
     return s / 768;
   }
 
-  // Una cartella finta in memoria, come quelle di File System Access: getDirectoryHandle e getFileHandle
-  // (con create), entries, keys e values, getFile, createWritable con write, close e abort. Come in Chrome
-  // il file cambia solo alla chiusura, e getFileHandle con create fa subito il file vuoto (quello che resta
-  // se la pagina si chiude a meta'). dopoChiusura(n, percorso) dopo l'n-esima tile (file .png) chiusa: se
-  // da' un errore, la chiusura fallisce con quello. Ogni passo aspetta un poco, come un disco.
-  function cartellaFinta(nome, { dopoChiusura = () => null } = {}) {
-    let chiusi = 0;
-    const lento = () => pausa(Math.random() * 2);
-    const file = (nome, percorso) => {
-      const h = { kind: 'file', name: nome, dati: new Uint8Array(0),
-        async getFile() { await lento(); return new File([h.dati], nome, { type: 'image/png' }); },
-        async createWritable() {
-          await lento();
-          let pezzi = [], finito = false;
-          return {
-            async write(d) {
-              if (finito) throw new TypeError('file già chiuso');
-              await lento();
-              pezzi.push(d instanceof Blob ? new Uint8Array(await d.arrayBuffer()) : ArrayBuffer.isView(d) ? new Uint8Array(d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength)) : new Uint8Array(d));
-            },
-            async close() {
-              if (finito) throw new TypeError('file già chiuso');
-              finito = true;
-              await lento();
-              const e = percorso.endsWith('.png') ? dopoChiusura(++chiusi, percorso) : null;
-              if (e) throw e;
-              const tutto = new Uint8Array(pezzi.reduce((s, p) => s + p.length, 0));
-              pezzi.reduce((k, p) => (tutto.set(p, k), k + p.length), 0);
-              h.dati = tutto;
-            },
-            async abort() { finito = true; pezzi = []; },
-          };
-        },
-      };
-      return h;
-    };
-    const cartella = (nome, percorso) => {
-      const voci = new Map();
-      const voce = async (n, tipo, crea) => {
-        await lento();
-        if (typeof n !== 'string' || !n || /[\\/]/.test(n) || n === '.' || n === '..') throw new TypeError(`nome non valido: ${n}`);
-        let v = voci.get(n);
-        if (v && v.kind !== tipo) throw new DOMException(`${percorso}${n} non è ${tipo === 'file' ? 'un file' : 'una cartella'}`, 'TypeMismatchError');
-        if (!v) {
-          if (!crea) throw new DOMException(`${percorso}${n} non c’è`, 'NotFoundError');
-          voci.set(n, v = tipo === 'file' ? file(n, percorso + n) : cartella(n, percorso + n + '/'));
-        }
-        return v;
-      };
-      const h = { kind: 'directory', name: nome,
-        getDirectoryHandle: (n, { create = false } = {}) => voce(n, 'directory', create),
-        getFileHandle: (n, { create = false } = {}) => voce(n, 'file', create),
-        async *entries() { for (const v of [...voci]) { await lento(); yield v; } },
-        async *keys() { for await (const [n] of h.entries()) yield n; },
-        async *values() { for await (const [, v] of h.entries()) yield v; },
-        [Symbol.asyncIterator]() { return h.entries(); },
-      };
-      return h;
-    };
-    return cartella(nome, '');
-  }
-  // Tutte le tile (i file .png) di una cartella finta: percorso -> byte
-  async function tutti(d, su = '', acc = new Map()) {
-    for await (const [n, h] of d.entries()) { if (h.kind === 'directory') await tutti(h, su + n + '/', acc); else if (n.endsWith('.png')) acc.set(su + n, h.dati); }
-    return acc;
-  }
   // Il testo di un file di una cartella finta, null se non c'e'
   async function testoDi(d, percorso) {
     try {
@@ -2052,12 +2499,6 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
       return new TextDecoder().decode((await d.getFileHandle(parti.at(-1))).dati);
     } catch (_) { return null; }
   }
-  // Un file in una cartella finta, con le cartelle che servono (senza passare da createWritable)
-  async function metti(d, percorso, dati) {
-    const parti = percorso.split('/');
-    for (const p of parti.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
-    (await d.getFileHandle(parti.at(-1), { create: true })).dati = dati;
-  }
   const png256 = d => !!d && d.length > 24 && FIRMA_PNG.every((b, i) => d[i] === b)
     && new DataView(d.buffer, d.byteOffset, d.byteLength).getUint32(16) === 256 && new DataView(d.buffer, d.byteOffset, d.byteLength).getUint32(20) === 256;
   const uguali = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
@@ -2065,7 +2506,7 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
   const area = { ovest: 11.300, sud: 43.300, est: 11.362, nord: 43.336 }, copia = () => eseguiCopia({ zona: area, zmin: 13, zmax: 14 });
   const nomi = [];
   for (const b of blocchi(area, 13, 14)) for (const [x, y] of b.tile) nomi.push(`${b.z}/${x}/${y}.png`);
-  const prima = { canale: { ...canale }, tempi: { ...TEMPI }, telefono, conosciuto, riprendi, velocita, kbTile, kbPeso, sd: [$('#mSd').textContent, $('#mSd').className],
+  const prima = { canale: { ...canale }, tempi: { ...TEMPI }, telefono, conosciuto, riprendi, ripresa, velocita, velocitaFlusso, kbTile, kbPeso, sd: [$('#mSd').textContent, $('#mSd').className],
     zona, riprendiSalva, riprendiManda, cartellaSalva, pacco, mandaDa, velocitaCartella, apertaAlle, zoom: [$('#mZmin').value, $('#mZmax').value],
     camera: cartina && { center: cartina.getCenter(), zoom: cartina.getZoom() }, finestra: window.showDirectoryPicker, stile: $('#mStile').value, voce: $('#mPronta').value,
     // quello che si vede: la console (dove il telefono finto scrive), lo stato, i conti e la barra delle mappe
@@ -2607,7 +3048,7 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
   } finally {
     Object.assign(canale, prima.canale); Object.assign(TEMPI, prima.tempi);
     if (puoCartelle) window.showDirectoryPicker = prima.finestra;
-    ({ telefono, conosciuto, riprendi, velocita, kbTile, kbPeso, zona, riprendiSalva, riprendiManda, cartellaSalva, pacco, mandaDa, velocitaCartella, apertaAlle } = prima);
+    ({ telefono, conosciuto, riprendi, ripresa, velocita, velocitaFlusso, kbTile, kbPeso, zona, riprendiSalva, riprendiManda, cartellaSalva, pacco, mandaDa, velocitaCartella, apertaAlle } = prima);
     fermati = false;
     [$('#mZmin').value, $('#mZmax').value] = prima.zoom;
     $('#mStile').value = prima.stile;
@@ -2625,6 +3066,191 @@ window.provaMappe = async ({ mostra = false, misura = null } = {}) => {
   }
   const risultato ={ tutto: esiti.every(e => e.ok), giusti: esiti.filter(e => e.ok).length, su: esiti.length, esiti, ...fuori };
   window.ultimaProvaMappe = risultato;
+  return risultato;
+};
+
+// ---- prova della copia a flusso, per chi sviluppa: dalla console del browser, await provaFlusso()
+// Senza internet e senza telefono: al posto del disegno tile finte (la firma del PNG e byte a caso, da 200 byte a
+// 40 kB, anche piu' grandi della finestra), al posto della porta il telefono finto a flusso (telefonoFlusso) o
+// quello di prima (telefonoFinto). Prova la copia completa (tile giuste, mai piu' della finestra in viaggio,
+// "fine" giusto), una seconda copia che salta tutto, un'altra cartina che rimanda tutto, "Ferma" e "Continua" (i
+// blocchi finiti non si ridisegnano), un byte rovinato, tre "ko" per la stessa tile ("Riprova"), un flusso rotto,
+// un telefono che non da' crediti, una coda piccola, il flusso riaperto dopo un silenzio lungo, il firmware di
+// prima (anche "Ferma" e "Continua"), "Manda da una cartella" (un file rotto, "Ferma" e "Continua" dalla prima
+// tile non confermata). Con { registro: true } da' anche i byte che la pagina ha mandato a flusso (base64) e
+// quello che il telefono finto ne ha letto, per il test sul PC (test/test_flusso_mappe.cpp con PN_FLUSSO).
+window.provaFlusso = async ({ registro = false } = {}) => {
+  const esiti = [], prova = (cosa, ok, ...dettagli) => { esiti.push({ cosa, ok: !!ok, dettagli: dettagli.join(' ') }); return ok; };
+  const prima = { canale: { ...canale }, tempi: { ...TEMPI }, disegna, telefono, conosciuto, riprendi, ripresa, riprendiManda, pacco, mandaDa,
+    velocita, velocitaFlusso, kbTile, kbPeso, term: term.textContent, stato: [$('#mStato').textContent, $('#mStato').className],
+    dati: $('#mDati').textContent, barra: [$('#mBar').className, $('#mBar').firstElementChild.style.width] };
+  Object.assign(TEMPI, { ciao: 1500, risposta: 1500, fine: 3000 });
+  let variante = 0, disegnati = 0;
+  // Una tile finta: la grandezza e i byte dipendono da z/x/y e dalla "cartina" (variante).
+  const finta = (z, x, y) => {
+    let h = (Math.imul(z, 73856093) ^ Math.imul(x, 19349663) ^ Math.imul(y, 83492791) ^ Math.imul(variante + 1, 2654435761)) | 1;
+    const caso = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return h >>> 0; };
+    const d = new Uint8Array(200 + caso() % 40000);
+    d.set(FIRMA_PNG);
+    for (let i = 8; i < d.length; i++) d[i] = caso() & 255;
+    return d;
+  };
+  const disegnaFinta = async b => { disegnati++; await pausa(1); return b.tile.map(([x, y]) => ({ z: b.z, x, y, dati: finta(b.z, x, y) })); };
+  const area = { ovest: 11.300, sud: 43.300, est: 11.362, nord: 43.336 }, zmin = 12, zmax = 15;   // Siena
+  const nomi = [], nBlocchi = [...blocchi(area, zmin, zmax)].length;
+  for (const b of blocchi(area, zmin, zmax)) for (const [x, y] of b.tile) nomi.push(`${b.z}/${x}/${y}.png`);
+  const copia = () => eseguiCopia({ zona: area, zmin, zmax });
+  const usa = f => { Object.assign(canale, f.canale); return f; };
+  const uguali = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => v === b[i]);
+  // Sul telefono finto ci sono tutte e solo le tile della zona, coi byte della variante di adesso.
+  const giusti = f => f.file.size === nomi.length && nomi.every(n => { const [z, x, y] = n.slice(0, -4).split('/').map(Number); return uguali(f.file.get(n), finta(z, x, y)); });
+  const righeT = f => (f.atteso.match(/^T /gm) || []).length;
+  const registrati = [];
+  let attesi = '';
+  const tieni = f => { registrati.push(...f.registro); attesi += f.atteso; };
+  const fuori = { tile: nomi.length, blocchi: nBlocchi };
+  disegna = disegnaFinta;
+  try {
+    // 1. copia completa
+    let f = usa(telefonoFlusso());
+    riprendi = ''; ripresa = null;
+    const t0 = performance.now();
+    let r = await copia();
+    fuori.secondiCopia = +((performance.now() - t0) / 1000).toFixed(2);
+    prova('a flusso: copia completa, tile giuste, “fine” giusto', r?.esito === 'fatto' && r.aFlusso && giusti(f) && r.ricevute === nomi.length,
+      r?.esito, r?.motivo, `file=${f.file.size}/${nomi.length}`, `fine=${r?.ricevute}`);
+    prova('a flusso: mai più della finestra in viaggio, nessun errore di protocollo', !f.errori.length, f.errori.slice(0, 3).join('; '));
+    prova('a flusso: un solo @FLUSSO, niente @HAI né @FILE', f.comandi.filter(c => c === '@FLUSSO').length === 1 && !f.comandi.some(c => /^@(HAI|FILE)/.test(c)), f.comandi.join(','));
+    // 2. di nuovo la stessa zona: tutte uguali, nessuna tile mandata
+    let n = righeT(f);
+    r = await copia();
+    prova('a flusso: di nuovo la stessa zona, le tile uguali si saltano', r?.esito === 'fatto' && r.conti.saltate === nomi.length && r.conti.mandate === 0 && righeT(f) === n,
+      r?.esito, `saltate=${r?.conti.saltate}`, `T=${righeT(f) - n}`);
+    // 3. un'altra cartina: grandezze diverse, si rimandano tutte
+    variante = 1; n = righeT(f);
+    r = await copia();
+    prova('a flusso: con un’altra cartina le tile si rimandano tutte', r?.esito === 'fatto' && r.conti.mandate === nomi.length && giusti(f) && righeT(f) - n === nomi.length,
+      r?.esito, r?.motivo, `mandate=${r?.conti.mandate}`);
+    tieni(f);
+    // 4. "Ferma" dopo 7 tile e "Continua": i blocchi finiti non si ridisegnano
+    variante = 2; f = usa(telefonoFlusso({ fermaDopo: 7 }));
+    riprendi = ''; disegnati = 0;
+    r = await copia();
+    const fermato = r?.esito === 'fermato' && riprendi === 'continua' && f.file.size >= 7, finiti = ripresa ? ripresa.fatti.size : 0;
+    disegnati = 0;
+    const r2 = await copia();
+    prova('a flusso: “Ferma”, poi “Continua” salta i blocchi finiti senza disegnarli e finisce',
+      fermato && finiti > 0 && r2?.esito === 'fatto' && giusti(f) && disegnati === nBlocchi - finiti && righeT(f) === nomi.length,
+      r?.esito, `finiti=${finiti}`, `ridisegnati=${disegnati}`, r2?.esito, r2?.motivo, `T=${righeT(f)}`);
+    tieni(f);
+    // 5. un byte rovinato per strada: "ko" col CRC, la tile si rimanda
+    variante = 3; f = usa(telefonoFlusso({ rovina: 2 }));
+    riprendi = '';
+    r = await copia();
+    prova('a flusso: CRC sbagliato, la tile si rimanda da sola', r?.esito === 'fatto' && giusti(f) && (f.atteso.match(/ rovinata$/gm) || []).length === 1 && righeT(f) === nomi.length + 1,
+      r?.esito, r?.motivo, `T=${righeT(f)}`);
+    tieni(f);
+    // 6. la microSD non scrive la stessa tile tre volte: errore; "Riprova" finisce
+    variante = 4;
+    let no = 0;
+    f = usa(telefonoFlusso({ ko: (_, nome) => nome === nomi[5] && no++ < 3 ? 'scrittura sulla microSD (prova)' : '' }));
+    riprendi = '';
+    r = await copia();
+    const r3 = await copia();
+    prova('a flusso: tre “ko” per la stessa tile, errore; “Riprova” finisce', r?.esito === 'errore' && /non riesce a salvare la tile/.test(r.motivo) && r3?.esito === 'fatto' && riprendi === '' && giusti(f),
+      r?.motivo, r3?.esito, r3?.motivo);
+    tieni(f);
+    // 7. una riga che il telefono non capisce: "rotto", errore; "Riprova" (il telefono e' tornato ai comandi) finisce
+    variante = 5; f = usa(telefonoFlusso({ rompiDopo: 4 }));
+    riprendi = '';
+    r = await copia();
+    const r4 = await copia();
+    prova('a flusso: flusso rotto, errore chiaro; “Riprova” finisce', r?.esito === 'errore' && /interrotto la copia/.test(r.motivo) && r4?.esito === 'fatto' && giusti(f),
+      r?.motivo, r4?.esito, r4?.motivo);
+    tieni(f);
+    // 8. un telefono che non da' crediti: errore di tempo, e la finestra non si supera
+    variante = 6; f = usa(telefonoFlusso({ muto: true }));
+    riprendi = '';
+    r = await copia();
+    prova('a flusso: senza crediti “non prende più i dati”, senza superare la finestra', r?.esito === 'errore' && /non prende più i dati/.test(r.motivo) && !f.errori.length,
+      r?.motivo, f.errori.slice(0, 2).join('; '));
+    // 9. coda piccola (il telefono si ferma spesso) e scrittura lenta: finisce, sempre dentro la finestra
+    variante = 7; f = usa(telefonoFlusso({ coda: 50000, lento: 3 }));
+    riprendi = '';
+    r = await copia();
+    prova('a flusso: coda piccola e microSD lenta, finisce dentro la finestra', r?.esito === 'fatto' && giusti(f) && !f.errori.length, r?.esito, r?.motivo, f.errori.slice(0, 2).join('; '));
+    tieni(f);
+    // 10. un silenzio lungo a meta' (computer in sospensione): la pagina chiude e riapre il flusso
+    variante = 8; f = usa(telefonoFlusso());
+    riprendi = '';
+    let blocco = 0;
+    // al terzo blocco, quando la pagina non scrive piu' niente da un po', il tempo salta avanti
+    disegna = async b => {
+      const fl = flusso;
+      if (++blocco === 3 && fl) { while (performance.now() - fl.ultimo < 200) await pausa(50); fl.ultimo -= SILENZIO + 1000; }
+      return disegnaFinta(b);
+    };
+    r = await copia();
+    disegna = disegnaFinta;
+    prova('a flusso: dopo un silenzio lungo il flusso si chiude e si riapre', r?.esito === 'fatto' && giusti(f) && f.comandi.filter(c => c === '@FLUSSO').length === 2 && r.ricevute === nomi.length && !f.errori.length,
+      r?.esito, r?.motivo, f.comandi.filter(c => c[0] === '@').join(','), `fine=${r?.ricevute}`);
+    tieni(f);
+    // 11. il firmware di prima (senza "flusso="): una tile alla volta, come prima; anche "Ferma" e "Continua"
+    variante = 9; f = usa(telefonoFinto());
+    riprendi = '';
+    r = await copia();
+    prova('firmware di prima: una tile alla volta con @HAI e @FILE', r?.esito === 'fatto' && !r.aFlusso && giusti(f) && f.comandi.some(c => c.startsWith('@FILE')) && !f.comandi.includes('@FLUSSO') && !f.errori.length,
+      r?.esito, r?.motivo, f.errori.slice(0, 2).join('; '));
+    variante = 10; f = usa(telefonoFinto({ fermaDopo: 7 }));
+    riprendi = ''; disegnati = 0;
+    r = await copia();
+    const finiti2 = ripresa ? ripresa.fatti.size : 0;
+    disegnati = 0;
+    const r5 = await copia();
+    prova('firmware di prima: “Ferma”, poi “Continua” salta i blocchi finiti', r?.esito === 'fermato' && finiti2 > 0 && r5?.esito === 'fatto' && giusti(f) && disegnati === nBlocchi - finiti2,
+      r?.esito, `finiti=${finiti2}`, `ridisegnati=${disegnati}`, r5?.esito, r5?.motivo);
+    // 12. "Manda da una cartella" a flusso: tutte le tile, il file rotto si lascia stare
+    variante = 11;
+    const d = cartellaFinta('Mappe pronte');
+    for (const nome of nomi) { const [z, x, y] = nome.slice(0, -4).split('/').map(Number); await metti(d, 'mappe/' + nome, finta(z, x, y)); }
+    await metti(d, 'mappe/15/17000/12000.png', new Uint8Array([1, 2, 3]));
+    const p = await leggiPacco(d);
+    f = usa(telefonoFlusso());
+    mandaDa = null; riprendiManda = '';
+    r = await eseguiManda(p);
+    prova('a flusso: “Manda da una cartella”, tutte le tile e il file rotto lasciato stare', r?.esito === 'fatto' && r.aFlusso && giusti(f) && r.conti.scartate === 1 && r.ricevute === nomi.length,
+      r?.esito, r?.motivo, `file=${f.file.size}`, `scartate=${r?.conti.scartate}`);
+    tieni(f);
+    // 13. "Ferma" dopo 10 e "Continua a mandare": si riparte dalla prima tile non confermata, nessuna mandata due volte
+    f = usa(telefonoFlusso({ fermaDopo: 10 }));
+    mandaDa = null; riprendiManda = '';
+    r = await eseguiManda(p);
+    const ferma = r?.esito === 'fermato' && r.conti.fatte === r.conti.fino && mandaDa && riprendiManda === 'continua', daQui = r?.conti.fino;
+    const r6 = await eseguiManda(p);
+    prova('a flusso: “Ferma” e “Continua a mandare” dalla prima non confermata, niente doppioni', ferma && r6?.esito === 'fatto' && giusti(f) && r6.conti.fatte === p.totale && righeT(f) === nomi.length,
+      r?.esito, `da=${daQui}`, r6?.esito, r6?.motivo, `T=${righeT(f)}`);
+    tieni(f);
+  } catch (e) {
+    prova('la prova è arrivata in fondo', false, e.stack || e.message);
+  } finally {
+    Object.assign(canale, prima.canale); Object.assign(TEMPI, prima.tempi);
+    ({ disegna, telefono, conosciuto, riprendi, ripresa, riprendiManda, pacco, mandaDa, velocita, velocitaFlusso, kbTile, kbPeso } = prima);
+    fermati = false;
+    term.textContent = prima.term; term.scrollTop = term.scrollHeight;
+    $('#mStato').textContent = prima.stato[0]; $('#mStato').className = prima.stato[1];
+    $('#mDati').textContent = prima.dati;
+    $('#mBar').className = prima.barra[0]; $('#mBar').firstElementChild.style.width = prima.barra[1];
+    ricorda(); consoleAperta(!!cport); aggiornaMappe(); mostraStima();
+  }
+  const risultato = { tutto: esiti.every(e => e.ok), giusti: esiti.filter(e => e.ok).length, su: esiti.length, esiti, ...fuori };
+  if (registro) {
+    const tutto = new Uint8Array(registrati.reduce((s, u) => s + u.length, 0));
+    registrati.reduce((k, u) => (tutto.set(u, k), k + u.length), 0);
+    let b = '';
+    for (let i = 0; i < tutto.length; i += 32768) b += String.fromCharCode(...tutto.subarray(i, i + 32768));
+    risultato.registro = { base64: btoa(b), atteso: attesi };
+  }
+  window.ultimaProvaFlusso = risultato;
   return risultato;
 };
 

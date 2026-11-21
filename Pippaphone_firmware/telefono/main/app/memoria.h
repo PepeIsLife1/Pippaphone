@@ -52,6 +52,9 @@ std::string datiPath(const char* rel);
 bool sdPresente();
 // Mappe offline sulla microSD: /sd/mappe/<zoom>/<x>/<y>.png (tile OpenStreetMap).
 extern const char* const MAPPE;
+// L'unita' FatFs della microSD ("0:" e simili, per le funzioni di FatFs senza passare dal VFS: leggono
+// anche le grandezze dei file di una cartella in un giro solo); -1 senza microSD.
+int sdUnitaFat();
 // Scrive /sd/pippaphone/info.txt (informazioni del dispositivo, da leggere sul computer).
 void writeDeviceInfo(const std::string& text);
 #else

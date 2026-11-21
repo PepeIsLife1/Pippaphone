@@ -16,6 +16,7 @@
 #include <cstring>
 #include <map>
 
+#include "diskio_sdmmc.h"
 #include "driver/sdspi_host.h"
 #include "scheda/scheda.h"
 #include "sdmmc_cmd.h"
@@ -44,6 +45,7 @@ wl_handle_t g_wl = WL_INVALID_HANDLE;
 
 namespace {
 bool g_sd = false;
+int g_sdUnita = -1;  // unita' FatFs della microSD
 std::map<std::string, std::string> g_conf;  // impostazioni.txt sulla microSD
 
 // Impostazioni che vanno nel file sulla microSD (il PIN resta nella memoria interna).
@@ -78,6 +80,8 @@ bool mountSd() {
         ESP_LOGW(TAG, "microSD assente o non leggibile (%s): dati nella memoria interna", esp_err_to_name(e));
         return false;
     }
+    const BYTE unita = ff_diskio_get_pdrv_card(card);
+    g_sdUnita = unita == 0xFF ? -1 : int(unita);
     ESP_LOGI(TAG, "microSD %s, %llu MB", card->cid.name,
              (unsigned long long)card->csd.capacity * card->csd.sector_size / (1024 * 1024));
     return true;
@@ -172,6 +176,8 @@ void loadConf() {
 std::string datiPath(const char* rel) { return std::string(DATI) + rel; }
 
 bool sdPresente() { return g_sd; }
+
+int sdUnitaFat() { return g_sd ? g_sdUnita : -1; }
 
 void writeDeviceInfo(const std::string& text) {
     if (g_sd) writeFile(std::string(DATI) + "/info.txt", std::vector<uint8_t>(text.begin(), text.end()));
